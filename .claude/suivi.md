@@ -2,6 +2,16 @@
 
 ---
 
+## [2026-02-28 22:00] — Fix datalist unités Matériaux : g et mL uniquement
+
+**Type :** `fix`
+**Fichiers concernés :** `src/components/referentiel/MaterielSlideOver.tsx`
+
+### Description
+Réduction du datalist des unités de mesure dans le slide-over Matériaux externes à g et mL uniquement (retrait de kg, L, pièce, sachet).
+
+---
+
 ## [2026-02-28 21:45] — Fix TypeScript : types Supabase complets + tsconfig
 
 **Type :** `fix`

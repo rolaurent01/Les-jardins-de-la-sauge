@@ -4,7 +4,7 @@ import { useState, useTransition, useEffect, useRef } from 'react'
 import type { ExternalMaterial, ActionResult } from '@/lib/types'
 
 /* Unités courantes */
-const UNITES = ['g', 'kg', 'mL', 'L', 'pièce', 'sachet']
+const UNITES = ['g', 'mL']
 
 type Props = {
   open: boolean

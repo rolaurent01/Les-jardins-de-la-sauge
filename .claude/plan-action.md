@@ -156,11 +156,11 @@ A7. Polish Phase A
 - Bibliothèque de recettes (`recipes` + `recipe_ingredients`) : CRUD avec composition en % + **état de stock par ingrédient**
   - Ex: Tisane → tous les ingrédients en état `tronconnee_sechee_triee`
   - Ex: Sel Ail des ours → Ail des ours en état `frais`, Sel = matériau externe
-- Catégories produits : Tisane, Aromate, Sel, Sucre
+- Catégories produits : Tisane, Aromate, Sel, Sucre, Vinaigre
 - Workflow de production de lot — **wizard 4 étapes** :
   1. Choix recette + nombre de sachets/pots + date
   2. Ajuster composition (modifier %, changer une plante, **changer l'état d'un ingrédient**)
-  3. Vérification stock **dans l'état spécifié pour chaque ingrédient**
+  3. Vérification stock **dans l'état spécifié pour chaque ingrédient** + **fournisseur obligatoire pour les matériaux externes**
   4. Confirmation → génération numéro de lot + DDM → déduction stock
 - Stock produits finis (`product_stock_movements`) : entrées/sorties de sachets
 

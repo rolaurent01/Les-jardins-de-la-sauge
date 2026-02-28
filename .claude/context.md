@@ -835,12 +835,14 @@ CREATE TABLE production_lot_ingredients (
   pourcentage DECIMAL NOT NULL,
   poids_g DECIMAL NOT NULL,                -- Poids réel utilisé = poids_total * pourcentage
   annee_recolte INTEGER,                    -- "2024", "2025" — l'année de la plante utilisée
+  fournisseur TEXT,                          -- Obligatoire si external_material_id IS NOT NULL (fournisseur du matériau pour ce lot)
   CHECK (
     (variety_id IS NOT NULL AND external_material_id IS NULL) OR
     (variety_id IS NULL AND external_material_id IS NOT NULL)
   ),
   created_at TIMESTAMPTZ DEFAULT now()
 );
+-- → Validation applicative : fournisseur obligatoire quand external_material_id IS NOT NULL
 ```
 
 **Processus de création de lot** :
@@ -1437,3 +1439,4 @@ app-ljs/
 | **Clôture de saison** | **Bouton admin 31/12, confirmation rang par rang (vivaces actives ? annuelles à clôturer ?), arrachage auto des non-confirmés.** |
 | **Année sur tables transfo** | **Pas de champ dédié. Utiliser `EXTRACT(year FROM date)` dans les requêtes.** |
 | **Associations polymorphiques** | **`stock_movements.source_type` + `source_id` sans FK. Traçabilité en code applicatif (B4).** |
+| **Fournisseur matériaux externes** | **Saisi au moment de la production du lot (dans `production_lot_ingredients`), pas dans le référentiel. Obligatoire pour les matériaux externes.** |
