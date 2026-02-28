@@ -6,6 +6,42 @@ import { useState } from 'react'
 import { logout } from '@/app/login/actions'
 
 /* ============================================================
+   Composant en-tête marque
+   ============================================================ */
+function BrandHeader() {
+  return (
+    <div className="px-6 pt-6 pb-4 border-b border-white/10">
+      <div className="flex items-center gap-3">
+        {/* Icône */}
+        <div className="w-11 h-11 rounded-full bg-white/5 ring-1 ring-white/10 flex items-center justify-center">
+          <svg viewBox="0 0 24 24" className="w-6 h-6" fill="none" aria-hidden="true">
+            <path
+              d="M12.5 12.2c2.2-4.3 6.2-6 8.5-6.2-.2 2.3-1.9 6.3-6.2 8.5-1.1.6-2.4.9-3.7.9.4-1.1.8-2.2 1.4-3.2Z"
+              fill="rgba(157,186,138,0.95)"
+            />
+            <path
+              d="M11.5 12.2C9.3 7.9 5.3 6.2 3 6c.2 2.3 1.9 6.3 6.2 8.5 1.1.6 2.4.9 3.7.9-.4-1.1-.8-2.2-1.4-3.2Z"
+              fill="rgba(157,186,138,0.75)"
+            />
+            <path
+              d="M12 21c0-3.5 0-6.2 1.2-8.6"
+              stroke="rgba(157,186,138,0.9)"
+              strokeWidth="1.6"
+              strokeLinecap="round"
+            />
+          </svg>
+        </div>
+        {/* Texte */}
+        <div className="leading-tight">
+          <div className="text-white text-[13px] font-semibold tracking-tight">Les Jardins</div>
+          <div className="text-white/80 text-[13px] font-medium tracking-tight">de la Sauge</div>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+/* ============================================================
    Définition de la navigation
    Ordre : Référentiel d'abord (Phase A), puis les 5 modules métier, puis Miel (Phase C)
    ============================================================ */
@@ -119,20 +155,7 @@ export default function Sidebar({ userEmail }: { userEmail?: string }) {
       style={{ backgroundColor: '#3A5A40' }}
     >
       {/* ---- En-tête ---- */}
-      <div
-        className="px-4 py-5 flex items-center gap-3"
-        style={{ borderBottom: '1px solid rgba(255,255,255,0.1)' }}
-      >
-        <span className="text-2xl leading-none">🌿</span>
-        <div>
-          <div className="text-sm font-semibold leading-tight" style={{ color: '#F9F8F6' }}>
-            Les Jardins
-          </div>
-          <div className="text-xs leading-tight" style={{ color: '#8FAD88' }}>
-            de la Sauge
-          </div>
-        </div>
-      </div>
+      <BrandHeader />
 
       {/* ---- Lien Dashboard ---- */}
       <div className="px-3 pt-3">
@@ -151,7 +174,7 @@ export default function Sidebar({ userEmail }: { userEmail?: string }) {
       </div>
 
       {/* ---- Séparateur ---- */}
-      <div className="mx-3 mt-3 mb-1" style={{ borderTop: '1px solid rgba(255,255,255,0.08)' }} />
+      <div className="mx-3 mt-2 mb-1" style={{ borderTop: '1px solid rgba(255,255,255,0.08)' }} />
 
       {/* ---- Navigation ---- */}
       <nav className="flex-1 px-3 pb-2 space-y-0.5">
@@ -236,11 +259,8 @@ export default function Sidebar({ userEmail }: { userEmail?: string }) {
         })}
       </nav>
 
-      {/* ---- Pied : utilisateur + déconnexion ---- */}
-      <div
-        className="px-3 py-3 mt-auto"
-        style={{ borderTop: '1px solid rgba(255,255,255,0.1)' }}
-      >
+      {/* ---- Pied : logo + utilisateur + déconnexion ---- */}
+      <div className="px-3 py-3 mt-auto" style={{ borderTop: '1px solid rgba(255,255,255,0.1)' }}>
         {userEmail && (
           <div
             className="text-xs px-3 py-1.5 mb-2 truncate"

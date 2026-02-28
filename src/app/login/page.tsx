@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useTransition } from 'react'
+import Image from 'next/image'
 import { login } from './actions'
 
 export default function LoginPage() {
@@ -24,17 +25,15 @@ export default function LoginPage() {
     >
       <div className="w-full max-w-sm">
         {/* Logo */}
-        <div className="text-center mb-8">
-          <div className="text-5xl mb-3">🌿</div>
-          <h1
-            className="text-2xl font-semibold tracking-tight"
-            style={{ color: '#2C3E2D' }}
-          >
-            Les Jardins de la Sauge
-          </h1>
-          <p className="text-sm mt-1" style={{ color: '#9CA89D' }}>
-            Traçabilité de la graine au produit fini
-          </p>
+        <div className="flex justify-center mb-8">
+          <Image
+            src="/logo-ljs.png"
+            alt="Les Jardins de la Sauge"
+            width={200}
+            height={120}
+            priority
+            className="object-contain"
+          />
         </div>
 
         {/* Carte */}

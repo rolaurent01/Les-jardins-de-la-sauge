@@ -2,6 +2,65 @@
 
 ---
 
+## [2026-02-28] — Sidebar : composant BrandHeader SVG (icône feuille + texte)
+
+**Type :** `feat`
+**Fichiers concernés :** `src/components/Sidebar.tsx`
+
+### Description
+Remplacement du composant `LogoSauge` par `BrandHeader` : icône SVG double-feuille dans un cercle + texte "Les Jardins / de la Sauge" aligné à droite. Design sobre sur fond vert sauge, sans PNG externe.
+
+---
+
+## [2026-02-28] — Sidebar : remplacement bloc logo par composant LogoSauge SVG
+
+**Type :** `feat`
+**Fichiers concernés :** `src/components/Sidebar.tsx`
+
+### Description
+Remplacement du bloc crème avec PNG par un composant `LogoSauge` : cercle SVG feuille + texte "Les Jardins de la Sauge" sur fond vert. Suppression de l'import `next/image` devenu inutile.
+
+---
+
+## [2026-02-28] — Sidebar : logo LJS en en-tête dans bloc crème agrandi
+
+**Type :** `feat`
+**Fichiers concernés :** `src/components/Sidebar.tsx`
+
+### Description
+Logo LJS replacé en en-tête de sidebar dans un bloc crème (#F9F8F6) arrondi, logo zoomé (160×80px). Suppression du bloc logo du bas.
+
+---
+
+## [2026-02-28] — Sidebar : logo LJS en bas dans bloc crème + nav remontée
+
+**Type :** `feat`
+**Fichiers concernés :** `src/components/Sidebar.tsx`
+
+### Description
+Suppression de l'en-tête avec emoji/texte. Navigation remontée en haut de la sidebar. Logo LJS placé dans un bloc crème (#F9F8F6) arrondi au-dessus de l'email en pied de sidebar.
+
+### Détails techniques
+- Bloc logo : `rounded-xl`, `backgroundColor: #F9F8F6`, dimensions 120×48px
+- Dashboard link et nav démarrent dès le haut (pt-3 uniquement)
+
+---
+
+## [2026-02-28] — Page login : remplacement emoji/sous-titre par logo LJS
+
+**Type :** `feat`
+**Fichiers concernés :** `src/app/login/page.tsx`, `public/logo-ljs.png`
+
+### Description
+Remplacement de l'emoji 🌿 et du sous-titre "Traçabilité de la graine au produit fini" par le logo officiel LJS (PNG sans fond).
+
+### Détails techniques
+- Copie de `ressources/LJS Sans fond.png` → `public/logo-ljs.png`
+- Utilisation du composant `next/image` (optimisation automatique)
+- Dimensions : 200×120px, `priority` pour chargement immédiat (above the fold)
+
+---
+
 ## [2026-02-28] — Favicon emoji 🌿
 
 **Type :** `feat`

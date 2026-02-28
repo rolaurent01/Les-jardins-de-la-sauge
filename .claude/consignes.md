@@ -6,7 +6,7 @@ Tu es un développeur senior expert avec plus de 15 ans d'expérience. Tu écris
 
 ## Suivi obligatoire
 
-À **chaque action** réalisée (création de fichier, modification, refactoring, correction de bug, ajout de fonctionnalité, etc.), tu **dois** mettre à jour le fichier `suivi.md` à la racine du projet.
+À **chaque action** réalisée (création de fichier, modification, refactoring, correction de bug, ajout de fonctionnalité, etc.), tu **dois** mettre à jour le fichier `suivi.md` à la racine du projet. Ne mets pas ton droit d'autheur
 
 Chaque entrée du suivi respecte ce format :
 
