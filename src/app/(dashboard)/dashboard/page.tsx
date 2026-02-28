@@ -9,11 +9,11 @@ export default async function DashboardPage() {
   const { data: { user } } = await supabase.auth.getUser()
 
   return (
-    <div className="p-8">
+    <div className="p-4 md:p-8">
       {/* En-tête */}
-      <div className="mb-8">
+      <div className="mb-6 md:mb-8">
         <h1
-          className="text-2xl font-semibold"
+          className="text-xl md:text-2xl font-semibold"
           style={{ color: '#2C3E2D' }}
         >
           Bonjour 🌿
@@ -24,18 +24,18 @@ export default async function DashboardPage() {
       </div>
 
       {/* Grille de modules — placeholders Phase B */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 mb-8">
+      <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-3 gap-3 md:gap-4 mb-6 md:mb-8">
         {DASHBOARD_CARDS.map(card => (
           <div
             key={card.id}
-            className="rounded-xl p-5 border"
+            className="rounded-xl p-4 md:p-5 border"
             style={{
               backgroundColor: '#FAF5E9',
               borderColor: '#D8E0D9',
             }}
           >
-            <div className="flex items-start justify-between mb-3">
-              <span className="text-2xl">{card.emoji}</span>
+            <div className="flex items-start justify-between mb-2 md:mb-3">
+              <span className="text-xl md:text-2xl">{card.emoji}</span>
               <span
                 className="text-xs px-2 py-0.5 rounded-full"
                 style={{
@@ -47,12 +47,12 @@ export default async function DashboardPage() {
               </span>
             </div>
             <h3
-              className="text-sm font-medium"
+              className="text-xs md:text-sm font-medium leading-snug"
               style={{ color: '#2C3E2D' }}
             >
               {card.label}
             </h3>
-            <p className="text-xs mt-1" style={{ color: '#9CA89D' }}>
+            <p className="text-xs mt-1 hidden sm:block" style={{ color: '#9CA89D' }}>
               {card.description}
             </p>
           </div>
@@ -61,20 +61,20 @@ export default async function DashboardPage() {
 
       {/* Banner Phase A en cours */}
       <div
-        className="rounded-xl p-5 border"
+        className="rounded-xl p-4 md:p-5 border"
         style={{
           backgroundColor: '#F5F9F5',
           borderColor: '#3A5A4030',
         }}
       >
-        <div className="flex items-center gap-3">
-          <span className="text-xl">🔧</span>
+        <div className="flex items-start gap-3">
+          <span className="text-xl flex-shrink-0">🔧</span>
           <div>
             <p className="text-sm font-medium" style={{ color: '#2C3E2D' }}>
               Phase A en cours — Référentiel & Saisie
             </p>
             <p className="text-xs mt-0.5" style={{ color: '#9CA89D' }}>
-              Configurez d'abord vos variétés, sites et parcelles via le menu Référentiel.
+              Configurez d&apos;abord vos variétés, sites et parcelles via le menu Référentiel.
             </p>
           </div>
         </div>

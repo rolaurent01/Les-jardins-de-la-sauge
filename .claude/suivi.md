@@ -2,6 +2,21 @@
 
 ---
 
+## [2026-02-28] — Responsive mobile : MobileHeader + layout adaptatif dashboard
+
+**Type :** `feat`
+**Fichiers concernés :** `src/components/MobileHeader.tsx`, `src/app/(dashboard)/layout.tsx`, `src/app/(dashboard)/dashboard/page.tsx`
+
+### Description
+Correction de l'affichage mobile du dashboard sans impacter le layout desktop. La sidebar (w-60) était visible sur mobile, écrasant le contenu.
+
+### Détails techniques
+- **`MobileHeader.tsx`** : Nouveau composant client — barre top sticky vert sauge (h-14) avec brand SVG + bouton hamburger. Drawer latéral droit (w-72) avec la même navigation que la sidebar desktop (accordion, links actifs, déconnexion). Overlay fond sombre derrière le drawer.
+- **`layout.tsx`** : Sidebar wrappée dans `<div className="hidden md:block">` → invisible sur mobile. `MobileHeader` monté dans `<div className="md:hidden">` à l'intérieur du `<main>`. Aucun changement pour desktop (≥ md).
+- **`dashboard/page.tsx`** : Padding `p-4 md:p-8`, titre `text-xl md:text-2xl`, grille `grid-cols-2` (vs 1 colonne avant) sur mobile, gap réduit `gap-3 md:gap-4`, descriptions des cartes masquées sur mobile (`hidden sm:block`).
+
+---
+
 ## [2026-02-28] — Sidebar : composant BrandHeader SVG (icône feuille + texte)
 
 **Type :** `feat`
