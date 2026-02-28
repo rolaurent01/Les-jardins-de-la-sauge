@@ -2,6 +2,23 @@
 
 ---
 
+## [2026-02-28 19:40] — CRUD Variétés + composant QuickAddVariety
+
+**Type :** `feat`
+**Fichiers concernés :** `src/lib/types.ts`, `src/app/(dashboard)/referentiel/varietes/page.tsx`, `src/app/(dashboard)/referentiel/varietes/actions.ts`, `src/components/referentiel/VarietesClient.tsx`, `src/components/referentiel/VarieteSlideOver.tsx`, `src/components/varieties/QuickAddVariety.tsx`
+
+### Description
+CRUD complet des variétés dans la section Référentiel. Tableau avec recherche insensible aux accents, slide-over création/édition, archivage soft-delete avec confirmation inline, et composant QuickAddVariety réutilisable.
+
+### Détails techniques
+- **`types.ts`** : Types `Variety`, `TypeCycle`, `ActionResult<T>` partagés.
+- **`actions.ts`** : 4 Server Actions — `createVariety`, `updateVariety`, `archiveVariety`, `restoreVariety`. Gestion erreur `23505` (UNIQUE). Helper `parseVarietyForm()` DRY.
+- **`VarietesClient.tsx`** : Filtrage client-side `normalize()` (insensible casse + accents). Toggle archivées. Confirmation inline double-clic (auto-reset 4s). `useEffect` sync props après `router.refresh()`. Badges colorés par `type_cycle`.
+- **`VarieteSlideOver.tsx`** : Panneau coulissant droite (CSS transform 0.3s). Tous les champs context.md §5. Focus auto, Escape. `key` dans parent pour remounting create/edit.
+- **`QuickAddVariety.tsx`** : Mini-modal dropdown, 3 champs. Dédoublonnage client-side avant appel serveur. Si doublon → propose sélection. Prop `onCreated(variety)` → callback parent.
+
+---
+
 ## [2026-02-28 19:10] — Auth + Layout bureau + Sidebar
 
 **Type :** `feat`
