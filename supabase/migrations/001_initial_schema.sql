@@ -607,11 +607,14 @@ GROUP BY v.id, v.nom_vernaculaire, sm.etat_plante;
 -- ============================================================
 
 -- unaccent() est STABLE par défaut dans PostgreSQL, donc interdite dans une expression d'index.
--- Solution standard : wrapper IMMUTABLE qui délègue à unaccent().
+-- Solution : wrapper plpgsql IMMUTABLE (plpgsql ne subit pas l'inlining SQL qui échoue
+-- lors de la résolution de unaccent dans le search_path au moment de la création de l'index).
 CREATE OR REPLACE FUNCTION immutable_unaccent(text)
 RETURNS text AS $$
-  SELECT unaccent($1);
-$$ LANGUAGE sql IMMUTABLE STRICT PARALLEL SAFE;
+BEGIN
+  RETURN unaccent($1);
+END;
+$$ LANGUAGE plpgsql IMMUTABLE STRICT PARALLEL SAFE;
 
 -- Anti-doublon variétés insensible à la casse et aux accents
 CREATE UNIQUE INDEX varieties_nom_ci ON varieties (lower(immutable_unaccent(nom_vernaculaire)))
