@@ -2,6 +2,26 @@
 
 ---
 
+## [2026-02-28 19:10] — Auth + Layout bureau + Sidebar
+
+**Type :** `feat`
+**Fichiers concernés :** `src/middleware.ts`, `src/app/login/page.tsx`, `src/app/login/actions.ts`, `src/components/Sidebar.tsx`, `src/app/(dashboard)/layout.tsx`, `src/app/(dashboard)/dashboard/page.tsx`, `src/app/page.tsx`, `src/app/globals.css`
+
+### Description
+Auth Supabase complète + layout bureau avec sidebar de navigation. Respecte la charte graphique LJS (§4 context.md).
+
+### Détails techniques
+- **`globals.css`** : Palette LJS complète via `@theme` Tailwind v4 — `--color-sage-deep` (#3A5A40), `--color-cream` (#F9F8F6), `--color-anthracite` (#2C3E2D), `--color-ocre` (#DDA15E), border-radius genereux, scrollbar discrète.
+- **`middleware.ts`** : Protège toutes les routes sauf `/api`, `_next`, assets PWA. Non-authentifié → `/login`. Authentifié + `/login` → `/dashboard`. Utilise `supabase.auth.getUser()` (pas `getSession()` pour la sécurité).
+- **`login/actions.ts`** : Server Actions `login()` (retourne `{error}` ou redirect /dashboard) + `logout()` (signOut + redirect /login).
+- **`login/page.tsx`** : Client Component. Formulaire email/password avec `useTransition`, focus ring vert, carte crème arrondie, fond crème.
+- **`Sidebar.tsx`** : Client Component `'use client'`. 7 sections (⚙️ Référentiel, 🌱 Semis, 🌿 Suivi parcelle, 🔄 Transformation, 🧪 Création de produit, 📦 Affinage du stock, 🍯 Miel). Accord accordion avec `useState`, items actifs mis en évidence via `usePathname`. Section Miel désactivée avec badge "Phase C". Email utilisateur + bouton logout en pied.
+- **`(dashboard)/layout.tsx`** : Route group Next.js (n'apparaît pas dans l'URL). Server Component — charge le user pour passer son email à Sidebar. Layout `flex h-screen` sidebar + main.
+- **`(dashboard)/dashboard/page.tsx`** : Page d'accueil avec grille de 6 placeholders Phase B + bandeau "Phase A en cours".
+- **`page.tsx`** : Redirect immédiat vers `/dashboard` (le middleware gère le cas non-authentifié).
+
+---
+
 ## [2026-02-28 18:50] — Correction SQL : wrapper immutable_unaccent en plpgsql
 
 **Type :** `fix`
