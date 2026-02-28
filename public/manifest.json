@@ -1,0 +1,27 @@
+{
+  "name": "Les Jardins de la Sauge",
+  "short_name": "LJS",
+  "description": "Traçabilité de la graine au produit fini — Les Jardins de la Sauge",
+  "start_url": "/",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#F9F8F6",
+  "theme_color": "#3A5A40",
+  "lang": "fr",
+  "icons": [
+    {
+      "src": "/icons/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "/icons/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ],
+  "categories": ["productivity", "utilities"],
+  "screenshots": []
+}
