@@ -2,6 +2,31 @@
 
 ---
 
+## [2026-02-28 18:10] — Schéma SQL complet (migrations)
+
+**Type :** `chore`
+**Fichiers concernés :** `supabase/migrations/001_initial_schema.sql`
+
+### Description
+Création du schéma PostgreSQL complet à coller dans l'éditeur SQL Supabase.
+Couvre la totalité des tables décrites dans context.md §5, plus les index, RLS, triggers et fonctions.
+
+### Détails techniques
+- **28 tables** dans l'ordre de dépendance (référentiel → semis → parcelles → transformation → stock → produits → prévisionnel → système)
+- **Soft delete** (`deleted_at TIMESTAMPTZ DEFAULT NULL`) sur : `varieties`, `seed_lots`, `seedlings`, `plantings`, `harvests`, `recipes`, `production_lots`, `stock_movements` (conformément à context.md §10.1)
+- **Contraintes CHECK composites** sur `dryings` et `sortings` : valide que l'état de la plante est cohérent avec le type entrée/sortie (au niveau DB, en plus de la validation applicative)
+- **Index** sur toutes les colonnes fréquemment filtrées : `variety_id`, `row_id`, `date`, `etat_plante`, `actif`, `source_type`
+- **Index unique fonctionnel** sur `varieties.nom_vernaculaire` insensible à la casse et aux accents (`lower(unaccent(...))`)
+- **RLS** activé sur toutes les tables : politique unique `authenticated_full_access` via boucle DO$$
+- **Vue `v_stock`** : calcul du stock en temps réel par variété et état, avec filtre soft delete
+- **`UNIQUE NULLS NOT DISTINCT`** sur `production_summary(variety_id, annee, mois)` pour que mois=NULL soit traité comme une valeur unique (PostgreSQL 15+, disponible sur Supabase)
+- **Fonction `_ps_upsert`** : helper PL/pgSQL qui met à jour simultanément la ligne mensuelle ET la ligne annuelle de `production_summary` avec des deltas (positifs ou négatifs pour gestion soft delete)
+- **9 triggers** sur `production_summary` : harvests, cuttings, dryings, sortings, production_lot_ingredients, production_lots (temps), stock_direct_sales, stock_purchases, + updated_at ×2
+- **Fonction `recalculate_production_summary()`** : reconstruit entièrement la table depuis les sources (bouton admin)
+- **`app_logs`** : niveaux info/warn/error, champ JSONB metadata, purge 90j à implémenter via cron
+
+---
+
 ## [2026-02-28 17:23] — Setup Vitest
 
 **Type :** `config`
