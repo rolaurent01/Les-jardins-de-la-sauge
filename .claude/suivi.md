@@ -2,6 +2,28 @@
 
 ---
 
+## [2026-02-28] — Sidebar : redesign SaaS premium (style Linear/Stripe)
+
+**Type :** `feat`
+**Fichiers concernés :** `src/components/Sidebar.tsx`
+
+### Description
+Refonte visuelle complète de la sidebar sans toucher à la structure ni à la logique. Objectif : rendu SaaS premium, sobre, lisible, avec hiérarchie visuelle claire.
+
+### Détails techniques
+- **Tokens de design** : objet `C` centralisé + constante `TRANSITION` pour cohérence
+- **BrandHeader** : plus compact (py-[13px], icône 28px dans carré arrondi), style app SaaS
+- **ActiveBar** : composant `<ActiveBar visible>` — barre 2px absolue gauche, transition opacity 150ms
+- **Item actif** : barre verte `#7CC47C` + fond `rgba(255,255,255,0.09)` + texte `#EDF5EE` + fontWeight 500
+- **Hover** : fond `rgba(255,255,255,0.05)` + texte plus clair, transition 150ms, jamais sur les items actifs
+- **Sections ouvertes** : fond très subtil `rgba(255,255,255,0.04)` pour indiquer l'état open
+- **Icônes** : opacity 0.55 inactif → 1 actif, uniformisées w-4 h-4
+- **Sous-items** : `border-left 2px` avec compensation padding (pl 8→6px) + `rgba(124,196,124,0)` transparent → coloré pour transition CSS propre. Texte 12.5px vs 13px section
+- **Séparateurs** : `height: 1px` au lieu de `border-top` pour éviter le doublement
+- **Footer** : email plus discret (`#638064`), déconnexion avec icône opacity 0.45
+
+---
+
 ## [2026-02-28] — Responsive mobile : MobileHeader + layout adaptatif dashboard
 
 **Type :** `feat`
