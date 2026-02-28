@@ -204,7 +204,7 @@ export default function Sidebar({ userEmail }: { userEmail?: string }) {
     setOpenSection(prev => (prev === id ? null : id))
   }
 
-  const isDashActive = pathname === '/dashboard'
+  const isDashActive = pathname === '/dashboard' && openSection === null
 
   return (
     <aside
@@ -219,6 +219,7 @@ export default function Sidebar({ userEmail }: { userEmail?: string }) {
       <div className="px-3 pt-2.5 pb-1">
         <Link
           href="/dashboard"
+          onClick={() => setOpenSection(null)}
           className="flex items-center gap-2.5 rounded-md text-[13px] font-medium"
           style={{
             padding:         '6px 8px',
@@ -250,8 +251,7 @@ export default function Sidebar({ userEmail }: { userEmail?: string }) {
       {/* ── Navigation ─────────────────────────── */}
       <nav className="flex-1 px-3 pt-1 pb-4 overflow-y-auto">
         {NAV.map((section, idx) => {
-          const isOpen    = openSection === section.id
-          const hasActive = section.children.some(c => pathname.startsWith(c.href))
+          const isOpen = openSection === section.id
 
           return (
             <div key={section.id} style={{ marginTop: idx === 0 ? '6px' : '10px' }}>
@@ -268,7 +268,7 @@ export default function Sidebar({ userEmail }: { userEmail?: string }) {
                   letterSpacing:   '0.01em',
                   color: section.disabled
                     ? 'rgba(255,255,255,0.18)'
-                    : hasActive
+                    : isOpen
                     ? C.sectionActive
                     : C.sectionText,
                   backgroundColor: isOpen ? C.activeBg : 'transparent',
@@ -276,7 +276,7 @@ export default function Sidebar({ userEmail }: { userEmail?: string }) {
                   transition:      'all 150ms ease-out',
                 }}
                 onMouseEnter={e => {
-                  if (!section.disabled && !hasActive) {
+                  if (!section.disabled && !isOpen) {
                     e.currentTarget.style.backgroundColor = C.hoverBg
                     e.currentTarget.style.color = C.sectionHover
                   }
@@ -284,7 +284,7 @@ export default function Sidebar({ userEmail }: { userEmail?: string }) {
                 onMouseLeave={e => {
                   if (!section.disabled) {
                     e.currentTarget.style.backgroundColor = isOpen ? C.activeBg : 'transparent'
-                    e.currentTarget.style.color = hasActive ? C.sectionActive : C.sectionText
+                    e.currentTarget.style.color = isOpen ? C.sectionActive : C.sectionText
                   }
                 }}
               >
@@ -293,7 +293,7 @@ export default function Sidebar({ userEmail }: { userEmail?: string }) {
                   style={{
                     fontSize: '13px',
                     lineHeight: 1,
-                    opacity: section.disabled ? 0.2 : hasActive ? 0.9 : 0.55,
+                    opacity: section.disabled ? 0.2 : isOpen ? 0.9 : 0.55,
                     flexShrink: 0,
                   }}
                 >

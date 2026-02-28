@@ -2,6 +2,47 @@
 
 ---
 
+## [2026-02-28] — fix(sidebar): Dashboard reste surligné après clic sur section header
+
+**Type :** `fix`
+**Fichiers concernés :** `src/components/Sidebar.tsx`
+
+### Description
+Dashboard restait surligné quand on cliquait sur un section header depuis `/dashboard`, car `pathname === '/dashboard'` restait vrai.
+
+### Détails techniques
+- **Fix** : `isDashActive = pathname === '/dashboard' && openSection === null` — Dashboard n'est actif visuellement que si on est sur `/dashboard` ET qu'aucune section n'est ouverte.
+
+---
+
+## [2026-02-28] — fix(sidebar): Dashboard — accordéon précédent reste surligné après navigation
+
+**Type :** `fix`
+**Fichiers concernés :** `src/components/Sidebar.tsx`
+
+### Description
+Correction du bug où cliquer sur "Dashboard" laissait l'accordéon précédemment ouvert surligné. Cause : `openSection` n'était pas réinitialisé lors de la navigation vers `/dashboard`.
+
+### Détails techniques
+- **Fix** : ajout de `onClick={() => setOpenSection(null)}` sur le `<Link>` Dashboard — ferme l'accordéon ouvert au moment du clic, avant la navigation.
+
+---
+
+## [2026-02-28] — fix(sidebar): texte main titre — highlight reste sur l'ancien accordéon cliqué
+
+**Type :** `fix`
+**Fichiers concernés :** `src/components/Sidebar.tsx`
+
+### Description
+Correction du bug où la couleur de texte d'un main titre (section header) restait `sectionActive` (blanc vif) même après avoir cliqué sur un autre accordéon.
+
+### Détails techniques
+- **Cause** : `color` du section header suivait `hasActive` (enfant actif dans l'URL) tandis que `backgroundColor` suivait déjà `isOpen` — incohérence introduite lors du fix précédent.
+- **Fix** : toutes les propriétés visuelles du header (couleur texte, opacité emoji, garde `onMouseEnter`, restauration `onMouseLeave`) alignées sur `isOpen` au lieu de `hasActive`.
+- **Suppression** : variable `hasActive` devenue inutilisée, retirée pour supprimer le warning TypeScript `6133`.
+
+---
+
 ## [2026-02-28] — Sidebar : accordéon exclusif + fix highlight bloqué + Dashboard main titre
 
 **Type :** `fix`
