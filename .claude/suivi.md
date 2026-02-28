@@ -2,6 +2,41 @@
 
 ---
 
+## [2026-02-28] — Sidebar : accordéon exclusif + fix highlight bloqué + Dashboard main titre
+
+**Type :** `fix`
+**Fichiers concernés :** `src/components/Sidebar.tsx`
+
+### Description
+Trois corrections de comportement sidebar : accordéon exclusif (une section à la fois), fix du highlight Référentiel bloqué, Dashboard aligné visuellement avec les main titres.
+
+### Détails techniques
+- **Accordéon exclusif** : `useState<string[]>` → `useState<string | null>`, `toggleSection` remplace le tableau par un id unique (`prev === id ? null : id`)
+- **Fix highlight bloqué** : `backgroundColor: hasActive ? C.activeBg` → `backgroundColor: isOpen ? C.activeBg` — le fond suit l'état ouvert/fermé, pas la page active
+- **onMouseLeave cohérent** : `isOpen ? C.activeBg : 'transparent'` pour restaurer le bon état après survol
+- **Dashboard main titre** : suppression `border-left` + `paddingLeft` compensé → `padding: '6px 8px'` uniforme, couleurs `sectionText`/`sectionActive` identiques aux sections, hover `hoverBg` + `sectionHover`
+
+---
+
+## [2026-02-28] — Sidebar : réordonnancement, lisibilité et effets bloc main titres
+
+**Type :** `feat`
+**Fichiers concernés :** `src/components/Sidebar.tsx`
+
+### Description
+5 améliorations de la sidebar : ordre NAV, opacité texte, tailles, effet sélection bloc sur main titres, hover main titres.
+
+### Détails techniques
+- **Ordre NAV** : Référentiel déplacé en avant-dernière position (après Stock, avant Miel)
+- **Opacités** : `normalText` 0.62→0.78, `sectionText` 0.38→0.62, `sectionActive` 0.68→0.95, `sectionHover` 0.58→0.88
+- **Tailles** : sections 11→13px, sous-items 12.5→13px, dashboard 13→14px, emoji 12→13px
+- **Effet bloc actif** : `backgroundColor: C.activeBg` sur le bouton de section quand `hasActive` (même style que sous-item actif)
+- **Hover main titres** : `onMouseEnter` ajoute `backgroundColor: C.hoverBg` + couleur texte (avant : couleur texte seulement)
+- **Transition** : `color 150ms` → `all 150ms` sur les boutons de section
+- **fallback initialOpen** : `['referentiel']` → `[NAV[0].id]` (s'adapte à l'ordre)
+
+---
+
 ## [2026-02-28] — Sidebar : hiérarchie visuelle — labels section vs sous-items
 
 **Type :** `feat`

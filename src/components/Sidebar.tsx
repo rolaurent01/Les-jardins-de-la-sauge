@@ -11,26 +11,26 @@ import { logout } from '@/app/login/actions'
 const C = {
   sidebar:       '#3A5A40',
   // Item actif
-  activeBg:      'rgba(255,255,255,0.11)',
+  activeBg:      'rgba(255,255,255,0.13)',
   activeBar:     '#7DC87D',
   activeText:    '#F3F8F3',
   // Hover
-  hoverBg:       'rgba(255,255,255,0.06)',
-  hoverText:     'rgba(255,255,255,0.82)',
+  hoverBg:       'rgba(255,255,255,0.08)',
+  hoverText:     'rgba(255,255,255,0.92)',
   // Normal
-  normalText:    'rgba(255,255,255,0.62)',
-  // Labels de section (plus petits, plus discrets)
-  sectionText:   'rgba(255,255,255,0.38)',
-  sectionActive: 'rgba(255,255,255,0.68)',
-  sectionHover:  'rgba(255,255,255,0.58)',
+  normalText:    'rgba(255,255,255,0.78)',
+  // Labels de section
+  sectionText:   'rgba(255,255,255,0.62)',
+  sectionActive: 'rgba(255,255,255,0.95)',
+  sectionHover:  'rgba(255,255,255,0.88)',
   // Structure
   divider:       'rgba(255,255,255,0.06)',
-  chevron:       'rgba(255,255,255,0.22)',
+  chevron:       'rgba(255,255,255,0.35)',
   // Badges
   badgeBg:       'rgba(255,255,255,0.07)',
-  badgeText:     'rgba(255,255,255,0.28)',
+  badgeText:     'rgba(255,255,255,0.38)',
   // Footer
-  emailText:     'rgba(255,255,255,0.26)',
+  emailText:     'rgba(255,255,255,0.36)',
 } as const
 
 /* ---------------------------------------------------------------
@@ -116,16 +116,6 @@ type NavSection = {
 
 const NAV: NavSection[] = [
   {
-    id: 'referentiel',
-    label: 'Référentiel',
-    emoji: '⚙️',
-    children: [
-      { label: 'Variétés',           href: '/referentiel/varietes'  },
-      { label: 'Sites & Parcelles',  href: '/referentiel/sites'     },
-      { label: 'Matériaux externes', href: '/referentiel/materiaux' },
-    ],
-  },
-  {
     id: 'semis',
     label: 'Semis',
     emoji: '🌱',
@@ -177,6 +167,16 @@ const NAV: NavSection[] = [
     ],
   },
   {
+    id: 'referentiel',
+    label: 'Référentiel',
+    emoji: '⚙️',
+    children: [
+      { label: 'Variétés',           href: '/referentiel/varietes'  },
+      { label: 'Sites & Parcelles',  href: '/referentiel/sites'     },
+      { label: 'Matériaux externes', href: '/referentiel/materiaux' },
+    ],
+  },
+  {
     id: 'miel',
     label: 'Miel',
     emoji: '🍯',
@@ -196,14 +196,12 @@ export default function Sidebar({ userEmail }: { userEmail?: string }) {
     .filter(s => s.children.some(c => pathname.startsWith(c.href)))
     .map(s => s.id)
 
-  const [openSections, setOpenSections] = useState<string[]>(
-    initialOpen.length > 0 ? initialOpen : ['referentiel']
+  const [openSection, setOpenSection] = useState<string | null>(
+    initialOpen.length > 0 ? initialOpen[0] : NAV[0].id
   )
 
   function toggleSection(id: string) {
-    setOpenSections(prev =>
-      prev.includes(id) ? prev.filter(s => s !== id) : [...prev, id]
-    )
+    setOpenSection(prev => (prev === id ? null : id))
   }
 
   const isDashActive = pathname === '/dashboard'
@@ -223,29 +221,25 @@ export default function Sidebar({ userEmail }: { userEmail?: string }) {
           href="/dashboard"
           className="flex items-center gap-2.5 rounded-md text-[13px] font-medium"
           style={{
-            paddingTop:    '7px',
-            paddingBottom: '7px',
-            paddingLeft:   isDashActive ? '8px' : '10px',
-            paddingRight:  '10px',
-            color:           isDashActive ? C.activeText : C.normalText,
-            backgroundColor: isDashActive ? C.activeBg   : 'transparent',
-            borderLeft:      `2px solid ${isDashActive ? C.activeBar : 'transparent'}`,
+            padding:         '6px 8px',
+            color:           isDashActive ? C.sectionActive : C.sectionText,
+            backgroundColor: isDashActive ? C.activeBg     : 'transparent',
             transition:      'all 150ms ease-out',
           }}
           onMouseEnter={e => {
             if (!isDashActive) {
               e.currentTarget.style.backgroundColor = C.hoverBg
-              e.currentTarget.style.color = C.hoverText
+              e.currentTarget.style.color = C.sectionHover
             }
           }}
           onMouseLeave={e => {
             if (!isDashActive) {
               e.currentTarget.style.backgroundColor = 'transparent'
-              e.currentTarget.style.color = C.normalText
+              e.currentTarget.style.color = C.sectionText
             }
           }}
         >
-          <span style={{ opacity: isDashActive ? 0.85 : 0.4, lineHeight: 1, fontSize: '13px' }}>☀️</span>
+          <span style={{ opacity: isDashActive ? 0.9 : 0.55, lineHeight: 1, fontSize: '13px' }}>☀️</span>
           <span>Dashboard</span>
         </Link>
       </div>
@@ -256,7 +250,7 @@ export default function Sidebar({ userEmail }: { userEmail?: string }) {
       {/* ── Navigation ─────────────────────────── */}
       <nav className="flex-1 px-3 pt-1 pb-4 overflow-y-auto">
         {NAV.map((section, idx) => {
-          const isOpen    = openSections.includes(section.id)
+          const isOpen    = openSection === section.id
           const hasActive = section.children.some(c => pathname.startsWith(c.href))
 
           return (
@@ -266,35 +260,40 @@ export default function Sidebar({ userEmail }: { userEmail?: string }) {
               <button
                 onClick={() => !section.disabled && toggleSection(section.id)}
                 disabled={section.disabled}
-                className="w-full flex items-center gap-2 rounded text-left"
+                className="w-full flex items-center gap-2 rounded-md text-left"
                 style={{
-                  padding:      '5px 8px',
-                  fontSize:     '11px',
-                  fontWeight:   500,
-                  letterSpacing: '0.02em',
+                  padding:         '6px 8px',
+                  fontSize:        '13px',
+                  fontWeight:      500,
+                  letterSpacing:   '0.01em',
                   color: section.disabled
                     ? 'rgba(255,255,255,0.18)'
                     : hasActive
                     ? C.sectionActive
                     : C.sectionText,
-                  cursor:     section.disabled ? 'default' : 'pointer',
-                  transition: 'color 150ms ease-out',
+                  backgroundColor: isOpen ? C.activeBg : 'transparent',
+                  cursor:          section.disabled ? 'default' : 'pointer',
+                  transition:      'all 150ms ease-out',
                 }}
                 onMouseEnter={e => {
-                  if (!section.disabled)
+                  if (!section.disabled && !hasActive) {
+                    e.currentTarget.style.backgroundColor = C.hoverBg
                     e.currentTarget.style.color = C.sectionHover
+                  }
                 }}
                 onMouseLeave={e => {
-                  if (!section.disabled)
+                  if (!section.disabled) {
+                    e.currentTarget.style.backgroundColor = isOpen ? C.activeBg : 'transparent'
                     e.currentTarget.style.color = hasActive ? C.sectionActive : C.sectionText
+                  }
                 }}
               >
                 {/* Emoji */}
                 <span
                   style={{
-                    fontSize: '12px',
+                    fontSize: '13px',
                     lineHeight: 1,
-                    opacity: section.disabled ? 0.2 : hasActive ? 0.75 : 0.38,
+                    opacity: section.disabled ? 0.2 : hasActive ? 0.9 : 0.55,
                     flexShrink: 0,
                   }}
                 >
@@ -337,7 +336,7 @@ export default function Sidebar({ userEmail }: { userEmail?: string }) {
                       <Link
                         key={child.href}
                         href={child.href}
-                        className="flex items-center rounded-md text-[12.5px]"
+                        className="flex items-center rounded-md text-[13px]"
                         style={{
                           paddingTop:    '6px',
                           paddingBottom: '6px',
