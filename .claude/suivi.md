@@ -2,6 +2,58 @@
 
 ---
 
+## [2026-02-28 18:00] — refactor(backup): découverte dynamique des tables via l'API OpenAPI Supabase
+
+**Type :** `refactor`
+**Fichiers concernés :** `src/app/api/backup/route.ts`
+
+### Description
+Remplacement de la liste statique `TABLES_TO_BACKUP` par une découverte dynamique via l'endpoint OpenAPI de Supabase (`GET /rest/v1/`). Toute nouvelle table est désormais automatiquement incluse dans le backup sans modifier le code.
+
+### Détails techniques
+- `discoverPublicTables()` : GET `/rest/v1/` avec la clé service role → lit `spec.definitions` qui contient toutes les tables du schéma public exposées par PostgREST
+- Filtre simple : exclut les entrées préfixées `pg_` ou `_` (vues système)
+- Le payload JSON inclut maintenant `tables_discovered` (liste des noms) pour audit
+- Résultat : 29 tables découvertes et exportées, zéro erreur
+- Rend obsolète tout fix de noms de tables manquantes
+
+---
+
+## [2026-02-28 17:30] — fix(backup): correction des noms de tables dans TABLES_TO_BACKUP
+
+**Type :** `fix`
+**Fichiers concernés :** `src/app/api/backup/route.ts`
+
+### Description
+3 tables avaient des noms incorrects dans la liste de backup, provoquant des erreurs à chaque exécution.
+
+### Détails techniques
+- `production_batches` → `production_lots`
+- `purchases` → `stock_purchases`
+- `sales` → `stock_direct_sales`
+- Résultat après correction : 22/22 tables exportées, zéro erreur
+
+---
+
+## [2026-02-28 17:00] — feat(backup): implémentation complète de la route /api/backup
+
+**Type :** `feature`
+**Fichiers concernés :** `src/app/api/backup/route.ts`
+
+### Description
+Remplacement du squelette par l'implémentation complète de la route de backup quotidien.
+La route exporte toutes les tables Supabase en JSON, pousse le fichier sur GitHub, et log le résultat dans `app_logs`.
+
+### Détails techniques
+- **Export Supabase** : boucle sur les 22 tables via le client admin (`SUPABASE_SERVICE_ROLE_KEY`). Tables absentes ignorées silencieusement (schéma non encore migré).
+- **GitHub REST API** : GET pour récupérer le SHA si le fichier du jour existe déjà → PUT pour créer ou écraser. Variables `GITHUB_BACKUP_TOKEN` et `GITHUB_BACKUP_REPO` (déjà dans `.env.local`).
+- **Nom du fichier** : `backup-YYYY-MM-DD.json` — un seul fichier par jour, écrasé si le cron tourne plusieurs fois.
+- **Logging** : insertion dans `app_logs` (succès et erreur) via `logToAppLogs()`. Échoue silencieusement si la table n'existe pas encore.
+- **vercel.json** : déjà correct (`/api/backup` → `0 3 * * *`), aucune modification nécessaire.
+- **Test local** : `curl http://localhost:3000/api/backup`
+
+---
+
 ## [2026-02-28] — fix(sidebar): Dashboard reste surligné après clic sur section header
 
 **Type :** `fix`
