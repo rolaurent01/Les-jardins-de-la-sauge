@@ -2,6 +2,16 @@
 
 ---
 
+## [2026-02-28] — Favicon emoji 🌿
+
+**Type :** `feat`
+**Fichiers concernés :** `src/app/icon.tsx`, `src/app/favicon.ico` (supprimé)
+
+### Description
+Remplacement du favicon par défaut par l'emoji 🌿 via un composant Next.js `icon.tsx` utilisant `ImageResponse` (génération dynamique PNG 32×32). Suppression de l'ancien `favicon.ico`.
+
+---
+
 ## [2026-02-28 22:00] — Fix datalist unités Matériaux : g et mL uniquement
 
 **Type :** `fix`
