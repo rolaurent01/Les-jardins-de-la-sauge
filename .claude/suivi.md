@@ -2,6 +2,26 @@
 
 ---
 
+## [2026-02-28] — Sidebar : hiérarchie visuelle — labels section vs sous-items
+
+**Type :** `feat`
+**Fichiers concernés :** `src/components/Sidebar.tsx`
+
+### Description
+Refonte visuelle v2 : correction du problème de hiérarchie (tout au même niveau). Les labels de section et les sous-items ont désormais des styles visuellement très distincts.
+
+### Détails techniques
+- **Section headers** : 11px, opacity 0.38, emoji opacity 0.38 → rôle de "label de catégorie" discret
+- **Sous-items** : 12.5px, opacity 0.62 → éléments de navigation principaux
+- **Item actif** : border-left 2px `#7DC87D` + bg `rgba(255,255,255,0.11)` + texte `#F3F8F3` → ressort clairement
+- **Padding compensation** : `paddingLeft: 8px` actif vs `10px` inactif pour border-left sans décalage layout
+- **Chevron SVG** : remplacement du caractère `▾` par un SVG path propre avec `strokeLinecap: round`
+- **Hover section** : uniquement changement de couleur texte (pas de background), pour distinguer visuellement les labels des items
+- **Hover items** : background `rgba(255,255,255,0.06)` + texte plus clair, 150ms
+- **Espacement** : `marginTop: 10px` entre sections (6px pour la première), `space-y-px` entre sous-items
+
+---
+
 ## [2026-02-28] — Sidebar : redesign SaaS premium (style Linear/Stripe)
 
 **Type :** `feat`

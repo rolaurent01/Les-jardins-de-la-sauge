@@ -5,85 +5,69 @@ import { usePathname } from 'next/navigation'
 import { useState } from 'react'
 import { logout } from '@/app/login/actions'
 
-/* ============================================================
-   Tokens de design — système de couleurs sidebar
-   ============================================================ */
+/* ---------------------------------------------------------------
+   Design tokens
+--------------------------------------------------------------- */
 const C = {
-  // Fonds
-  activeBg:  'rgba(255,255,255,0.09)',
-  hoverBg:   'rgba(255,255,255,0.05)',
-  openBg:    'rgba(255,255,255,0.04)',
-  // Textes
-  activeText: '#EDF5EE',
-  normalText: '#87A888',
-  hoverText:  '#BBCFBC',
-  disabled:   'rgba(255,255,255,0.2)',
-  // Sous-items
-  subActive:  '#CEE9CE',
-  subNormal:  '#6E9270',
-  subHover:   '#96B897',
-  // Barre indicatrice
-  activeBar: '#7CC47C',
-  // Structurel
-  divider:    'rgba(255,255,255,0.07)',
-  indentLine: 'rgba(255,255,255,0.08)',
-  chevron:    'rgba(255,255,255,0.3)',
-  // Footer
-  footerEmail: '#638064',
+  sidebar:       '#3A5A40',
+  // Item actif
+  activeBg:      'rgba(255,255,255,0.11)',
+  activeBar:     '#7DC87D',
+  activeText:    '#F3F8F3',
+  // Hover
+  hoverBg:       'rgba(255,255,255,0.06)',
+  hoverText:     'rgba(255,255,255,0.82)',
+  // Normal
+  normalText:    'rgba(255,255,255,0.62)',
+  // Labels de section (plus petits, plus discrets)
+  sectionText:   'rgba(255,255,255,0.38)',
+  sectionActive: 'rgba(255,255,255,0.68)',
+  sectionHover:  'rgba(255,255,255,0.58)',
+  // Structure
+  divider:       'rgba(255,255,255,0.06)',
+  chevron:       'rgba(255,255,255,0.22)',
   // Badges
-  phaseBg:   'rgba(255,255,255,0.07)',
-  phaseText: 'rgba(255,255,255,0.3)',
+  badgeBg:       'rgba(255,255,255,0.07)',
+  badgeText:     'rgba(255,255,255,0.28)',
+  // Footer
+  emailText:     'rgba(255,255,255,0.26)',
 } as const
 
-const TRANSITION = 'background-color 150ms ease, color 150ms ease'
-
-/* ============================================================
-   BrandHeader — compact, style app SaaS
-   ============================================================ */
+/* ---------------------------------------------------------------
+   BrandHeader — compact, app SaaS
+--------------------------------------------------------------- */
 function BrandHeader() {
   return (
     <div
-      className="flex items-center gap-2.5 px-4 py-[13px] flex-shrink-0"
+      className="flex items-center gap-2.5 px-4 py-[12px] flex-shrink-0"
       style={{ borderBottom: `1px solid ${C.divider}` }}
     >
-      {/* Icône dans un carré arrondi */}
       <div
-        className="w-7 h-7 rounded-lg flex items-center justify-center flex-shrink-0"
-        style={{
-          background: 'rgba(255,255,255,0.08)',
-          border: '1px solid rgba(255,255,255,0.1)',
-        }}
+        className="w-[26px] h-[26px] rounded-[6px] flex items-center justify-center flex-shrink-0"
+        style={{ background: 'rgba(255,255,255,0.09)', border: '1px solid rgba(255,255,255,0.1)' }}
       >
-        <svg viewBox="0 0 24 24" className="w-4 h-4" fill="none" aria-hidden="true">
+        <svg viewBox="0 0 24 24" className="w-3.5 h-3.5" fill="none">
           <path
             d="M12.5 12.2c2.2-4.3 6.2-6 8.5-6.2-.2 2.3-1.9 6.3-6.2 8.5-1.1.6-2.4.9-3.7.9.4-1.1.8-2.2 1.4-3.2Z"
-            fill="rgba(157,186,138,0.95)"
+            fill="rgba(155,210,130,0.95)"
           />
           <path
             d="M11.5 12.2C9.3 7.9 5.3 6.2 3 6c.2 2.3 1.9 6.3 6.2 8.5 1.1.6 2.4.9 3.7.9-.4-1.1-.8-2.2-1.4-3.2Z"
-            fill="rgba(157,186,138,0.75)"
+            fill="rgba(155,210,130,0.68)"
           />
           <path
             d="M12 21c0-3.5 0-6.2 1.2-8.6"
-            stroke="rgba(157,186,138,0.9)"
-            strokeWidth="1.6"
+            stroke="rgba(155,210,130,0.82)"
+            strokeWidth="1.5"
             strokeLinecap="round"
           />
         </svg>
       </div>
-
-      {/* Texte marque */}
-      <div className="leading-tight min-w-0">
-        <p
-          className="text-[13px] font-semibold tracking-tight truncate"
-          style={{ color: '#EDF5EE' }}
-        >
+      <div className="leading-[1.25]">
+        <p className="text-[12.5px] font-semibold" style={{ color: 'rgba(255,255,255,0.88)' }}>
           Les Jardins
         </p>
-        <p
-          className="text-[11px] tracking-tight truncate"
-          style={{ color: 'rgba(255,255,255,0.45)' }}
-        >
+        <p className="text-[10.5px]" style={{ color: 'rgba(255,255,255,0.36)' }}>
           de la Sauge
         </p>
       </div>
@@ -91,33 +75,42 @@ function BrandHeader() {
   )
 }
 
-/* ============================================================
-   ActiveBar — barre verticale indicatrice d'item actif
-   ============================================================ */
-function ActiveBar({ visible }: { visible: boolean }) {
+/* ---------------------------------------------------------------
+   Chevron SVG — plus propre que le caractère ▾
+--------------------------------------------------------------- */
+function Chevron({ open }: { open: boolean }) {
   return (
-    <div
-      className="absolute left-0 top-[5px] bottom-[5px] rounded-full"
+    <svg
+      viewBox="0 0 10 10"
+      className="w-2.5 h-2.5 flex-shrink-0"
+      fill="none"
       style={{
-        width: '2px',
-        backgroundColor: C.activeBar,
-        opacity: visible ? 1 : 0,
-        transition: 'opacity 150ms ease',
+        color:     C.chevron,
+        transform: open ? 'rotate(180deg)' : 'rotate(0deg)',
+        transition: 'transform 200ms ease-out',
       }}
-    />
+    >
+      <path
+        d="M2 3.5L5 6.5L8 3.5"
+        stroke="currentColor"
+        strokeWidth="1.3"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+    </svg>
   )
 }
 
-/* ============================================================
-   Définition de la navigation
-   ============================================================ */
+/* ---------------------------------------------------------------
+   Types navigation
+--------------------------------------------------------------- */
 type NavChild   = { label: string; href: string }
 type NavSection = {
-  id: string
-  label: string
-  emoji: string
-  children: NavChild[]
-  disabled?: boolean
+  id:          string
+  label:       string
+  emoji:       string
+  children:    NavChild[]
+  disabled?:   boolean
   phaseLabel?: string
 }
 
@@ -146,11 +139,11 @@ const NAV: NavSection[] = [
     label: 'Suivi parcelle',
     emoji: '🌿',
     children: [
-      { label: 'Travail de sol', href: '/parcelles/travail-sol'  },
-      { label: 'Plantation',     href: '/parcelles/plantation'   },
-      { label: 'Suivi de rang',  href: '/parcelles/suivi-rang'   },
-      { label: 'Cueillette',     href: '/parcelles/cueillette'   },
-      { label: 'Arrachage',      href: '/parcelles/arrachage'    },
+      { label: 'Travail de sol', href: '/parcelles/travail-sol' },
+      { label: 'Plantation',     href: '/parcelles/plantation'  },
+      { label: 'Suivi de rang',  href: '/parcelles/suivi-rang'  },
+      { label: 'Cueillette',     href: '/parcelles/cueillette'  },
+      { label: 'Arrachage',      href: '/parcelles/arrachage'   },
     ],
   },
   {
@@ -168,9 +161,9 @@ const NAV: NavSection[] = [
     label: 'Création de produit',
     emoji: '🧪',
     children: [
-      { label: 'Recettes',            href: '/produits/recettes' },
-      { label: 'Production de lots',  href: '/produits/lots'     },
-      { label: 'Stock produits finis', href: '/produits/stock'   },
+      { label: 'Recettes',             href: '/produits/recettes' },
+      { label: 'Production de lots',   href: '/produits/lots'     },
+      { label: 'Stock produits finis', href: '/produits/stock'    },
     ],
   },
   {
@@ -178,9 +171,9 @@ const NAV: NavSection[] = [
     label: 'Affinage du stock',
     emoji: '📦',
     children: [
-      { label: 'Achats',        href: '/stock/achats'       },
-      { label: 'Ventes directes', href: '/stock/ventes'     },
-      { label: 'Ajustements',   href: '/stock/ajustements'  },
+      { label: 'Achats',          href: '/stock/achats'       },
+      { label: 'Ventes directes', href: '/stock/ventes'       },
+      { label: 'Ajustements',     href: '/stock/ajustements'  },
     ],
   },
   {
@@ -193,15 +186,15 @@ const NAV: NavSection[] = [
   },
 ]
 
-/* ============================================================
-   Composant principal
-   ============================================================ */
+/* ---------------------------------------------------------------
+   Sidebar principale
+--------------------------------------------------------------- */
 export default function Sidebar({ userEmail }: { userEmail?: string }) {
   const pathname = usePathname()
 
-  const initialOpen = NAV.filter(section =>
-    section.children.some(child => pathname.startsWith(child.href))
-  ).map(s => s.id)
+  const initialOpen = NAV
+    .filter(s => s.children.some(c => pathname.startsWith(c.href)))
+    .map(s => s.id)
 
   const [openSections, setOpenSections] = useState<string[]>(
     initialOpen.length > 0 ? initialOpen : ['referentiel']
@@ -218,140 +211,125 @@ export default function Sidebar({ userEmail }: { userEmail?: string }) {
   return (
     <aside
       className="flex flex-col h-screen w-60 flex-shrink-0 overflow-y-auto"
-      style={{ backgroundColor: '#3A5A40' }}
+      style={{ backgroundColor: C.sidebar }}
     >
-      {/* ---- En-tête ---- */}
+
+      {/* ── Header ─────────────────────────────── */}
       <BrandHeader />
 
-      {/* ---- Lien Dashboard ---- */}
-      <div className="px-2 pt-2 pb-1">
-        <div className="relative">
-          <ActiveBar visible={isDashActive} />
-          <Link
-            href="/dashboard"
-            className="flex items-center gap-2.5 px-3 py-[7px] rounded-md text-[13px] select-none"
-            style={{
-              color:           isDashActive ? C.activeText : C.normalText,
-              backgroundColor: isDashActive ? C.activeBg   : 'transparent',
-              fontWeight:      isDashActive ? 500 : 400,
-              transition:      TRANSITION,
-            }}
-            onMouseEnter={e => {
-              if (!isDashActive) {
-                e.currentTarget.style.backgroundColor = C.hoverBg
-                e.currentTarget.style.color = C.hoverText
-              }
-            }}
-            onMouseLeave={e => {
-              if (!isDashActive) {
-                e.currentTarget.style.backgroundColor = 'transparent'
-                e.currentTarget.style.color = C.normalText
-              }
-            }}
-          >
-            <span
-              className="w-4 h-4 text-sm flex items-center justify-center flex-shrink-0"
-              style={{ opacity: isDashActive ? 1 : 0.55 }}
-            >
-              ☀️
-            </span>
-            <span>Dashboard</span>
-          </Link>
-        </div>
+      {/* ── Dashboard ──────────────────────────── */}
+      <div className="px-3 pt-2.5 pb-1">
+        <Link
+          href="/dashboard"
+          className="flex items-center gap-2.5 rounded-md text-[13px] font-medium"
+          style={{
+            paddingTop:    '7px',
+            paddingBottom: '7px',
+            paddingLeft:   isDashActive ? '8px' : '10px',
+            paddingRight:  '10px',
+            color:           isDashActive ? C.activeText : C.normalText,
+            backgroundColor: isDashActive ? C.activeBg   : 'transparent',
+            borderLeft:      `2px solid ${isDashActive ? C.activeBar : 'transparent'}`,
+            transition:      'all 150ms ease-out',
+          }}
+          onMouseEnter={e => {
+            if (!isDashActive) {
+              e.currentTarget.style.backgroundColor = C.hoverBg
+              e.currentTarget.style.color = C.hoverText
+            }
+          }}
+          onMouseLeave={e => {
+            if (!isDashActive) {
+              e.currentTarget.style.backgroundColor = 'transparent'
+              e.currentTarget.style.color = C.normalText
+            }
+          }}
+        >
+          <span style={{ opacity: isDashActive ? 0.85 : 0.4, lineHeight: 1, fontSize: '13px' }}>☀️</span>
+          <span>Dashboard</span>
+        </Link>
       </div>
 
-      {/* ---- Séparateur ---- */}
-      <div className="mx-2 my-1" style={{ height: '1px', backgroundColor: C.divider }} />
+      {/* ── Séparateur ─────────────────────────── */}
+      <div className="mx-3 mt-1.5 mb-0.5" style={{ height: '1px', backgroundColor: C.divider }} />
 
-      {/* ---- Navigation ---- */}
-      <nav className="flex-1 px-2 pb-2 overflow-y-auto">
+      {/* ── Navigation ─────────────────────────── */}
+      <nav className="flex-1 px-3 pt-1 pb-4 overflow-y-auto">
         {NAV.map((section, idx) => {
-          const isOpen        = openSections.includes(section.id)
-          const hasActiveChild = section.children.some(c => pathname.startsWith(c.href))
-          /* La barre de section s'affiche uniquement quand fermée avec un enfant actif */
-          const showSectionBar = hasActiveChild && !isOpen
+          const isOpen    = openSections.includes(section.id)
+          const hasActive = section.children.some(c => pathname.startsWith(c.href))
 
           return (
-            <div key={section.id} style={{ marginTop: idx === 0 ? '4px' : '6px' }}>
+            <div key={section.id} style={{ marginTop: idx === 0 ? '6px' : '10px' }}>
 
-              {/* ---- En-tête de section ---- */}
-              <div className="relative">
-                <ActiveBar visible={showSectionBar} />
-
-                <button
-                  onClick={() => !section.disabled && toggleSection(section.id)}
-                  disabled={section.disabled}
-                  className="w-full flex items-center gap-2.5 px-3 py-[7px] rounded-md text-[13px] text-left select-none"
+              {/* ── Section header (label de catégorie) ── */}
+              <button
+                onClick={() => !section.disabled && toggleSection(section.id)}
+                disabled={section.disabled}
+                className="w-full flex items-center gap-2 rounded text-left"
+                style={{
+                  padding:      '5px 8px',
+                  fontSize:     '11px',
+                  fontWeight:   500,
+                  letterSpacing: '0.02em',
+                  color: section.disabled
+                    ? 'rgba(255,255,255,0.18)'
+                    : hasActive
+                    ? C.sectionActive
+                    : C.sectionText,
+                  cursor:     section.disabled ? 'default' : 'pointer',
+                  transition: 'color 150ms ease-out',
+                }}
+                onMouseEnter={e => {
+                  if (!section.disabled)
+                    e.currentTarget.style.color = C.sectionHover
+                }}
+                onMouseLeave={e => {
+                  if (!section.disabled)
+                    e.currentTarget.style.color = hasActive ? C.sectionActive : C.sectionText
+                }}
+              >
+                {/* Emoji */}
+                <span
                   style={{
-                    color: section.disabled
-                      ? C.disabled
-                      : hasActiveChild
-                      ? C.activeText
-                      : C.normalText,
-                    backgroundColor: showSectionBar
-                      ? C.activeBg
-                      : isOpen
-                      ? C.openBg
-                      : 'transparent',
-                    cursor:     section.disabled ? 'default' : 'pointer',
-                    fontWeight: hasActiveChild ? 500 : 400,
-                    transition: TRANSITION,
-                  }}
-                  onMouseEnter={e => {
-                    if (!section.disabled && !showSectionBar && !isOpen)
-                      e.currentTarget.style.backgroundColor = C.hoverBg
-                  }}
-                  onMouseLeave={e => {
-                    if (!section.disabled && !showSectionBar && !isOpen)
-                      e.currentTarget.style.backgroundColor = 'transparent'
+                    fontSize: '12px',
+                    lineHeight: 1,
+                    opacity: section.disabled ? 0.2 : hasActive ? 0.75 : 0.38,
+                    flexShrink: 0,
                   }}
                 >
-                  {/* Emoji icône */}
+                  {section.emoji}
+                </span>
+
+                <span className="flex-1 truncate">{section.label}</span>
+
+                {/* Badge phase */}
+                {section.phaseLabel && (
                   <span
-                    className="w-4 h-4 text-sm flex items-center justify-center flex-shrink-0"
-                    style={{ opacity: section.disabled ? 0.3 : hasActiveChild ? 1 : 0.55 }}
+                    className="flex-shrink-0 rounded"
+                    style={{
+                      fontSize:        '9px',
+                      padding:         '2px 5px',
+                      letterSpacing:   '0.05em',
+                      backgroundColor: C.badgeBg,
+                      color:           C.badgeText,
+                    }}
                   >
-                    {section.emoji}
+                    {section.phaseLabel}
                   </span>
+                )}
 
-                  <span className="flex-1 truncate">{section.label}</span>
+                {/* Chevron */}
+                {!section.disabled && section.children.length > 0 && (
+                  <Chevron open={isOpen} />
+                )}
+              </button>
 
-                  {/* Badge phase */}
-                  {section.phaseLabel && (
-                    <span
-                      className="text-[10px] px-1.5 py-0.5 rounded flex-shrink-0"
-                      style={{ backgroundColor: C.phaseBg, color: C.phaseText }}
-                    >
-                      {section.phaseLabel}
-                    </span>
-                  )}
-
-                  {/* Chevron */}
-                  {!section.disabled && section.children.length > 0 && (
-                    <span
-                      className="flex-shrink-0 text-[10px]"
-                      style={{
-                        color:     C.chevron,
-                        transform: isOpen ? 'rotate(180deg)' : 'rotate(0deg)',
-                        display:   'inline-block',
-                        transition: 'transform 200ms ease',
-                      }}
-                    >
-                      ▾
-                    </span>
-                  )}
-                </button>
-              </div>
-
-              {/* ---- Sous-items ---- */}
+              {/* ── Sous-items ── */}
               {isOpen && !section.disabled && section.children.length > 0 && (
                 <div
-                  className="mt-0.5 mb-0.5 space-y-px"
-                  style={{
-                    marginLeft:  '22px',
-                    paddingLeft: '8px',
-                    borderLeft:  `1px solid ${C.indentLine}`,
-                  }}
+                  className="mt-0.5 space-y-px"
+                  style={{ paddingLeft: '6px' }}
                 >
                   {section.children.map(child => {
                     const isActive = pathname.startsWith(child.href)
@@ -359,27 +337,28 @@ export default function Sidebar({ userEmail }: { userEmail?: string }) {
                       <Link
                         key={child.href}
                         href={child.href}
-                        className="flex items-center py-[6px] rounded-md text-[12.5px] select-none"
+                        className="flex items-center rounded-md text-[12.5px]"
                         style={{
-                          /* Barre gauche via border-left : transparent → coloré, sans décalage layout */
-                          paddingLeft:  isActive ? '6px'         : '8px',
-                          paddingRight: '8px',
-                          borderLeft:   `2px solid ${isActive ? C.activeBar : 'rgba(124,196,124,0)'}`,
-                          color:            isActive ? C.subActive : C.subNormal,
-                          backgroundColor:  isActive ? C.activeBg  : 'transparent',
-                          fontWeight:       isActive ? 500 : 400,
-                          transition:       `${TRANSITION}, border-color 150ms ease, padding-left 150ms ease`,
+                          paddingTop:    '6px',
+                          paddingBottom: '6px',
+                          paddingLeft:   isActive ? '8px'  : '10px',
+                          paddingRight:  '10px',
+                          color:           isActive ? C.activeText : C.normalText,
+                          backgroundColor: isActive ? C.activeBg   : 'transparent',
+                          fontWeight:      isActive ? 500 : 400,
+                          borderLeft:      `2px solid ${isActive ? C.activeBar : 'transparent'}`,
+                          transition:      'all 150ms ease-out',
                         }}
                         onMouseEnter={e => {
                           if (!isActive) {
                             e.currentTarget.style.backgroundColor = C.hoverBg
-                            e.currentTarget.style.color = C.subHover
+                            e.currentTarget.style.color = C.hoverText
                           }
                         }}
                         onMouseLeave={e => {
                           if (!isActive) {
                             e.currentTarget.style.backgroundColor = 'transparent'
-                            e.currentTarget.style.color = C.subNormal
+                            e.currentTarget.style.color = C.normalText
                           }
                         }}
                       >
@@ -394,25 +373,29 @@ export default function Sidebar({ userEmail }: { userEmail?: string }) {
         })}
       </nav>
 
-      {/* ---- Pied : email + déconnexion ---- */}
+      {/* ── Footer ─────────────────────────────── */}
       <div
-        className="px-2 py-2 mt-auto flex-shrink-0"
+        className="px-3 py-2.5 flex-shrink-0"
         style={{ borderTop: `1px solid ${C.divider}` }}
       >
         {userEmail && (
-          <div
-            className="text-[11px] px-3 py-1 mb-1 truncate"
-            style={{ color: C.footerEmail }}
+          <p
+            className="text-[10.5px] px-2.5 py-1 mb-1 truncate"
+            style={{ color: C.emailText }}
             title={userEmail}
           >
             {userEmail}
-          </div>
+          </p>
         )}
         <form action={logout}>
           <button
             type="submit"
-            className="w-full flex items-center gap-2.5 px-3 py-[7px] rounded-md text-[13px] text-left select-none"
-            style={{ color: C.normalText, transition: TRANSITION }}
+            className="w-full flex items-center gap-2.5 rounded-md text-[12.5px] text-left"
+            style={{
+              padding:    '7px 10px',
+              color:      C.normalText,
+              transition: 'all 150ms ease-out',
+            }}
             onMouseEnter={e => {
               e.currentTarget.style.backgroundColor = C.hoverBg
               e.currentTarget.style.color = C.hoverText
@@ -422,16 +405,12 @@ export default function Sidebar({ userEmail }: { userEmail?: string }) {
               e.currentTarget.style.color = C.normalText
             }}
           >
-            <span
-              className="w-4 h-4 text-sm flex items-center justify-center flex-shrink-0"
-              style={{ opacity: 0.45 }}
-            >
-              ↪
-            </span>
+            <span style={{ opacity: 0.38, fontSize: '12px', lineHeight: 1 }}>↪</span>
             <span>Déconnexion</span>
           </button>
         </form>
       </div>
+
     </aside>
   )
 }
