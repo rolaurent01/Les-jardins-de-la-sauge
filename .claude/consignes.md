@@ -62,6 +62,7 @@ Quand tu proposes des messages de commit, utilise le format **Conventional Commi
 ```
 type(scope): description courte en français
 ```
+Ne mets aucun droit d'autheur dans tes commit et tes push
 
 Exemples : `feat(auth): ajout de la validation du token JWT`, `fix(api): correction du parsing des dates`.
 

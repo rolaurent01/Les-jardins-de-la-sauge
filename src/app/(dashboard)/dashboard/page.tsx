@@ -1,13 +1,9 @@
-import { createClient } from '@/lib/supabase/server'
 
 /**
  * Page dashboard — point d'entrée après connexion.
  * Les widgets (stocks, parcelles, prévisionnel) seront ajoutés en Phase B.
  */
 export default async function DashboardPage() {
-  const supabase = await createClient()
-  const { data: { user } } = await supabase.auth.getUser()
-
   return (
     <div className="p-4 md:p-8">
       {/* En-tête */}
@@ -16,11 +12,8 @@ export default async function DashboardPage() {
           className="text-xl md:text-2xl font-semibold"
           style={{ color: '#2C3E2D' }}
         >
-          Bonjour 🌿
+          Bienvenue dans le futur 🌿
         </h1>
-        <p className="text-sm mt-1" style={{ color: '#9CA89D' }}>
-          {user?.email} — Les Jardins de la Sauge
-        </p>
       </div>
 
       {/* Grille de modules — placeholders Phase B */}
