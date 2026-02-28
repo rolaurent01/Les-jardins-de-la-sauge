@@ -2,14 +2,17 @@
 
 import { createClient } from '@/lib/supabase/server'
 import { revalidatePath } from 'next/cache'
-import type { ActionResult, Variety } from '@/lib/types'
+import type { ActionResult, Variety, TypeCycle } from '@/lib/types'
+
+const VALID_TYPE_CYCLES: TypeCycle[] = ['annuelle', 'bisannuelle', 'perenne', 'vivace']
 
 function parseVarietyForm(formData: FormData) {
+  const rawCycle = (formData.get('type_cycle') as string) || ''
   return {
     nom_vernaculaire: (formData.get('nom_vernaculaire') as string).trim(),
     nom_latin:        (formData.get('nom_latin') as string)?.trim()  || null,
     famille:          (formData.get('famille') as string)?.trim()    || null,
-    type_cycle:       (formData.get('type_cycle') as string)         || null,
+    type_cycle: (VALID_TYPE_CYCLES.includes(rawCycle as TypeCycle) ? rawCycle as TypeCycle : null),
     duree_peremption_mois: parseInt(formData.get('duree_peremption_mois') as string) || 24,
     seuil_alerte_g:   formData.get('seuil_alerte_g')
                         ? parseFloat(formData.get('seuil_alerte_g') as string)

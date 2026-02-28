@@ -2,6 +2,60 @@
 
 ---
 
+## [2026-02-28 21:45] — Fix TypeScript : types Supabase complets + tsconfig
+
+**Type :** `fix`
+**Fichiers concernés :** `src/lib/supabase/types.ts`, `src/lib/types.ts`, `src/app/(dashboard)/referentiel/varietes/actions.ts`, `tsconfig.json`
+
+### Description
+Correction du build Vercel qui échouait sur des erreurs de typage TypeScript dues à un `Database` type placeholder vide.
+
+### Détails techniques
+- **`supabase/types.ts`** : Remplacement du placeholder `Tables: Record<string, never>` par le type complet des 28 tables (Row, Insert, Update, Relationships). Le champ `Relationships: []` est requis par le SDK Supabase v2.98 pour que les types Insert/Update ne soient pas inférés comme `never`. Les FK (parcels→sites, rows→parcels) sont déclarées dans Relationships.
+- **`types.ts`** : `ActionResult<T = undefined>` → `ActionResult<T = unknown>`. Permet d'assigner `ActionResult<Site>` à `ActionResult` sans perdre la sûreté de type (évite `any`).
+- **`varietes/actions.ts`** : `type_cycle` casté via whitelist `VALID_TYPE_CYCLES` pour passer de `string | null` au type union strict `TypeCycle | null` attendu par le SDK.
+- **`tsconfig.json`** : Ajout de `"src/tests/**/*"` dans `exclude` pour éviter que Vitest (qui a ses propres globals) soit compilé avec le tsconfig Next.js.
+
+### Résultat
+`npx tsc --noEmit` passe sans erreur.
+
+---
+
+## [2026-02-28 21:15] — CRUD Sites/Parcelles/Rangs + CRUD Matériaux externes (Phase A0.5)
+
+**Type :** `feat`
+**Fichiers concernés :**
+- `supabase/migrations/002_soft_delete_referentiel.sql`
+- `src/lib/types.ts` (extension)
+- `src/app/(dashboard)/referentiel/sites/page.tsx`
+- `src/app/(dashboard)/referentiel/sites/actions.ts`
+- `src/components/referentiel/SitesParcelsClient.tsx`
+- `src/components/referentiel/SiteSlideOver.tsx`
+- `src/components/referentiel/ParcelleSlideOver.tsx`
+- `src/components/referentiel/RangSlideOver.tsx`
+- `src/app/(dashboard)/referentiel/materiaux/page.tsx`
+- `src/app/(dashboard)/referentiel/materiaux/actions.ts`
+- `src/components/referentiel/MateriauxClient.tsx`
+- `src/components/referentiel/MaterielSlideOver.tsx`
+
+### Description
+CRUD hiérarchique Sites → Parcelles → Rangs sur une seule page à onglets (`/referentiel/sites`), plus CRUD Matériaux externes (`/referentiel/materiaux`). Même architecture que Variétés : tableau + recherche insensible aux accents, slide-over création/édition, archivage soft delete avec confirmation inline.
+
+### Détails techniques
+- **Migration 002** : `ALTER TABLE ADD COLUMN IF NOT EXISTS deleted_at TIMESTAMPTZ` sur `sites`, `parcels`, `rows`, `external_materials` (à exécuter dans Supabase SQL Editor).
+- **`types.ts`** : Nouveaux types `Site`, `Parcel`, `ParcelWithSite`, `Row`, `RowWithParcel`, `ExternalMaterial`.
+- **`sites/actions.ts`** : 12 Server Actions regroupées — create/update/archive/restore × 3 entités. Parsers DRY (`parseParcelForm`, `parseRowForm`). Gestion erreur `23505`. Jointures PostgREST : `select('*, sites(id, nom)')` pour parcelles, `select('*, parcels(id, nom, code, sites(id, nom))')` pour rangs.
+- **`SitesParcelsClient.tsx`** : Composant tabulé (Sites | Parcelles | Rangs). Chaque onglet = sous-composant local (`SitesTab`, `ParcellesTab`, `RangsTab`) avec état propre (search, showArchived, confirmId). Slide-overs montés au niveau parent avec `key` pour remounting. Helpers partagés : `Toolbar`, `CountLine`, `EntityTable`, `RowActions`, `EmptyState`.
+- **`ParcelleSlideOver.tsx`** : Select site obligatoire. Code converti en majuscules côté action. Orientation via `<input list>` (datalist N/NE/E…).
+- **`RangSlideOver.tsx`** : Parcelles groupées par site via `<optgroup>` pour ergonomie du select.
+- **`MateriauxClient.tsx`** : Même pattern que `VarietesClient`. Badge unité coloré. Recherche sur nom + unité + notes.
+- **`MaterielSlideOver.tsx`** : Unité via datalist (g, kg, mL, L, pièce, sachet). Par défaut = 'g'.
+
+### ⚠️ Action requise
+Exécuter `supabase/migrations/002_soft_delete_referentiel.sql` dans Supabase Dashboard → SQL Editor avant d'utiliser les nouvelles pages.
+
+---
+
 ## [2026-02-28 19:40] — CRUD Variétés + composant QuickAddVariety
 
 **Type :** `feat`
