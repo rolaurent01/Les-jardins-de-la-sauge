@@ -95,7 +95,7 @@ export default function MateriauxClient({ initialMaterials }: { initialMaterials
       <div className="flex items-start justify-between mb-6">
         <div>
           <h1 className="text-xl font-semibold" style={{ color: '#2C3E2D' }}>
-            Matériaux externes
+            Produits complémentaires
           </h1>
           <p className="text-sm mt-0.5" style={{ color: '#9CA89D' }}>
             {active.length} matériau{active.length !== 1 ? 'x' : ''} actif{active.length !== 1 ? 's' : ''}

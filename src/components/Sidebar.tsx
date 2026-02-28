@@ -173,7 +173,7 @@ const NAV: NavSection[] = [
     children: [
       { label: 'Variétés',           href: '/referentiel/varietes'  },
       { label: 'Sites & Parcelles',  href: '/referentiel/sites'     },
-      { label: 'Matériaux externes', href: '/referentiel/materiaux' },
+      { label: 'Produits complémentaires', href: '/referentiel/materiaux' },
     ],
   },
   {
