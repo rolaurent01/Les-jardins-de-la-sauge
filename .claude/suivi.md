@@ -2,6 +2,20 @@
 
 ---
 
+## [2026-02-28 18:35] — Corrections SQL : extension unaccent + wrapper IMMUTABLE
+
+**Type :** `fix`
+**Fichiers concernés :** `supabase/migrations/001_initial_schema.sql`
+
+### Description
+Deux erreurs successives rencontrées lors de l'exécution dans le SQL Editor Supabase, corrigées dans le fichier.
+
+### Détails techniques
+- **Erreur 1** (`42883: function unaccent(text) does not exist`) : extension `unaccent` non activée par défaut. Fix : ajout de `CREATE EXTENSION IF NOT EXISTS unaccent;` en Section 0, avant toute création de table.
+- **Erreur 2** (`42P17: functions in index expression must be marked IMMUTABLE`) : `unaccent()` est `STABLE`, pas `IMMUTABLE`, donc inutilisable dans une expression d'index. Fix : création d'une fonction wrapper `immutable_unaccent(text)` marquée `IMMUTABLE STRICT PARALLEL SAFE` qui délègue à `unaccent()`. L'index unique sur `varieties.nom_vernaculaire` utilise désormais `lower(immutable_unaccent(nom_vernaculaire))`.
+
+---
+
 ## [2026-02-28 18:10] — Schéma SQL complet (migrations)
 
 **Type :** `chore`

@@ -11,7 +11,7 @@
 -- ============================================================
 
 -- UUID v4 : déjà disponible via gen_random_uuid() en PG 13+
--- Aucune extension supplémentaire requise.
+CREATE EXTENSION IF NOT EXISTS unaccent;  -- Nécessaire pour l'index insensible aux accents sur varieties
 
 
 -- ============================================================
@@ -606,10 +606,16 @@ GROUP BY v.id, v.nom_vernaculaire, sm.etat_plante;
 -- 11. INDEXES (colonnes fréquemment filtrées)
 -- ============================================================
 
+-- unaccent() est STABLE par défaut dans PostgreSQL, donc interdite dans une expression d'index.
+-- Solution standard : wrapper IMMUTABLE qui délègue à unaccent().
+CREATE OR REPLACE FUNCTION immutable_unaccent(text)
+RETURNS text AS $$
+  SELECT unaccent($1);
+$$ LANGUAGE sql IMMUTABLE STRICT PARALLEL SAFE;
+
 -- Anti-doublon variétés insensible à la casse et aux accents
-CREATE UNIQUE INDEX varieties_nom_ci ON varieties (lower(unaccent(nom_vernaculaire)))
+CREATE UNIQUE INDEX varieties_nom_ci ON varieties (lower(immutable_unaccent(nom_vernaculaire)))
   WHERE deleted_at IS NULL;
--- Note : unaccent est disponible dans Supabase. Si erreur, remplacer par lower(nom_vernaculaire).
 
 -- stock_movements
 CREATE INDEX idx_stock_movements_variety_id   ON stock_movements (variety_id) WHERE deleted_at IS NULL;
