@@ -2,6 +2,26 @@
 
 ---
 
+## [2026-02-28 18:50] — Correction SQL : wrapper immutable_unaccent en plpgsql
+
+**Type :** `fix`
+**Fichiers concernés :** `supabase/migrations/001_initial_schema.sql`
+
+### Description
+Troisième erreur lors de l'exécution : même en `LANGUAGE sql IMMUTABLE`, PostgreSQL tente d'inliner la fonction au moment de la création de l'index, ce qui échoue car `unaccent()` n'est pas résolvable dans ce contexte.
+
+### Détails techniques
+- **Erreur** (`42883: function unaccent(text) does not exist` — CONTEXT: SQL function "immutable_unaccent" during inlining) : l'inlining SQL résout `unaccent()` dans un contexte où le search_path est insuffisant.
+- **Fix** : passage de `LANGUAGE sql` à `LANGUAGE plpgsql`. Les fonctions plpgsql ne sont jamais inlinées par PostgreSQL → la résolution se fait à l'exécution, pas à la compilation de l'index. La fonction wrapper devient donc :
+  ```sql
+  CREATE OR REPLACE FUNCTION immutable_unaccent(text) RETURNS text AS $$
+  BEGIN RETURN unaccent($1); END;
+  $$ LANGUAGE plpgsql IMMUTABLE STRICT PARALLEL SAFE;
+  ```
+- ✅ Schéma exécuté avec succès — 28 tables, 1 vue, fonctions, triggers et RLS en place.
+
+---
+
 ## [2026-02-28 18:35] — Corrections SQL : extension unaccent + wrapper IMMUTABLE
 
 **Type :** `fix`
@@ -12,7 +32,7 @@ Deux erreurs successives rencontrées lors de l'exécution dans le SQL Editor Su
 
 ### Détails techniques
 - **Erreur 1** (`42883: function unaccent(text) does not exist`) : extension `unaccent` non activée par défaut. Fix : ajout de `CREATE EXTENSION IF NOT EXISTS unaccent;` en Section 0, avant toute création de table.
-- **Erreur 2** (`42P17: functions in index expression must be marked IMMUTABLE`) : `unaccent()` est `STABLE`, pas `IMMUTABLE`, donc inutilisable dans une expression d'index. Fix : création d'une fonction wrapper `immutable_unaccent(text)` marquée `IMMUTABLE STRICT PARALLEL SAFE` qui délègue à `unaccent()`. L'index unique sur `varieties.nom_vernaculaire` utilise désormais `lower(immutable_unaccent(nom_vernaculaire))`.
+- **Erreur 2** (`42P17: functions in index expression must be marked IMMUTABLE`) : `unaccent()` est `STABLE`, pas `IMMUTABLE`, donc inutilisable dans une expression d'index. Fix : création d'une fonction wrapper `immutable_unaccent(text)` marquée `IMMUTABLE STRICT PARALLEL SAFE` qui délègue à `unaccent()`.
 
 ---
 
