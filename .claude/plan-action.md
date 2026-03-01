@@ -74,6 +74,7 @@ A7. Polish Phase A
 
 **Référentiel (1-2 jours)** :
 - CRUD Variétés avec recherche (nom vernaculaire, latin, famille, seuil alerte stock) + composant « Ajout rapide » réutilisable dans tous les formulaires contenant un sélecteur de variété
+  - **`parties_utilisees`** : multi-select obligatoire (au moins 1 valeur), modifiable. Exemples : Menthe = [feuille], Calendula = [fleur, feuille], Fenouil = [feuille, graine], défaut = [plante_entiere]
 - CRUD Sites → Parcelles → Rangs (architecture hiérarchique)
 - CRUD Matériaux externes (sel, sucre)
 - Le référentiel sera saisi manuellement via l'interface (~70 variétés, quelques parcelles). Pas de migration Excel.
@@ -109,7 +110,8 @@ A7. Polish Phase A
 - Module Plantation (`plantings`) : lien vers semis d'origine **OU** fournisseur pour plants achetés, 1 semis → N rangs, 1 rang → N variétés possibles
 - Module Suivi de rang (`row_care`) : désherbage, paillage, arrosage, avec **logique adaptative variété**
 - Module Cueillette (`harvests`) : parcelle (avec logique adaptative) ou sauvage (texte libre avec autocomplétion)
-  - → La route API crée le stock_movement ENTRÉE frais + met à jour production_summary (logique applicative, transaction SQL)
+  - **`partie_plante` obligatoire** : logique adaptative basée sur `varieties.parties_utilisees`. Si 1 seule valeur → auto-rempli. Si plusieurs → dropdown obligatoire. La partie est choisie ici et héritée dans toute la chaîne.
+  - → La route API crée le stock_movement ENTRÉE frais (avec partie_plante) + met à jour production_summary (logique applicative, transaction SQL)
 - Module Arrachage (`uprootings`) : avec logique adaptative, passe `plantings.actif = false`
 
 **Logique adaptative variété** (hook réutilisable `useRowVarieties(rowId)`) :
@@ -130,10 +132,10 @@ A7. Polish Phase A
 ### A3 — 🔄 Transformation
 **Durée** : 4-5 jours
 **Livrables** :
-- Les 3 modules ont **le même modèle** : entrées/sorties individuelles par variété avec date, poids, temps, état
-- Module Tronçonnage (`cuttings`) : entrée = `frais` (toujours) → sortie = `tronconnee`
-- Module Séchage (`dryings`) : entrée = sélecteur `frais` | `tronconnee` → sortie = sélecteur `sechee` | `tronconnee_sechee`
-- Module Triage (`sortings`) : entrée = sélecteur `sechee` | `tronconnee_sechee` → sortie = sélecteur `sechee_triee` | `tronconnee_sechee_triee`
+- Les 3 modules ont **le même modèle** : entrées/sorties individuelles par variété avec date, poids, temps, état, **et partie_plante**
+- Module Tronçonnage (`cuttings`) : entrée = `frais` (toujours) → sortie = `tronconnee`. **`partie_plante` hérité du stock frais en entrée, jamais re-saisi.**
+- Module Séchage (`dryings`) : entrée = sélecteur `frais` | `tronconnee` → sortie = sélecteur `sechee` | `tronconnee_sechee`. **`partie_plante` hérité du stock en entrée.**
+- Module Triage (`sortings`) : entrée = sélecteur `sechee` | `tronconnee_sechee` → sortie = sélecteur `sechee_triee` | `tronconnee_sechee_triee`. **`partie_plante` hérité du stock en entrée.**
 - **6 états de stock cumulatifs** : les états portent l'historique des transformations
 - **Logique applicative** : chaque route API crée les 2 stock_movements dans une transaction SQL (SORTIE état entrée + ENTRÉE état sortie). Pas de triggers pour les mouvements de stock.
 - **Triggers uniquement pour `production_summary`** : mise à jour automatique des cumuls (avec fonction de recalcul admin en backup)
@@ -144,24 +146,25 @@ A7. Polish Phase A
 - Tableau avec filtre Type (Entrée / Sortie / Tous) + badge coloré 🟢Entrée / 🔴Sortie
 
 **Point de vigilance** — scénarios de test (~20% du temps de la phase) :
-1. Flux complet : cueillette → tronçonnage → séchage (tronconnee→tronconnee_sechee) → triage (→tronconnee_sechee_triee) → vérifier les 6 stocks
+1. Flux complet : cueillette → tronçonnage → séchage (tronconnee→tronconnee_sechee) → triage (→tronconnee_sechee_triee) → vérifier les stocks sur les 3 dimensions (variété × partie × état)
 2. Flux sans tronçonnage : cueillette → séchage (frais→sechee) → triage (→sechee_triee) → vérifier
-3. Vérifier que les transactions stock_movements ET les triggers production_summary fonctionnent en cascade
-4. Tests unitaires Vitest : validation des états d'entrée/sortie, calcul des mouvements
+3. Vérifier que `partie_plante` est bien hérité à chaque étape (tronçonnage, séchage, triage) depuis le stock en entrée
+4. Vérifier que les transactions stock_movements ET les triggers production_summary fonctionnent en cascade
+5. Tests unitaires Vitest : validation des états d'entrée/sortie, calcul des mouvements, héritage partie_plante
 
 ---
 
 ### A4 — 🧪 Création de produit
 **Durée** : 4-5 jours
 **Livrables** :
-- Bibliothèque de recettes (`recipes` + `recipe_ingredients`) : CRUD avec composition en % + **état de stock par ingrédient**
-  - Ex: Tisane → tous les ingrédients en état `tronconnee_sechee_triee`
-  - Ex: Sel Ail des ours → Ail des ours en état `frais`, Sel = matériau externe
+- Bibliothèque de recettes (`recipes` + `recipe_ingredients`) : CRUD avec composition en % + **état ET partie de stock par ingrédient plante**
+  - Ex: Tisane → Menthe feuille `tronconnee_sechee_triee`, Calendula fleur `tronconnee_sechee_triee`
+  - Ex: Sel Ail des ours → Ail des ours feuille `frais`, Sel = matériau externe (partie_plante = NULL)
 - Catégories produits : Tisane, Aromate, Sel, Sucre, Vinaigre
 - Workflow de production de lot — **wizard 4 étapes** :
   1. Choix recette + nombre de sachets/pots + date
   2. Ajuster composition (modifier %, changer une plante, **changer l'état d'un ingrédient**)
-  3. Vérification stock **dans l'état spécifié pour chaque ingrédient** + **fournisseur obligatoire pour les matériaux externes**
+  3. Vérification stock **dans l'état ET la partie spécifiés pour chaque ingrédient** (les 3 dimensions : variété × partie × état) + **fournisseur obligatoire pour les matériaux externes**
   4. Confirmation → génération numéro de lot + DDM → déduction stock
 - Stock produits finis (`product_stock_movements`) : entrées/sorties de sachets
 
@@ -170,7 +173,7 @@ A7. Polish Phase A
 - Page Production : tableau des lots + bouton [+ Produire un lot] → wizard pleine page (4 étapes)
 - Étape 3 du wizard : indicateurs ✅/⚠️ par ingrédient (stock suffisant ou pas)
 
-**Claude Code — Instruction** : Le workflow de production est LE moment critique pour le stock. Utiliser une transaction SQL. Le lot ne peut être validé que si le stock est suffisant pour CHAQUE ingrédient dans SON état spécifié.
+**Claude Code — Instruction** : Le workflow de production est LE moment critique pour le stock. Utiliser une transaction SQL. Le lot ne peut être validé que si le stock est suffisant pour CHAQUE ingrédient dans SA variété, SA partie ET SON état (les 3 dimensions).
 
 ---
 

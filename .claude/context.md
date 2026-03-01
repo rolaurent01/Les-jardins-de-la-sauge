@@ -282,6 +282,7 @@ CREATE TABLE varieties (
   famille TEXT,                             -- "Lamiacées", "Astéracées"
   type_cycle TEXT CHECK (type_cycle IN ('annuelle', 'bisannuelle', 'perenne', 'vivace')),
   duree_peremption_mois INTEGER DEFAULT 24, -- Durée après séchage en mois
+  parties_utilisees TEXT[] NOT NULL DEFAULT '{"plante_entiere"}', -- Parties récoltables (au moins 1 obligatoire) : 'feuille', 'fleur', 'graine', 'racine', 'fruit', 'plante_entiere'
   notes TEXT,
   deleted_at TIMESTAMPTZ DEFAULT NULL,       -- Soft delete (NULL = actif)
   created_at TIMESTAMPTZ DEFAULT now(),
@@ -529,6 +530,9 @@ CREATE TABLE harvests (
   lieu_sauvage TEXT,                         -- Texte libre : "Bord de la rivière", "Forêt du Combet"
   -- Commun
   variety_id UUID REFERENCES varieties(id) NOT NULL,  -- Auto-rempli si mono-variété, choisi si multi
+  partie_plante TEXT CHECK (partie_plante IN ('feuille', 'fleur', 'graine', 'racine', 'fruit', 'plante_entiere')) NOT NULL,
+  -- Logique adaptative partie_plante : si varieties.parties_utilisees a 1 seule valeur → auto-rempli.
+  -- Si plusieurs valeurs → dropdown obligatoire. La partie est choisie ici et héritée dans toute la chaîne.
   date DATE NOT NULL,
   poids_g DECIMAL NOT NULL,
   temps_min INTEGER,
@@ -566,6 +570,8 @@ CREATE TABLE cuttings (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   uuid_client UUID UNIQUE,                 -- UUID généré par le mobile, pour idempotence sync
   variety_id UUID REFERENCES varieties(id) NOT NULL,
+  partie_plante TEXT CHECK (partie_plante IN ('feuille', 'fleur', 'graine', 'racine', 'fruit', 'plante_entiere')) NOT NULL,
+  -- Hérité du stock frais en entrée — jamais re-saisi par l'utilisateur
   type TEXT CHECK (type IN ('entree', 'sortie')) NOT NULL,  -- entrée = charge, sortie = décharge
   date DATE NOT NULL,
   poids_g DECIMAL NOT NULL,
@@ -585,6 +591,8 @@ CREATE TABLE dryings (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   uuid_client UUID UNIQUE,                 -- UUID généré par le mobile, pour idempotence sync
   variety_id UUID REFERENCES varieties(id) NOT NULL,
+  partie_plante TEXT CHECK (partie_plante IN ('feuille', 'fleur', 'graine', 'racine', 'fruit', 'plante_entiere')) NOT NULL,
+  -- Hérité du stock en entrée — jamais re-saisi par l'utilisateur
   type TEXT CHECK (type IN ('entree', 'sortie')) NOT NULL,
   etat_plante TEXT NOT NULL,
   -- Si type = 'entree' : sélecteur → 'frais' | 'tronconnee'
@@ -609,6 +617,8 @@ CREATE TABLE sortings (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   uuid_client UUID UNIQUE,                 -- UUID généré par le mobile, pour idempotence sync
   variety_id UUID REFERENCES varieties(id) NOT NULL,
+  partie_plante TEXT CHECK (partie_plante IN ('feuille', 'fleur', 'graine', 'racine', 'fruit', 'plante_entiere')) NOT NULL,
+  -- Hérité du stock en entrée — jamais re-saisi par l'utilisateur
   type TEXT CHECK (type IN ('entree', 'sortie')) NOT NULL,
   etat_plante TEXT NOT NULL,
   -- Si type = 'entree' : sélecteur → 'sechee' | 'tronconnee_sechee'
@@ -635,6 +645,8 @@ Le stock n'est JAMAIS stocké directement. Il est **calculé** à partir de tous
 CREATE TABLE stock_movements (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   variety_id UUID REFERENCES varieties(id) NOT NULL,
+  partie_plante TEXT CHECK (partie_plante IN ('feuille', 'fleur', 'graine', 'racine', 'fruit', 'plante_entiere')) NOT NULL,
+  -- Dimension du stock : variété × partie × état. Hérité de la cueillette, jamais modifié.
   date DATE NOT NULL,
   type_mouvement TEXT CHECK (type_mouvement IN ('entree', 'sortie')) NOT NULL,
   etat_plante TEXT CHECK (etat_plante IN ('frais', 'tronconnee', 'sechee', 'tronconnee_sechee', 'sechee_triee', 'tronconnee_sechee_triee')) NOT NULL,
@@ -652,18 +664,18 @@ CREATE TABLE stock_movements (
 
 Les états sont cumulatifs : ils portent l'historique des transformations subies. L'état de sortie est **déduit automatiquement** de l'état d'entrée.
 
-| Événement | État d'entrée | → | État de sortie | Note |
-|-----------|--------------|---|---------------|------|
-| Cueillette | — | → | **frais** | Toujours |
-| Tronçonnage | frais | → | **tronconnee** | Toujours frais en entrée |
-| Séchage | frais | → | **sechee** | Sélecteur utilisateur |
-| Séchage | tronconnee | → | **tronconnee_sechee** | Sélecteur utilisateur |
-| Triage | sechee | → | **sechee_triee** | Toujours séché en entrée |
-| Triage | tronconnee_sechee | → | **tronconnee_sechee_triee** | Toujours séché en entrée |
-| Production | tout état sauf tronconnee seule | → | SORTIE | Par ingrédient dans la recette |
-| Achat externe | — | → | tout état au choix | ENTRÉE |
-| Vente directe | tout état | → | SORTIE | Sans recette |
-| Ajustement | tout état | → | ENTRÉE ou SORTIE | Correction manuelle |
+| Événement | partie_plante | État d'entrée | → | État de sortie | Note |
+|-----------|--------------|--------------|---|---------------|------|
+| Cueillette | **CHOISI** (auto si 1 seule valeur dans varieties.parties_utilisees, dropdown sinon) | — | → | **frais** | Toujours |
+| Tronçonnage | HÉRITÉ du stock en entrée | frais | → | **tronconnee** | Toujours frais en entrée |
+| Séchage | HÉRITÉ du stock en entrée | frais | → | **sechee** | Sélecteur utilisateur |
+| Séchage | HÉRITÉ du stock en entrée | tronconnee | → | **tronconnee_sechee** | Sélecteur utilisateur |
+| Triage | HÉRITÉ du stock en entrée | sechee | → | **sechee_triee** | Toujours séché en entrée |
+| Triage | HÉRITÉ du stock en entrée | tronconnee_sechee | → | **tronconnee_sechee_triee** | Toujours séché en entrée |
+| Production | HÉRITÉ de la recette / lot | tout état sauf tronconnee seule | → | SORTIE | Par ingrédient dans la recette |
+| Achat externe | SAISI obligatoirement | — | → | tout état au choix | ENTRÉE |
+| Vente directe | SAISI obligatoirement | tout état | → | SORTIE | Sans recette |
+| Ajustement | SAISI obligatoirement | tout état | → | ENTRÉE ou SORTIE | Correction manuelle |
 
 Chaque opération génère **deux mouvements de stock** automatiques :
 - SORTIE de l'état d'entrée (le stock dans cet état baisse)
@@ -681,6 +693,9 @@ tronconnee_sechee_triee        → chemin complet
 
 **Flux possible par plante** — toutes les plantes ne suivent pas le même chemin :
 ```
+                                     partie_plante = CHOISI à la cueillette
+                                     (ex: Calendula → 'fleur' ou 'feuille')
+                                     ↓ hérité dans toute la chaîne
                               ┌──→ vente/production (frais — ex: sels)
                               │
 Cueillette → [frais] ────────┤
@@ -691,6 +706,15 @@ Cueillette → [frais] ────────┤
 ```
 Les étapes de tronçonnage et de triage sont optionnelles. Le séchage prend en entrée du frais ou du tronçonné (sélecteur). La production utilise du stock dans l'état spécifié par ingrédient. L'état **tronconnee** seul n'est jamais utilisé en production.
 
+**Stock à 3 dimensions** : le stock est identifié par `variété × partie_plante × etat_plante`. Exemple :
+```
+Menthe    | feuille | frais                   → 2.4 kg
+Menthe    | feuille | tronconnee_sechee_triee → 1.2 kg
+Menthe    | fleur   | sechee_triee            → 0.2 kg
+Calendula | fleur   | frais                   → 1.1 kg
+Fenouil   | graine  | sechee                  → 0.2 kg
+```
+
 #### `stock_purchases` — Achats de plantes externes
 Pour tracer les achats de plantes fraîches ou séchées auprès d'autres producteurs.
 ```sql
@@ -698,6 +722,8 @@ CREATE TABLE stock_purchases (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   uuid_client UUID UNIQUE,                 -- UUID généré par le mobile, pour idempotence sync
   variety_id UUID REFERENCES varieties(id) NOT NULL,
+  partie_plante TEXT CHECK (partie_plante IN ('feuille', 'fleur', 'graine', 'racine', 'fruit', 'plante_entiere')) NOT NULL,
+  -- Saisi obligatoirement à l'achat : quelle partie de la plante est achetée
   date DATE NOT NULL,
   etat_plante TEXT CHECK (etat_plante IN ('frais', 'tronconnee', 'sechee', 'tronconnee_sechee', 'sechee_triee', 'tronconnee_sechee_triee')) NOT NULL,
   poids_g DECIMAL NOT NULL,
@@ -718,6 +744,8 @@ CREATE TABLE stock_direct_sales (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   uuid_client UUID UNIQUE,                 -- UUID généré par le mobile, pour idempotence sync
   variety_id UUID REFERENCES varieties(id) NOT NULL,
+  partie_plante TEXT CHECK (partie_plante IN ('feuille', 'fleur', 'graine', 'racine', 'fruit', 'plante_entiere')) NOT NULL,
+  -- Saisi obligatoirement à la vente : quelle partie de la plante est vendue
   date DATE NOT NULL,
   etat_plante TEXT CHECK (etat_plante IN ('frais', 'tronconnee', 'sechee', 'tronconnee_sechee', 'sechee_triee', 'tronconnee_sechee_triee')) NOT NULL,
   poids_g DECIMAL NOT NULL,
@@ -736,6 +764,8 @@ CREATE TABLE stock_adjustments (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   uuid_client UUID UNIQUE,                   -- UUID généré par le mobile, pour idempotence sync
   variety_id UUID REFERENCES varieties(id) NOT NULL,
+  partie_plante TEXT CHECK (partie_plante IN ('feuille', 'fleur', 'graine', 'racine', 'fruit', 'plante_entiere')) NOT NULL,
+  -- Saisi obligatoirement : quelle partie de la plante est ajustée
   date DATE NOT NULL,
   type_mouvement TEXT CHECK (type_mouvement IN ('entree', 'sortie')) NOT NULL,
   etat_plante TEXT CHECK (etat_plante IN ('frais', 'tronconnee', 'sechee', 'tronconnee_sechee', 'sechee_triee', 'tronconnee_sechee_triee')) NOT NULL,
@@ -748,14 +778,15 @@ CREATE TABLE stock_adjustments (
 
 **Vue stock SQL de base** (le stock est toujours calculé, jamais stocké directement) :
 ```sql
--- Stock par variété et état — les 6 états cumulatifs
-SELECT 
+-- Stock par variété, partie et état — 3 dimensions
+SELECT
   variety_id,
+  partie_plante,
   etat_plante,
   SUM(CASE WHEN type_mouvement = 'entree' THEN poids_g ELSE -poids_g END) as stock_g
 FROM stock_movements
 WHERE deleted_at IS NULL
-GROUP BY variety_id, etat_plante;
+GROUP BY variety_id, partie_plante, etat_plante;
 ```
 Voir section 5.9 pour la page Vue Stock complète.
 
@@ -795,6 +826,8 @@ CREATE TABLE recipe_ingredients (
   variety_id UUID REFERENCES varieties(id),            -- Pour les plantes
   external_material_id UUID REFERENCES external_materials(id),  -- Pour sel, sucre...
   etat_plante TEXT CHECK (etat_plante IN ('frais', 'tronconnee', 'sechee', 'tronconnee_sechee', 'sechee_triee', 'tronconnee_sechee_triee')),  -- État du stock à utiliser (NULL pour external_materials)
+  partie_plante TEXT CHECK (partie_plante IN ('feuille', 'fleur', 'graine', 'racine', 'fruit', 'plante_entiere')),  -- NULL pour external_materials
+  -- NULL pour les matériaux externes (sel, sucre, vinaigre). Obligatoire pour les plantes.
   pourcentage DECIMAL NOT NULL,            -- 0.24 = 24%
   ordre INTEGER,                            -- Ordre d'affichage
   CHECK (
@@ -832,6 +865,8 @@ CREATE TABLE production_lot_ingredients (
   variety_id UUID REFERENCES varieties(id),
   external_material_id UUID REFERENCES external_materials(id),
   etat_plante TEXT CHECK (etat_plante IN ('frais', 'tronconnee', 'sechee', 'tronconnee_sechee', 'sechee_triee', 'tronconnee_sechee_triee')),  -- État réel du stock utilisé (NULL pour external_materials)
+  partie_plante TEXT CHECK (partie_plante IN ('feuille', 'fleur', 'graine', 'racine', 'fruit', 'plante_entiere')),  -- NULL pour external_materials
+  -- Copié depuis recipe_ingredients. Identifie précisément la dimension stock variété × partie × état.
   pourcentage DECIMAL NOT NULL,
   poids_g DECIMAL NOT NULL,                -- Poids réel utilisé = poids_total * pourcentage
   annee_recolte INTEGER,                    -- "2024", "2025" — l'année de la plante utilisée
@@ -847,12 +882,12 @@ CREATE TABLE production_lot_ingredients (
 
 **Processus de création de lot** :
 1. L'utilisateur choisit une recette et un nombre de sachets
-2. Le système copie les `recipe_ingredients` dans `production_lot_ingredients` (y compris `etat_plante` par ingrédient)
+2. Le système copie les `recipe_ingredients` dans `production_lot_ingredients` (y compris `etat_plante` et `partie_plante` par ingrédient)
 3. L'utilisateur peut modifier les pourcentages (la somme doit rester = 1.0)
 4. L'utilisateur peut changer des plantes (remplacer une variété par une autre)
 5. L'utilisateur peut changer l'état d'un ingrédient (ex: utiliser du frais au lieu de trié)
-6. Le système calcule les poids réels et vérifie le stock disponible **dans l'état spécifié pour chaque ingrédient**
-7. À la validation, le système crée les `stock_movements` de sortie pour chaque ingrédient plante, **dans l'état correspondant**
+6. Le système calcule les poids réels et vérifie le stock disponible **dans l'état ET la partie spécifiés pour chaque ingrédient** (les 3 dimensions : variété × partie × état)
+7. À la validation, le système crée les `stock_movements` de sortie pour chaque ingrédient plante, **dans l'état ET la partie correspondants**
 8. Le lot est créé avec son numéro et sa DDM
 
 **Exemple** — Lot "Sel Ail des Ours" :
@@ -890,10 +925,12 @@ CREATE TABLE forecasts (
   annee INTEGER NOT NULL,
   variety_id UUID REFERENCES varieties(id) NOT NULL,
   etat_plante TEXT CHECK (etat_plante IN ('frais', 'tronconnee', 'sechee', 'tronconnee_sechee', 'sechee_triee', 'tronconnee_sechee_triee')),
+  partie_plante TEXT CHECK (partie_plante IN ('feuille', 'fleur', 'graine', 'racine', 'fruit', 'plante_entiere')),  -- NULL = toutes parties confondues
+  -- Le prévisionnel doit être cohérent avec les 3 dimensions du stock : variété × partie × état
   quantite_prevue_g DECIMAL,
   commentaire TEXT,
   created_at TIMESTAMPTZ DEFAULT now(),
-  UNIQUE(annee, variety_id, etat_plante)
+  UNIQUE(annee, variety_id, etat_plante, partie_plante)
 );
 ```
 
@@ -935,13 +972,15 @@ CREATE TABLE production_summary (
 
 Page dédiée dans le bureau. Le stock est **calculé en temps réel** à partir de `stock_movements` (pas de table matérialisée — il doit toujours être juste). C'est une vue opérationnelle : qu'est-ce que j'ai sous la main ?
 
-**Tableau principal** :
+**Tableau principal** (3 dimensions : variété × partie × état) :
 ```
-Variété         | Frais  | Tronç. | Séchée | Tronç.Séch. | Séch.Triée | Tronç.Séch.Triée | TOTAL
-────────────────┼────────┼────────┼────────┼─────────────┼────────────┼──────────────────┼───────
-Menthe poivrée  | 2.4 kg | 0.8 kg | —      | 0.3 kg      | —          | 1.2 kg           | 4.7 kg
-Mauve           | 1.1 kg | —      | —      | —           | 0.4 kg     | —                | 1.5 kg
-Lavande vraie   | —      | —      | —      | 0.2 kg      | —          | 3.1 kg           | 3.3 kg
+Variété         | Partie  | Frais  | Tronç. | Séchée | Tronç.Séch. | Séch.Triée | Tronç.Séch.Triée | TOTAL
+────────────────┼─────────┼────────┼────────┼────────┼─────────────┼────────────┼──────────────────┼───────
+Menthe poivrée  | feuille | 2.4 kg | 0.8 kg | —      | 0.3 kg      | —          | 1.2 kg           | 4.7 kg
+Menthe poivrée  | fleur   | —      | —      | —      | —           | 0.2 kg     | —                | 0.2 kg
+Mauve           | fleur   | 1.1 kg | —      | —      | —           | 0.4 kg     | —                | 1.5 kg
+Fenouil         | graine  | —      | —      | 0.2 kg | —           | —          | —                | 0.2 kg
+Lavande vraie   | fleur   | —      | —      | —      | 0.2 kg      | —          | 3.1 kg           | 3.3 kg
 ```
 
 **Fonctionnalités** :
@@ -1174,13 +1213,23 @@ Le miel sera un **module autonome** intégré dans le même projet, avec des **t
 - Utiliser des **transactions SQL** pour toute opération qui génère des mouvements de stock (production de lot = déduction stock + création lot, atomiquement)
 - **Mouvements de stock en logique applicative** : les `stock_movements` sont créés explicitement par les routes API Next.js (dans des fonctions SQL transactionnelles), PAS par des triggers PostgreSQL. Cela rend le code plus traçable, plus facile à débugger et à tester.
 - **Triggers uniquement pour `production_summary`** : la table d'agrégation `production_summary` est maintenue par des triggers SQL (c'est un cache de confort). Une **fonction admin `recalculate_production_summary()`** permet de tronquer et reconstruire entièrement cette table depuis les données sources en cas de dérive.
-- **Soft delete** (colonne `deleted_at TIMESTAMPTZ DEFAULT NULL`) sur les tables critiques : `varieties`, `seed_lots`, `seedlings`, `plantings`, `harvests`, `recipes`, `production_lots`, `stock_movements`. Les tables secondaires (`soil_works`, `row_care`, `uprootings`, `cuttings`, `dryings`, `sortings`) n'ont PAS de soft delete.
+- **Soft delete** (colonne `deleted_at TIMESTAMPTZ DEFAULT NULL`) sur les tables critiques : `varieties`, `seed_lots`, `seedlings`, `plantings`, `harvests`, `recipes`, `production_lots`, `stock_movements`. Les tables secondaires (`soil_works`, `row_care`, `uprootings`, `cuttings`, `dryings`, `sortings`) n'ont PAS de soft delete. **Note** : `harvests` a bien un `deleted_at` (présent dans le CREATE TABLE).
 - **Convention soft delete** : toutes les requêtes sur les tables avec soft delete doivent inclure `WHERE deleted_at IS NULL`. Créer des vues SQL ou un helper applicatif pour centraliser ce filtre.
+
+**`partie_plante` — dimension plante obligatoire** :
+- **Valeurs** : `'feuille'`, `'fleur'`, `'graine'`, `'racine'`, `'fruit'`, `'plante_entiere'`
+- **Choix à la cueillette** : seule étape où la partie est saisie. Héritée ensuite dans tout le flux (tronçonnage, séchage, triage, production).
+- **Logique adaptative** : si `varieties.parties_utilisees` a 1 seule valeur → auto-rempli sans action. Si plusieurs → dropdown obligatoire.
+- **`varieties.parties_utilisees`** : `TEXT[]` avec au moins 1 valeur. Exemples : Menthe = `{'feuille'}`, Calendula = `{'fleur', 'feuille'}`, Fenouil = `{'feuille', 'graine'}`.
+- **Obligatoire (NOT NULL)** sur : `harvests`, `cuttings`, `dryings`, `sortings`, `stock_movements`, `stock_purchases`, `stock_direct_sales`, `stock_adjustments`.
+- **Nullable (NULL pour matériaux externes)** sur : `recipe_ingredients`, `production_lot_ingredients`, `forecasts`.
+- **Stock = 3 dimensions** : `variété × partie_plante × etat_plante`. Un mouvement de stock sans `partie_plante` est impossible pour les plantes.
 - **Contraintes d'intégrité** au niveau SQL (CHECK, UNIQUE, FK) en plus de la validation applicative
 - **Associations polymorphiques** : `stock_movements.source_type` (texte) + `source_id` (UUID) pointent vers différentes tables sources sans FK. La traçabilité complète (B4) sera implémentée en code applicatif, pas en SQL pur.
 
 ### 10.2 Performances Supabase gratuit
-- Indexer les colonnes fréquemment filtrées : `variety_id`, `row_id`, `date`, `annee`, `etat_plante`
+- Indexer les colonnes fréquemment filtrées : `variety_id`, `row_id`, `date`, `annee`, `etat_plante`, `partie_plante`
+- Index spécifique sur `stock_movements(partie_plante)` pour les requêtes de calcul de stock (filtre sur les 3 dimensions)
 - Utiliser des vues SQL pour les calculs de stock plutôt que des requêtes N+1
 - Mettre en cache côté client les données de référence (variétés, parcelles, rangs) qui changent rarement
 - **Estimation stockage** : ~5 Mo/an pour une activité soutenue (70 variétés, ~3000 mouvements de stock/an). Les 500 Mo du plan gratuit couvrent largement >50 ans d'utilisation.
@@ -1407,6 +1456,7 @@ app-ljs/
 | Modèle transformation | Entrées/sorties individuelles simples (pas de session) |
 | Ratio séchage/triage | Calculé par variété par an (acceptable) |
 | États du stock | 6 cumulatifs : frais, tronconnee, sechee, tronconnee_sechee, sechee_triee, tronconnee_sechee_triee |
+| **`partie_plante`** | **Stock à 3 dimensions : variété × partie × état. Valeurs : feuille, fleur, graine, racine, fruit, plante_entiere. Choisi à la cueillette (auto si 1 seule valeur dans varieties.parties_utilisees, dropdown sinon), hérité dans tout le flux. Obligatoire (NOT NULL) sur toutes les tables de stock et transformation. Nullable sur recipe_ingredients, production_lot_ingredients, forecasts (NULL = matériaux externes ou toutes parties confondues).** |
 | Tronçonnage = hachage | Même opération, génère un mouvement de stock |
 | Toutes les plantes tronçonnées ? | Non, certaines sautent des étapes (flux flexible) |
 | Séchage — état d'entrée | Sélecteur : frais OU tronconnee → sortie : sechee OU tronconnee_sechee |

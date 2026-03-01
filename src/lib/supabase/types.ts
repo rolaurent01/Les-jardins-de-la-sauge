@@ -6,11 +6,22 @@
  *   npx supabase gen types typescript --project-id <project-id> > src/lib/supabase/types.ts
  *
  * Inclut les colonnes ajoutées par la migration 002 (deleted_at sur
- * sites, parcels, rows, external_materials).
+ * sites, parcels, rows, external_materials) et la migration 004
+ * (partie_plante sur toutes les tables de stock et transformation,
+ * parties_utilisees sur varieties).
  *
  * Note : chaque table requiert Relationships: [] pour que le SDK v2.x
  * puisse inférer correctement les types Insert/Update.
  */
+
+// Parties de plante — les 6 valeurs possibles (migration 004)
+export type PartiePlante =
+  | 'feuille'
+  | 'fleur'
+  | 'graine'
+  | 'racine'
+  | 'fruit'
+  | 'plante_entiere'
 
 export type Database = {
   public: {
@@ -28,6 +39,7 @@ export type Database = {
           famille: string | null
           type_cycle: 'annuelle' | 'bisannuelle' | 'perenne' | 'vivace' | null
           duree_peremption_mois: number
+          parties_utilisees: PartiePlante[]
           seuil_alerte_g: number | null
           notes: string | null
           deleted_at: string | null
@@ -41,6 +53,7 @@ export type Database = {
           famille?: string | null
           type_cycle?: 'annuelle' | 'bisannuelle' | 'perenne' | 'vivace' | null
           duree_peremption_mois?: number
+          parties_utilisees?: PartiePlante[]
           seuil_alerte_g?: number | null
           notes?: string | null
           deleted_at?: string | null
@@ -54,6 +67,7 @@ export type Database = {
           famille?: string | null
           type_cycle?: 'annuelle' | 'bisannuelle' | 'perenne' | 'vivace' | null
           duree_peremption_mois?: number
+          parties_utilisees?: PartiePlante[]
           seuil_alerte_g?: number | null
           notes?: string | null
           deleted_at?: string | null
@@ -511,6 +525,7 @@ export type Database = {
           row_id: string | null
           lieu_sauvage: string | null
           variety_id: string
+          partie_plante: PartiePlante
           date: string
           poids_g: number
           temps_min: number | null
@@ -525,6 +540,7 @@ export type Database = {
           row_id?: string | null
           lieu_sauvage?: string | null
           variety_id: string
+          partie_plante: PartiePlante
           date: string
           poids_g: number
           temps_min?: number | null
@@ -539,6 +555,7 @@ export type Database = {
           row_id?: string | null
           lieu_sauvage?: string | null
           variety_id?: string
+          partie_plante?: PartiePlante
           date?: string
           poids_g?: number
           temps_min?: number | null
@@ -592,6 +609,7 @@ export type Database = {
           id: string
           uuid_client: string | null
           variety_id: string
+          partie_plante: PartiePlante
           type: 'entree' | 'sortie'
           date: string
           poids_g: number
@@ -603,6 +621,7 @@ export type Database = {
           id?: string
           uuid_client?: string | null
           variety_id: string
+          partie_plante: PartiePlante
           type: 'entree' | 'sortie'
           date: string
           poids_g: number
@@ -614,6 +633,7 @@ export type Database = {
           id?: string
           uuid_client?: string | null
           variety_id?: string
+          partie_plante?: PartiePlante
           type?: 'entree' | 'sortie'
           date?: string
           poids_g?: number
@@ -629,6 +649,7 @@ export type Database = {
           id: string
           uuid_client: string | null
           variety_id: string
+          partie_plante: PartiePlante
           type: 'entree' | 'sortie'
           etat_plante: string
           date: string
@@ -642,6 +663,7 @@ export type Database = {
           id?: string
           uuid_client?: string | null
           variety_id: string
+          partie_plante: PartiePlante
           type: 'entree' | 'sortie'
           etat_plante: string
           date: string
@@ -655,6 +677,7 @@ export type Database = {
           id?: string
           uuid_client?: string | null
           variety_id?: string
+          partie_plante?: PartiePlante
           type?: 'entree' | 'sortie'
           etat_plante?: string
           date?: string
@@ -672,6 +695,7 @@ export type Database = {
           id: string
           uuid_client: string | null
           variety_id: string
+          partie_plante: PartiePlante
           type: 'entree' | 'sortie'
           etat_plante: string
           date: string
@@ -685,6 +709,7 @@ export type Database = {
           id?: string
           uuid_client?: string | null
           variety_id: string
+          partie_plante: PartiePlante
           type: 'entree' | 'sortie'
           etat_plante: string
           date: string
@@ -698,6 +723,7 @@ export type Database = {
           id?: string
           uuid_client?: string | null
           variety_id?: string
+          partie_plante?: PartiePlante
           type?: 'entree' | 'sortie'
           etat_plante?: string
           date?: string
@@ -718,6 +744,7 @@ export type Database = {
         Row: {
           id: string
           variety_id: string
+          partie_plante: PartiePlante
           date: string
           type_mouvement: 'entree' | 'sortie'
           etat_plante: string
@@ -731,6 +758,7 @@ export type Database = {
         Insert: {
           id?: string
           variety_id: string
+          partie_plante: PartiePlante
           date: string
           type_mouvement: 'entree' | 'sortie'
           etat_plante: string
@@ -744,6 +772,7 @@ export type Database = {
         Update: {
           id?: string
           variety_id?: string
+          partie_plante?: PartiePlante
           date?: string
           type_mouvement?: 'entree' | 'sortie'
           etat_plante?: string
@@ -762,6 +791,7 @@ export type Database = {
           id: string
           uuid_client: string | null
           variety_id: string
+          partie_plante: PartiePlante
           date: string
           etat_plante: string
           poids_g: number
@@ -776,6 +806,7 @@ export type Database = {
           id?: string
           uuid_client?: string | null
           variety_id: string
+          partie_plante: PartiePlante
           date: string
           etat_plante: string
           poids_g: number
@@ -790,6 +821,7 @@ export type Database = {
           id?: string
           uuid_client?: string | null
           variety_id?: string
+          partie_plante?: PartiePlante
           date?: string
           etat_plante?: string
           poids_g?: number
@@ -808,6 +840,7 @@ export type Database = {
           id: string
           uuid_client: string | null
           variety_id: string
+          partie_plante: PartiePlante
           date: string
           etat_plante: string
           poids_g: number
@@ -819,6 +852,7 @@ export type Database = {
           id?: string
           uuid_client?: string | null
           variety_id: string
+          partie_plante: PartiePlante
           date: string
           etat_plante: string
           poids_g: number
@@ -830,6 +864,7 @@ export type Database = {
           id?: string
           uuid_client?: string | null
           variety_id?: string
+          partie_plante?: PartiePlante
           date?: string
           etat_plante?: string
           poids_g?: number
@@ -845,6 +880,7 @@ export type Database = {
           id: string
           uuid_client: string | null
           variety_id: string
+          partie_plante: PartiePlante
           date: string
           type_mouvement: 'entree' | 'sortie'
           etat_plante: string
@@ -856,6 +892,7 @@ export type Database = {
           id?: string
           uuid_client?: string | null
           variety_id: string
+          partie_plante: PartiePlante
           date: string
           type_mouvement: 'entree' | 'sortie'
           etat_plante: string
@@ -867,6 +904,7 @@ export type Database = {
           id?: string
           uuid_client?: string | null
           variety_id?: string
+          partie_plante?: PartiePlante
           date?: string
           type_mouvement?: 'entree' | 'sortie'
           etat_plante?: string
@@ -947,6 +985,7 @@ export type Database = {
           variety_id: string | null
           external_material_id: string | null
           etat_plante: string | null
+          partie_plante: PartiePlante | null
           pourcentage: number
           ordre: number | null
           created_at: string
@@ -957,6 +996,7 @@ export type Database = {
           variety_id?: string | null
           external_material_id?: string | null
           etat_plante?: string | null
+          partie_plante?: PartiePlante | null
           pourcentage: number
           ordre?: number | null
           created_at?: string
@@ -967,6 +1007,7 @@ export type Database = {
           variety_id?: string | null
           external_material_id?: string | null
           etat_plante?: string | null
+          partie_plante?: PartiePlante | null
           pourcentage?: number
           ordre?: number | null
           created_at?: string
@@ -1027,9 +1068,11 @@ export type Database = {
           variety_id: string | null
           external_material_id: string | null
           etat_plante: string | null
+          partie_plante: PartiePlante | null
           pourcentage: number
           poids_g: number
           annee_recolte: number | null
+          fournisseur: string | null
           created_at: string
         }
         Insert: {
@@ -1038,9 +1081,11 @@ export type Database = {
           variety_id?: string | null
           external_material_id?: string | null
           etat_plante?: string | null
+          partie_plante?: PartiePlante | null
           pourcentage: number
           poids_g: number
           annee_recolte?: number | null
+          fournisseur?: string | null
           created_at?: string
         }
         Update: {
@@ -1049,9 +1094,11 @@ export type Database = {
           variety_id?: string | null
           external_material_id?: string | null
           etat_plante?: string | null
+          partie_plante?: PartiePlante | null
           pourcentage?: number
           poids_g?: number
           annee_recolte?: number | null
+          fournisseur?: string | null
           created_at?: string
         }
         Relationships: []
@@ -1098,6 +1145,7 @@ export type Database = {
           annee: number
           variety_id: string
           etat_plante: string
+          partie_plante: PartiePlante | null
           quantite_prevue_g: number | null
           commentaire: string | null
           created_at: string
@@ -1107,6 +1155,7 @@ export type Database = {
           annee: number
           variety_id: string
           etat_plante: string
+          partie_plante?: PartiePlante | null
           quantite_prevue_g?: number | null
           commentaire?: string | null
           created_at?: string
@@ -1116,6 +1165,7 @@ export type Database = {
           annee?: number
           variety_id?: string
           etat_plante?: string
+          partie_plante?: PartiePlante | null
           quantite_prevue_g?: number | null
           commentaire?: string | null
           created_at?: string
@@ -1221,7 +1271,18 @@ export type Database = {
       }
     }
 
-    Views: Record<string, never>
+    Views: {
+      // Vue v_stock — stock calculé en temps réel par variété × partie × état
+      v_stock: {
+        Row: {
+          variety_id: string
+          nom_vernaculaire: string
+          partie_plante: PartiePlante
+          etat_plante: string
+          stock_g: number | null
+        }
+      }
+    }
     Functions: Record<string, never>
     Enums: Record<string, never>
   }

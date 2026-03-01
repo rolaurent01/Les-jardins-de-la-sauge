@@ -2,6 +2,84 @@
 
 ---
 
+## [2026-03-01 01:30] — fix(migration): correction vue v_stock — DROP avant CREATE
+
+**Type :** `fix`
+**Fichiers concernés :** `supabase/migrations/004_add_partie_plante.sql`
+
+### Description
+`CREATE OR REPLACE VIEW` échoue quand on insère une colonne au milieu d'une vue existante — Postgres interprète le changement de position comme un renommage. Remplacement par `DROP VIEW IF EXISTS v_stock` suivi d'un `CREATE VIEW`.
+
+### Détails techniques
+- Erreur : `cannot change name of view column "etat_plante" to "partie_plante"`
+- Cause : `CREATE OR REPLACE` ne peut qu'ajouter des colonnes en fin de liste, pas en insérer au milieu
+- Fix : `DROP VIEW IF EXISTS v_stock; CREATE VIEW v_stock AS ...`
+
+---
+
+## [2026-03-01 01:00] — feat(migration): migration SQL 004 + types TypeScript partie_plante
+
+**Type :** `feature`
+**Fichiers concernés :** `supabase/migrations/004_add_partie_plante.sql`, `src/lib/supabase/types.ts`
+
+### Description
+Création de la migration SQL 004 et mise à jour des types TypeScript pour intégrer la dimension `partie_plante` dans le schéma de base de données.
+
+### Détails techniques
+**004_add_partie_plante.sql** :
+- `varieties` : `ADD COLUMN parties_utilisees TEXT[] NOT NULL DEFAULT '{"plante_entiere"}'`
+- `harvests` : `ADD COLUMN IF NOT EXISTS deleted_at` (sécurité) + `ADD COLUMN partie_plante NOT NULL DEFAULT 'plante_entiere'`
+- `cuttings`, `dryings`, `sortings` : `ADD COLUMN partie_plante NOT NULL DEFAULT 'plante_entiere'` (hérité)
+- `stock_movements`, `stock_purchases`, `stock_direct_sales`, `stock_adjustments` : idem NOT NULL
+- `recipe_ingredients`, `production_lot_ingredients` : `ADD COLUMN partie_plante` nullable (NULL = matériaux externes)
+- `forecasts` : colonne nullable + `DROP CONSTRAINT forecasts_annee_variety_id_etat_plante_key` + nouvelle contrainte `UNIQUE NULLS NOT DISTINCT (annee, variety_id, etat_plante, partie_plante)`
+- Vue `v_stock` : recréée avec `partie_plante` dans SELECT et GROUP BY (3 dimensions)
+- Index `idx_stock_movements_partie_plante` + index composite `idx_stock_movements_variety_partie_etat`
+
+**types.ts** :
+- Export du type union `PartiePlante` réutilisable dans tout le code applicatif
+- `varieties.parties_utilisees: PartiePlante[]`
+- Tables avec `partie_plante: PartiePlante` (obligatoire) : harvests, cuttings, dryings, sortings, stock_movements, stock_purchases, stock_direct_sales, stock_adjustments
+- Tables avec `partie_plante: PartiePlante | null` (nullable) : recipe_ingredients, production_lot_ingredients, forecasts
+- Vue `v_stock` ajoutée dans la section `Views` avec les 3 dimensions
+- `production_lot_ingredients` : ajout du champ `fournisseur` qui manquait dans les types
+
+---
+
+## [2026-03-01 00:00] — docs(modèle): ajout dimension partie_plante au modèle de données
+
+**Type :** `docs`
+**Fichiers concernés :** `.claude/context.md`, `.claude/plan-action.md`
+
+### Description
+Intégration de la 3ème dimension du stock : `partie_plante` (feuille, fleur, graine, racine, fruit, plante_entiere). Le stock est désormais à 3 dimensions : variété × partie × état. La partie est choisie à la cueillette et héritée dans toute la chaîne de transformation.
+
+### Détails techniques
+**context.md** :
+- `varieties` : ajout `parties_utilisees TEXT[] NOT NULL DEFAULT '{"plante_entiere"}'`
+- `harvests` : ajout `partie_plante NOT NULL` + `deleted_at` (manquant dans le CREATE TABLE) + commentaire logique adaptative
+- `cuttings`, `dryings`, `sortings` : ajout `partie_plante NOT NULL` + commentaire "hérité"
+- `stock_movements` : ajout `partie_plante NOT NULL`
+- `stock_purchases`, `stock_direct_sales`, `stock_adjustments` : ajout `partie_plante NOT NULL`
+- `recipe_ingredients`, `production_lot_ingredients` : ajout `partie_plante` nullable (NULL = matériaux externes)
+- `forecasts` : ajout `partie_plante` nullable + contrainte UNIQUE modifiée en `(annee, variety_id, etat_plante, partie_plante)`
+- Vue stock SQL : `partie_plante` ajouté dans SELECT et GROUP BY
+- Tableau des flux (§5.5) : colonne `partie_plante` (CHOISI à la cueillette, HÉRITÉ ensuite)
+- Diagramme de flux : explication stock 3 dimensions avec exemples concrets
+- Tableau Vue Stock (§5.9) : colonne Partie avec exemples (Menthe feuille, Menthe fleur, Fenouil graine...)
+- Processus de création de lot : vérification stock sur les 3 dimensions (variété × partie × état)
+- §10.1 : bloc détaillé sur `partie_plante` (valeurs, logique adaptative, obligatoire/nullable)
+- §10.2 : index ajouté sur `stock_movements(partie_plante)`
+- §13 : ligne `partie_plante` dans le tableau des décisions
+
+**plan-action.md** :
+- A0 Référentiel : CRUD Variétés inclut `parties_utilisees` (multi-select obligatoire, au moins 1 valeur)
+- A2 Cueillette : `partie_plante` obligatoire, logique adaptative sur `varieties.parties_utilisees`
+- A3 Transformation : `partie_plante` hérité sur les 3 modules, ajouté dans les scénarios de test
+- A4 Production : recettes et lots incluent état ET partie par ingrédient, vérification stock sur les 3 dimensions
+
+---
+
 ## [2026-02-28 18:00] — refactor(backup): découverte dynamique des tables via l'API OpenAPI Supabase
 
 **Type :** `refactor`
