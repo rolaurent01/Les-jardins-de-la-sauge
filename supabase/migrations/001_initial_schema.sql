@@ -414,7 +414,7 @@ CREATE TABLE stock_adjustments (
 -- ------------------------------------
 CREATE TABLE product_categories (
   id         UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  nom        TEXT NOT NULL UNIQUE,   -- "Tisane", "Mélange aromate", "Sel", "Sucre"
+  nom        TEXT NOT NULL UNIQUE,   -- "Tisane", "Mélange aromate", "Sel", "Sucre", "Vinaigre"
   created_at TIMESTAMPTZ DEFAULT now()
 );
 

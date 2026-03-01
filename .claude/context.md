@@ -765,7 +765,7 @@ Voir section 5.9 pour la page Vue Stock complète.
 ```sql
 CREATE TABLE product_categories (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  nom TEXT NOT NULL UNIQUE,                  -- "Tisane", "Mélange aromate", "Sel", "Sucre"
+  nom TEXT NOT NULL UNIQUE,                  -- "Tisane", "Mélange aromate", "Sel", "Sucre", "Vinaigre"
   created_at TIMESTAMPTZ DEFAULT now()
 );
 ```
@@ -777,7 +777,7 @@ CREATE TABLE recipes (
   category_id UUID REFERENCES product_categories(id),
   nom TEXT NOT NULL UNIQUE,                  -- "La Balade Digestive", "Nuit Étoilée"
   numero_tisane TEXT,                       -- "Tisane 1", "Tisane 2"... si applicable
-  poids_sachet_g DECIMAL NOT NULL,         -- 20g, 25g, 30g — fixe pour la recette
+  poids_sachet_g DECIMAL NOT NULL,         -- 20g, 25g, 30g — fixe pour la recette ; pour les vinaigres, valeur en grammes (250g ≈ 250mL, affiché en mL dans l'UI)
   description TEXT,
   actif BOOLEAN DEFAULT true,
   deleted_at TIMESTAMPTZ DEFAULT NULL,       -- Soft delete
