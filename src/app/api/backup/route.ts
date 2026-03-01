@@ -59,7 +59,8 @@ async function exportAllTables(): Promise<{
 
   for (const table of discovered) {
     try {
-      const { data: rows, error } = await supabase.from(table).select('*')
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const { data: rows, error } = await (supabase as any).from(table).select('*')
       if (error) {
         errors.push(`${table}: ${error.message}`)
       } else {

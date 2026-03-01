@@ -2,6 +2,20 @@
 
 ---
 
+## [2026-03-01 16:15] — fix(types): correction vue v_stock + backup route — build Vercel
+
+**Type :** `fix`
+**Fichiers concernés :** `src/lib/supabase/types.ts`, `src/app/api/backup/route.ts`
+
+### Description
+Correction de deux erreurs TypeScript qui bloquaient le build Vercel.
+
+### Détails techniques
+- **`supabase/types.ts`** : ajout de `Relationships: []` sur la vue `v_stock`. Sans ce champ, le type ne satisfaisait pas `GenericNonUpdatableView` du SDK (`{ Row, Relationships }` requis). En conséquence, `Database['public']` ne satisfaisait plus `GenericSchema`, et le SDK Supabase tombait sur son type par défaut `{ PostgrestVersion: "12"; }` où toutes les tables sont `never`.
+- **`backup/route.ts`** : `.from(table)` avec un `string` générique est maintenant rejeté depuis que `Database` est correctement reconnu (le SDK exige une union des noms de tables). Cast `(supabase as any)` justifié car la route de backup itère dynamiquement sur des tables découvertes via l'API OpenAPI.
+
+---
+
 ## [2026-03-01 10:00] — feat(referentiel): intégration parties_utilisees dans le CRUD Variétés
 
 **Type :** `feature`

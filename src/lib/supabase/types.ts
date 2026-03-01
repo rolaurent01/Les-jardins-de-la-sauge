@@ -1281,6 +1281,7 @@ export type Database = {
           etat_plante: string
           stock_g: number | null
         }
+        Relationships: []
       }
     }
     Functions: Record<string, never>
