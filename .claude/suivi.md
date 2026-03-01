@@ -2,6 +2,23 @@
 
 ---
 
+## [2026-03-01 10:00] — feat(referentiel): intégration parties_utilisees dans le CRUD Variétés
+
+**Type :** `feature`
+**Fichiers concernés :** `src/lib/types.ts`, `src/app/(dashboard)/referentiel/varietes/actions.ts`, `src/components/referentiel/VarieteSlideOver.tsx`, `src/components/referentiel/VarietesClient.tsx`, `src/components/varieties/QuickAddVariety.tsx`
+
+### Description
+Intégration du champ `parties_utilisees` (ajouté en migration 004) dans toute la couche UI du CRUD Variétés : formulaire principal, tableau liste, et composant d'ajout rapide.
+
+### Détails techniques
+- **`types.ts`** : ajout de `PartiePlante` (union type), `PARTIES_PLANTE` (tableau des 6 valeurs), `PARTIE_PLANTE_LABELS` (labels FR), et `parties_utilisees: PartiePlante[]` dans le type `Variety`
+- **`actions.ts`** : `parseVarietyForm` lit les valeurs via `formData.getAll('parties_utilisees')`, filtre les valeurs invalides, retourne `{ error }` si tableau vide ; `createVariety` et `updateVariety` gèrent ce retour d'erreur
+- **`VarieteSlideOver.tsx`** : champ checkboxes-pills multi-select avec état local `selectedParties`, validation front (au moins 1 valeur), reset à l'ouverture selon la variété en édition
+- **`VarietesClient.tsx`** : nouvelle colonne "Parties" avec badges colorés par partie (vert=feuille, rose=fleur, ambre=graine, jaune-brun=racine, orange=fruit, gris=plante_entière) ; import `PARTIE_COLORS` local et `PARTIE_PLANTE_LABELS` depuis types
+- **`QuickAddVariety.tsx`** : champ checkboxes-pills identique, même UX, reset complet à fermeture/succès/annulation
+
+---
+
 ## [2026-03-01 01:30] — fix(migration): correction vue v_stock — DROP avant CREATE
 
 **Type :** `fix`

@@ -2,7 +2,8 @@
 
 import { useState, useEffect, useTransition } from 'react'
 import { useRouter } from 'next/navigation'
-import type { Variety } from '@/lib/types'
+import type { Variety, PartiePlante } from '@/lib/types'
+import { PARTIE_PLANTE_LABELS } from '@/lib/types'
 import { archiveVariety, restoreVariety, createVariety, updateVariety } from '@/app/(dashboard)/referentiel/varietes/actions'
 import VarieteSlideOver from './VarieteSlideOver'
 
@@ -23,6 +24,15 @@ const TYPE_CYCLE_COLORS: Record<string, { bg: string; text: string }> = {
   bisannuelle: { bg: '#E0F2FE', text: '#075985' },
   perenne:     { bg: '#DCFCE7', text: '#166534' },
   vivace:      { bg: '#F3E8FF', text: '#7E22CE' },
+}
+
+const PARTIE_COLORS: Record<PartiePlante, { bg: string; text: string }> = {
+  feuille:        { bg: '#DCFCE7', text: '#166534' },
+  fleur:          { bg: '#FCE7F3', text: '#9D174D' },
+  graine:         { bg: '#FEF3C7', text: '#92400E' },
+  racine:         { bg: '#FEF9C3', text: '#713F12' },
+  fruit:          { bg: '#FFEDD5', text: '#9A3412' },
+  plante_entiere: { bg: '#F3F4F6', text: '#374151' },
 }
 
 export default function VarietesClient({ initialVarieties }: { initialVarieties: Variety[] }) {
@@ -200,6 +210,7 @@ export default function VarietesClient({ initialVarieties }: { initialVarieties:
                 <Th>Nom latin</Th>
                 <Th>Famille</Th>
                 <Th>Cycle</Th>
+                <Th>Parties</Th>
                 <Th align="right">Péremption</Th>
                 <Th align="right">Seuil alerte</Th>
                 <Th align="right">Actions</Th>
@@ -254,6 +265,28 @@ export default function VarietesClient({ initialVarieties }: { initialVarieties:
                         >
                           {TYPE_CYCLE_LABELS[v.type_cycle]}
                         </span>
+                      ) : (
+                        <Dash />
+                      )}
+                    </td>
+
+                    {/* Parties utilisées */}
+                    <td className="px-4 py-3">
+                      {v.parties_utilisees && v.parties_utilisees.length > 0 ? (
+                        <div className="flex flex-wrap gap-1">
+                          {v.parties_utilisees.map(partie => {
+                            const colors = PARTIE_COLORS[partie]
+                            return (
+                              <span
+                                key={partie}
+                                className="inline-block px-1.5 py-0.5 rounded-full text-xs font-medium"
+                                style={{ backgroundColor: colors.bg, color: colors.text }}
+                              >
+                                {PARTIE_PLANTE_LABELS[partie]}
+                              </span>
+                            )
+                          })}
+                        </div>
                       ) : (
                         <Dash />
                       )}

@@ -5,6 +5,28 @@
 
 export type TypeCycle = 'annuelle' | 'bisannuelle' | 'perenne' | 'vivace'
 
+/** Parties récoltables d'une plante — synchronisé avec la migration 004 */
+export type PartiePlante =
+  | 'feuille'
+  | 'fleur'
+  | 'graine'
+  | 'racine'
+  | 'fruit'
+  | 'plante_entiere'
+
+export const PARTIES_PLANTE: PartiePlante[] = [
+  'feuille', 'fleur', 'graine', 'racine', 'fruit', 'plante_entiere',
+]
+
+export const PARTIE_PLANTE_LABELS: Record<PartiePlante, string> = {
+  feuille:        'Feuille',
+  fleur:          'Fleur',
+  graine:         'Graine',
+  racine:         'Racine',
+  fruit:          'Fruit',
+  plante_entiere: 'Plante entière',
+}
+
 export type Variety = {
   id: string
   nom_vernaculaire: string
@@ -12,6 +34,7 @@ export type Variety = {
   famille: string | null
   type_cycle: TypeCycle | null
   duree_peremption_mois: number
+  parties_utilisees: PartiePlante[]
   seuil_alerte_g: number | null
   notes: string | null
   deleted_at: string | null

@@ -1,7 +1,8 @@
 'use client'
 
 import { useState, useTransition, useEffect, useRef } from 'react'
-import type { Variety, ActionResult } from '@/lib/types'
+import type { Variety, ActionResult, PartiePlante } from '@/lib/types'
+import { PARTIES_PLANTE, PARTIE_PLANTE_LABELS } from '@/lib/types'
 
 /* Familles prédéfinies issues du context.md §5 */
 const FAMILLES = [
@@ -30,6 +31,24 @@ export default function VarieteSlideOver({ open, variety, onClose, onSubmit, onS
   const [error, setError] = useState<string | null>(null)
   const firstFieldRef = useRef<HTMLInputElement>(null)
 
+  /* Parties utilisées sélectionnées — initialisé depuis la variété en édition */
+  const [selectedParties, setSelectedParties] = useState<PartiePlante[]>(
+    variety?.parties_utilisees ?? ['plante_entiere']
+  )
+
+  /* Resync si on change de variété (nouveau slide-over via key prop) */
+  useEffect(() => {
+    setSelectedParties(variety?.parties_utilisees ?? ['plante_entiere'])
+  }, [variety])
+
+  function togglePartie(partie: PartiePlante) {
+    setSelectedParties(prev =>
+      prev.includes(partie)
+        ? prev.filter(p => p !== partie)
+        : [...prev, partie]
+    )
+  }
+
   /* Focus le premier champ à l'ouverture */
   useEffect(() => {
     if (open) {
@@ -50,6 +69,12 @@ export default function VarieteSlideOver({ open, variety, onClose, onSubmit, onS
   function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault()
     setError(null)
+
+    if (selectedParties.length === 0) {
+      setError('Sélectionnez au moins une partie utilisée.')
+      return
+    }
+
     const fd = new FormData(e.currentTarget)
     startTransition(async () => {
       const result = await onSubmit(fd)
@@ -179,6 +204,50 @@ export default function VarieteSlideOver({ open, variety, onClose, onSubmit, onS
                   <option key={o.value} value={o.value}>{o.label}</option>
                 ))}
               </select>
+            </Field>
+
+            {/* Parties utilisées */}
+            <Field label="Parties utilisées" required hint="Au moins une">
+              <div className="flex flex-wrap gap-2 mt-0.5">
+                {PARTIES_PLANTE.map(partie => {
+                  const checked = selectedParties.includes(partie)
+                  return (
+                    <label
+                      key={partie}
+                      style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '6px',
+                        padding: '5px 10px',
+                        borderRadius: '20px',
+                        border: `1px solid ${checked ? '#3A5A40' : '#D8E0D9'}`,
+                        backgroundColor: checked ? '#3A5A4014' : '#F9F8F6',
+                        cursor: isPending ? 'not-allowed' : 'pointer',
+                        fontSize: '13px',
+                        color: checked ? '#2C3E2D' : '#6B7B6C',
+                        userSelect: 'none',
+                        transition: 'all 0.15s',
+                      }}
+                    >
+                      <input
+                        type="checkbox"
+                        name="parties_utilisees"
+                        value={partie}
+                        checked={checked}
+                        disabled={isPending}
+                        onChange={() => togglePartie(partie)}
+                        style={{ accentColor: '#3A5A40' }}
+                      />
+                      {PARTIE_PLANTE_LABELS[partie]}
+                    </label>
+                  )
+                })}
+              </div>
+              {selectedParties.length === 0 && (
+                <p className="mt-1.5 text-xs" style={{ color: '#BC6C25' }}>
+                  Sélectionnez au moins une partie.
+                </p>
+              )}
             </Field>
 
             {/* Durée péremption + Seuil alerte — en ligne */}

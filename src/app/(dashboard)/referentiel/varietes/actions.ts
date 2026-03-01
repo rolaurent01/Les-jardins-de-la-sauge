@@ -2,18 +2,33 @@
 
 import { createClient } from '@/lib/supabase/server'
 import { revalidatePath } from 'next/cache'
-import type { ActionResult, Variety, TypeCycle } from '@/lib/types'
+import type { ActionResult, Variety, TypeCycle, PartiePlante } from '@/lib/types'
+import { PARTIES_PLANTE } from '@/lib/types'
 
 const VALID_TYPE_CYCLES: TypeCycle[] = ['annuelle', 'bisannuelle', 'perenne', 'vivace']
 
-function parseVarietyForm(formData: FormData) {
+function parseVarietyForm(formData: FormData): ReturnType<typeof _buildFields> | { error: string } {
   const rawCycle = (formData.get('type_cycle') as string) || ''
+  const rawParties = formData.getAll('parties_utilisees') as string[]
+  const parties = rawParties.filter((p): p is PartiePlante =>
+    PARTIES_PLANTE.includes(p as PartiePlante)
+  )
+
+  if (parties.length === 0) {
+    return { error: 'Sélectionnez au moins une partie utilisée.' }
+  }
+
+  return _buildFields(formData, rawCycle, parties)
+}
+
+function _buildFields(formData: FormData, rawCycle: string, parties: PartiePlante[]) {
   return {
     nom_vernaculaire: (formData.get('nom_vernaculaire') as string).trim(),
     nom_latin:        (formData.get('nom_latin') as string)?.trim()  || null,
     famille:          (formData.get('famille') as string)?.trim()    || null,
     type_cycle: (VALID_TYPE_CYCLES.includes(rawCycle as TypeCycle) ? rawCycle as TypeCycle : null),
     duree_peremption_mois: parseInt(formData.get('duree_peremption_mois') as string) || 24,
+    parties_utilisees: parties,
     seuil_alerte_g:   formData.get('seuil_alerte_g')
                         ? parseFloat(formData.get('seuil_alerte_g') as string)
                         : null,
@@ -29,16 +44,17 @@ function mapSupabaseError(code: string | undefined, fallback: string): string {
 export async function createVariety(
   formData: FormData
 ): Promise<ActionResult<Variety>> {
-  const supabase = await createClient()
-  const fields = parseVarietyForm(formData)
+  const parsed = parseVarietyForm(formData)
+  if ('error' in parsed) return parsed
 
-  if (!fields.nom_vernaculaire) {
+  if (!parsed.nom_vernaculaire) {
     return { error: 'Le nom vernaculaire est obligatoire.' }
   }
 
+  const supabase = await createClient()
   const { data, error } = await supabase
     .from('varieties')
-    .insert(fields)
+    .insert(parsed)
     .select()
     .single()
 
@@ -52,16 +68,17 @@ export async function updateVariety(
   id: string,
   formData: FormData
 ): Promise<ActionResult> {
-  const supabase = await createClient()
-  const fields = parseVarietyForm(formData)
+  const parsed = parseVarietyForm(formData)
+  if ('error' in parsed) return parsed
 
-  if (!fields.nom_vernaculaire) {
+  if (!parsed.nom_vernaculaire) {
     return { error: 'Le nom vernaculaire est obligatoire.' }
   }
 
+  const supabase = await createClient()
   const { error } = await supabase
     .from('varieties')
-    .update(fields)
+    .update(parsed)
     .eq('id', id)
 
   if (error) return { error: mapSupabaseError(error.code, `Erreur : ${error.message}`) }

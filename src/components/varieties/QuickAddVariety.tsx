@@ -18,7 +18,8 @@
  */
 
 import { useState, useTransition, useRef, useEffect } from 'react'
-import type { Variety } from '@/lib/types'
+import type { Variety, PartiePlante } from '@/lib/types'
+import { PARTIES_PLANTE, PARTIE_PLANTE_LABELS } from '@/lib/types'
 import { createVariety } from '@/app/(dashboard)/referentiel/varietes/actions'
 
 function normalize(str: string): string {
@@ -41,7 +42,16 @@ export default function QuickAddVariety({ existingVarieties, onCreated }: Props)
   const [isPending, startTransition] = useTransition()
   const [error, setError] = useState<string | null>(null)
   const [duplicate, setDuplicate] = useState<Variety | null>(null)
+  const [selectedParties, setSelectedParties] = useState<PartiePlante[]>(['plante_entiere'])
   const inputRef = useRef<HTMLInputElement>(null)
+
+  function togglePartie(partie: PartiePlante) {
+    setSelectedParties(prev =>
+      prev.includes(partie)
+        ? prev.filter(p => p !== partie)
+        : [...prev, partie]
+    )
+  }
 
   useEffect(() => {
     if (open) setTimeout(() => inputRef.current?.focus(), 60)
@@ -72,6 +82,11 @@ export default function QuickAddVariety({ existingVarieties, onCreated }: Props)
       return
     }
 
+    if (selectedParties.length === 0) {
+      setError('Sélectionnez au moins une partie utilisée.')
+      return
+    }
+
     // Vérification client-side (rapide, avant le round-trip serveur)
     const existing = existingVarieties.find(
       v => !v.deleted_at && normalize(v.nom_vernaculaire) === normalize(nom)
@@ -96,6 +111,7 @@ export default function QuickAddVariety({ existingVarieties, onCreated }: Props)
         onCreated(result.data)
         setOpen(false)
         setError(null)
+        setSelectedParties(['plante_entiere'])
       }
     })
   }
@@ -113,7 +129,7 @@ export default function QuickAddVariety({ existingVarieties, onCreated }: Props)
       {/* Bouton déclencheur */}
       <button
         type="button"
-        onClick={() => { setOpen(o => !o); setError(null); setDuplicate(null) }}
+        onClick={() => { setOpen(o => !o); setError(null); setDuplicate(null); setSelectedParties(['plante_entiere']) }}
         className="flex items-center gap-1 text-sm transition-colors"
         style={{ color: '#588157' }}
         onMouseEnter={e => ((e.currentTarget as HTMLElement).style.color = '#3A5A40')}
@@ -129,7 +145,7 @@ export default function QuickAddVariety({ existingVarieties, onCreated }: Props)
           {/* Overlay transparent pour fermer en cliquant ailleurs */}
           <div
             style={{ position: 'fixed', inset: 0, zIndex: 40 }}
-            onClick={() => { setOpen(false); setError(null); setDuplicate(null) }}
+            onClick={() => { setOpen(false); setError(null); setDuplicate(null); setSelectedParties(['plante_entiere']) }}
           />
 
           <div
@@ -227,6 +243,47 @@ export default function QuickAddVariety({ existingVarieties, onCreated }: Props)
                 </datalist>
               </div>
 
+              {/* Parties utilisées */}
+              <div>
+                <label className="block text-xs font-medium mb-1.5" style={{ color: '#2C3E2D' }}>
+                  Parties utilisées <span style={{ color: '#BC6C25' }}>*</span>
+                </label>
+                <div className="flex flex-wrap gap-1.5">
+                  {PARTIES_PLANTE.map(partie => {
+                    const checked = selectedParties.includes(partie)
+                    return (
+                      <label
+                        key={partie}
+                        style={{
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: '5px',
+                          padding: '3px 8px',
+                          borderRadius: '20px',
+                          border: `1px solid ${checked ? '#3A5A40' : '#D8E0D9'}`,
+                          backgroundColor: checked ? '#3A5A4014' : '#F9F8F6',
+                          cursor: isPending ? 'not-allowed' : 'pointer',
+                          fontSize: '12px',
+                          color: checked ? '#2C3E2D' : '#6B7B6C',
+                          userSelect: 'none',
+                        }}
+                      >
+                        <input
+                          type="checkbox"
+                          name="parties_utilisees"
+                          value={partie}
+                          checked={checked}
+                          disabled={isPending}
+                          onChange={() => togglePartie(partie)}
+                          style={{ accentColor: '#3A5A40' }}
+                        />
+                        {PARTIE_PLANTE_LABELS[partie]}
+                      </label>
+                    )
+                  })}
+                </div>
+              </div>
+
               {/* Erreur */}
               {error && (
                 <p className="text-xs" style={{ color: '#BC6C25' }}>{error}</p>
@@ -236,7 +293,7 @@ export default function QuickAddVariety({ existingVarieties, onCreated }: Props)
               <div className="flex items-center justify-end gap-2 pt-1">
                 <button
                   type="button"
-                  onClick={() => { setOpen(false); setError(null); setDuplicate(null) }}
+                  onClick={() => { setOpen(false); setError(null); setDuplicate(null); setSelectedParties(['plante_entiere']) }}
                   disabled={isPending}
                   className="px-3 py-1.5 text-xs rounded-lg border"
                   style={{ borderColor: '#D8E0D9', color: '#6B7B6C' }}
