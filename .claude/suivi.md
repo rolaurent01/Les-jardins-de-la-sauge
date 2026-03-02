@@ -2,6 +2,44 @@
 
 ---
 
+## [2026-03-02] — feat(semis): A1.4 — Server Actions suivi des semis (seedlings)
+
+**Type :** `feature`
+**Fichiers concernés :** `src/app/(dashboard)/semis/suivi/actions.ts` (création)
+
+### Description
+Création des Server Actions pour le module suivi des semis (`seedlings`). Même pattern exact que `sachets/actions.ts`.
+
+### Détails techniques
+
+**`parseSeedlingForm(formData)`** :
+- Extrait tous les champs du formulaire et les convertit aux bons types (int, float, date, string)
+- Valide avec `seedlingSchema` (Zod)
+- Champs de l'autre processus mis à null explicitement (sauf `nb_mortes_*` = 0 car NOT NULL DEFAULT en base)
+- Retourne `{ data }` ou `{ error }` (premier message Zod)
+
+**`normalizeMortesFields(data)`** :
+- Helper interne : convertit `nb_mortes_mottes/caissette/godet` de `null → 0`
+- Nécessaire car les types Supabase générés marquent ces colonnes NOT NULL (DEFAULT 0) sans accepter null
+
+**`fetchSeedlings()`** : jointures `varieties` + `seed_lots`, filtre `deleted_at IS NULL`, tri `date_semis DESC, created_at DESC`
+
+**`fetchSeedLotsForSelect()`** : sachets actifs avec variété, tri `lot_interne DESC`, pour le dropdown formulaire
+
+**`createSeedling(formData)`** : insert + `revalidatePath('/semis/suivi')`, retourne `ActionResult<Seedling>`
+
+**`updateSeedling(id, formData)`** : update (changement de processus autorisé), retourne `ActionResult<Seedling>`
+
+**`archiveSeedling(id)`** / **`restoreSeedling(id)`** : soft delete / restore
+
+### Décision notable
+Les colonnes `nb_mortes_mottes`, `nb_mortes_caissette`, `nb_mortes_godet` sont générées NOT NULL par Supabase (DEFAULT 0). Pour l'autre processus, on envoie `0` (pas null) pour rester compatible avec les types générés.
+
+### Vérification
+- `npm run build` ✅ sans erreur
+
+---
+
 ## [2026-03-02 23:45] — feat(semis): A1.3 — Page Sachets de graines (UI bureau)
 
 **Type :** `feature`
