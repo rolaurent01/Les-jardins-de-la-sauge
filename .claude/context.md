@@ -796,7 +796,7 @@ Voir section 5.9 pour la page Vue Stock complète.
 ```sql
 CREATE TABLE product_categories (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  nom TEXT NOT NULL UNIQUE,                  -- "Tisane", "Mélange aromate", "Sel", "Sucre", "Vinaigre"
+  nom TEXT NOT NULL UNIQUE,                  -- "Tisane", "Mélange aromate", "Sel", "Sucre", "Vinaigre", "Sirop"
   created_at TIMESTAMPTZ DEFAULT now()
 );
 ```
@@ -1142,6 +1142,7 @@ Pour garantir l'intégrité des données, chaque formulaire doit avoir des valid
 | Lot aromate | [CODE]AAAAMMJJ | AV20250731 |
 | Lot sel | [CODE]AAAAMMJJ | SAH20250922 |
 | Lot sucre | [CODE]AAAAMMJJ | SU20250425 |
+| Lot sirop | SI[CODE]AAAAMMJJ | SIAV20250604 |
 
 Les codes recettes : BD (Balade Digestive), NE (Nuit Étoilée), LS (Lever de Soleil), FC (Feu de Camp), MF (Montagne au Féminin), EQ (Équilibre), CR (Chant des Rivières), PA (Plein Air), HI (Hivernal), NO (Noël), DM (Douceur Maternelle)
 
@@ -1474,6 +1475,7 @@ app-ljs/
 | Organisation | 5 ensembles métier : Semis, Suivi parcelle, Transformation, Création produit, Affinage stock |
 | Découpage projet | Phase A (socle données + saisie + mobile) → Phase B (vues + analyse, second temps) |
 | Vues Phase B | Indépendantes entre elles, ordre flexible selon priorités |
+| Catégorie Sirop | Ajoutée aux catégories produits. Contient plantes fraîches ou séchées + Eau (mL) + Sucre blond de canne bio (g). Conditionnement en bouteille (770mL ou 520mL). Poids en grammes en base, UI affiche mL pour les matériaux liquides. |
 | Plants achetés | Plantation avec fournisseur (seedling_id NULL + fournisseur rempli). Pas besoin de semis. |
 | Charte graphique | Palette officielle LJS : Vert Sauge #3A5A40/#588157, Fond Crème #F9F8F6/#FAF5E9, Texte #2C3E2D/#333, Accent Ocre #DDA15E/#BC6C25 |
 | Extension Miel (Phase C) | Module autonome dans le même projet, tables 100% séparées des tables PAM. Seuls l'environnement technique (Next.js, Supabase, auth, PWA) et l'interface (sidebar, charte) sont partagés. |

@@ -2,6 +2,24 @@
 
 ---
 
+## [2026-03-01 18:00] — feat(referentiel): ajout catégorie Sirop + matériaux externes associés
+
+**Type :** `feature`
+**Fichiers concernés :** `supabase/migrations/005_add_sirop_category.sql`, `.claude/context.md`, `.claude/plan-action.md`
+
+### Description
+Ajout de la catégorie produit Sirop au projet : migration SQL, documentation des specs et plan d'action.
+
+### Détails techniques
+- **`005_add_sirop_category.sql`** : INSERT `('Sirop')` dans `product_categories` + INSERT `('Sucre blond de canne bio', 'g')` et `('Eau', 'mL')` dans `external_materials`, tous avec `ON CONFLICT DO NOTHING`
+- **`context.md` §5.6** : commentaire SQL `product_categories.nom` mis à jour — ajout "Sirop" à la liste
+- **`context.md` §8.2** : nouvelle ligne dans le tableau de numérotation des lots — format `SI[CODE]AAAAMMJJ` (ex : SIAV20250604)
+- **`context.md` §13** : nouvelle ligne dans le tableau des décisions — description complète de la catégorie Sirop (plantes fraîches/séchées + Eau + Sucre blond de canne bio, conditionnement bouteille 770mL/520mL, poids en grammes en base, UI affiche mL pour les liquides)
+- **`plan-action.md` A4** : Sirop ajouté à la liste des catégories produits
+- Le sucre blond de canne bio n'était **pas encore seedé** dans external_materials (aucune migration antérieure ne l'insérait) → créé par la migration 005
+
+---
+
 ## [2026-03-01 16:15] — fix(types): correction vue v_stock + backup route — build Vercel
 
 **Type :** `fix`

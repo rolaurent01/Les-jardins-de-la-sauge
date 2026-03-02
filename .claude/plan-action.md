@@ -160,7 +160,7 @@ A7. Polish Phase A
 - Bibliothèque de recettes (`recipes` + `recipe_ingredients`) : CRUD avec composition en % + **état ET partie de stock par ingrédient plante**
   - Ex: Tisane → Menthe feuille `tronconnee_sechee_triee`, Calendula fleur `tronconnee_sechee_triee`
   - Ex: Sel Ail des ours → Ail des ours feuille `frais`, Sel = matériau externe (partie_plante = NULL)
-- Catégories produits : Tisane, Aromate, Sel, Sucre, Vinaigre
+- Catégories produits : Tisane, Aromate, Sel, Sucre, Vinaigre, Sirop
 - Workflow de production de lot — **wizard 4 étapes** :
   1. Choix recette + nombre de sachets/pots + date
   2. Ajuster composition (modifier %, changer une plante, **changer l'état d'un ingrédient**)
