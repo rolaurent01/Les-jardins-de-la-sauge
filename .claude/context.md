@@ -373,7 +373,7 @@ CREATE TABLE seed_lots (
   variety_id UUID REFERENCES varieties(id),
   fournisseur TEXT,                         -- "Agrosemens", "Sativa", etc.
   numero_lot_fournisseur TEXT,             -- Lot du fournisseur
-  date_achat DATE,
+  date_achat DATE NOT NULL,
   date_facture DATE,
   numero_facture TEXT,
   poids_sachet_g DECIMAL,
@@ -421,7 +421,7 @@ CREATE TABLE seedlings (
   nb_donnees INTEGER DEFAULT 0,            -- Plants donnés (pas morts mais pas plantés)
   nb_plants_obtenus INTEGER,               -- Plants effectivement plantés (résultat final)
   -- Dates
-  date_semis DATE,
+  date_semis DATE NOT NULL,
   poids_graines_utilise_g DECIMAL,
   date_levee DATE,
   date_repiquage DATE,                     -- Date du repiquage caissette → godet (process 2 uniquement)
@@ -481,7 +481,8 @@ CREATE TABLE plantings (
   fournisseur TEXT,                          -- Nom du fournisseur si plant acheté (ex: "Les Tilleuls", "Serres du Lycée")
   -- Logique : seedling_id rempli = issu de mes semis, fournisseur rempli = plant acheté
   annee INTEGER NOT NULL,                       -- Année de culture
-  date_plantation DATE,
+  date_plantation DATE NOT NULL,
+  lune TEXT CHECK (lune IN ('montante', 'descendante')),  -- Phase lunaire au moment de la plantation (optionnel, pour analyse des rendements)
   nb_plants INTEGER,
   type_plant TEXT CHECK (type_plant IN ('godet', 'caissette', 'mini_motte', 'plant_achete', 'division', 'bouture', 'marcottage', 'stolon', 'rhizome', 'semis_direct')),
   espacement_cm INTEGER,

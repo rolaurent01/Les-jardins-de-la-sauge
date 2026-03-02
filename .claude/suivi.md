@@ -2,6 +2,24 @@
 
 ---
 
+## [2026-03-02 14:00] — fix(schema): dates obligatoires pour la traçabilité + lune à la plantation
+
+**Type :** `fix`
+**Fichiers concernés :** `supabase/migrations/008_not_null_dates_lune.sql`, `.claude/context.md`, `src/lib/supabase/types.ts`
+
+### Description
+Renforcement de la traçabilité en rendant NOT NULL les trois dates critiques du cycle cultural, et ajout de la phase lunaire à la plantation pour analyses futures.
+
+### Détails techniques
+- `seed_lots.date_achat` : NOT NULL — date d'achat indispensable pour la traçabilité semences
+- `seedlings.date_semis` : NOT NULL — date de semis obligatoire pour calculer les durées de levée
+- `plantings.date_plantation` : NOT NULL — date de plantation obligatoire pour les calculs de rendement
+- `plantings.lune` : ajout colonne nullable `TEXT CHECK ('montante' | 'descendante')` — optionnel, pour corrélation future avec les rendements
+- context.md mis à jour (3 colonnes NOT NULL + colonne lune avec commentaire)
+- types.ts mis à jour : Row/Insert sans `| null` pour les 3 dates; Insert sans `?` optionnel; lune ajouté dans Row/Insert/Update de `plantings`
+
+---
+
 ## [2026-03-02 11:30] — feat(occultations): ajout module occultation de rangs
 
 **Type :** `feature`

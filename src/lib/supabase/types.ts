@@ -239,7 +239,7 @@ export type Database = {
           variety_id: string | null
           fournisseur: string | null
           numero_lot_fournisseur: string | null
-          date_achat: string | null
+          date_achat: string
           date_facture: string | null
           numero_facture: string | null
           poids_sachet_g: number | null
@@ -255,7 +255,7 @@ export type Database = {
           variety_id?: string | null
           fournisseur?: string | null
           numero_lot_fournisseur?: string | null
-          date_achat?: string | null
+          date_achat: string
           date_facture?: string | null
           numero_facture?: string | null
           poids_sachet_g?: number | null
@@ -271,7 +271,7 @@ export type Database = {
           variety_id?: string | null
           fournisseur?: string | null
           numero_lot_fournisseur?: string | null
-          date_achat?: string | null
+          date_achat?: string
           date_facture?: string | null
           numero_facture?: string | null
           poids_sachet_g?: number | null
@@ -308,7 +308,7 @@ export type Database = {
           nb_mortes_godet: number
           nb_donnees: number
           nb_plants_obtenus: number | null
-          date_semis: string | null
+          date_semis: string
           poids_graines_utilise_g: number | null
           date_levee: string | null
           date_repiquage: string | null
@@ -334,7 +334,7 @@ export type Database = {
           nb_mortes_godet?: number
           nb_donnees?: number
           nb_plants_obtenus?: number | null
-          date_semis?: string | null
+          date_semis: string
           poids_graines_utilise_g?: number | null
           date_levee?: string | null
           date_repiquage?: string | null
@@ -360,7 +360,7 @@ export type Database = {
           nb_mortes_godet?: number
           nb_donnees?: number
           nb_plants_obtenus?: number | null
-          date_semis?: string | null
+          date_semis?: string
           poids_graines_utilise_g?: number | null
           date_levee?: string | null
           date_repiquage?: string | null
@@ -423,7 +423,8 @@ export type Database = {
           seedling_id: string | null
           fournisseur: string | null
           annee: number
-          date_plantation: string | null
+          date_plantation: string
+          lune: 'montante' | 'descendante' | null
           nb_plants: number | null
           type_plant:
             | 'mini_motte' | 'godet' | 'caissette'
@@ -449,7 +450,8 @@ export type Database = {
           seedling_id?: string | null
           fournisseur?: string | null
           annee: number
-          date_plantation?: string | null
+          date_plantation: string
+          lune?: 'montante' | 'descendante' | null
           nb_plants?: number | null
           type_plant?:
             | 'mini_motte' | 'godet' | 'caissette'
@@ -475,7 +477,8 @@ export type Database = {
           seedling_id?: string | null
           fournisseur?: string | null
           annee?: number
-          date_plantation?: string | null
+          date_plantation?: string
+          lune?: 'montante' | 'descendante' | null
           nb_plants?: number | null
           type_plant?:
             | 'mini_motte' | 'godet' | 'caissette'
