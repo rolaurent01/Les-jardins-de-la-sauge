@@ -179,6 +179,7 @@ export type Database = {
           numero: string
           ancien_numero: string | null
           longueur_m: number | null
+          largeur_m: number | null
           position_ordre: number | null
           notes: string | null
           deleted_at: string | null
@@ -190,6 +191,7 @@ export type Database = {
           numero: string
           ancien_numero?: string | null
           longueur_m?: number | null
+          largeur_m?: number | null
           position_ordre?: number | null
           notes?: string | null
           deleted_at?: string | null
@@ -201,6 +203,7 @@ export type Database = {
           numero?: string
           ancien_numero?: string | null
           longueur_m?: number | null
+          largeur_m?: number | null
           position_ordre?: number | null
           notes?: string | null
           deleted_at?: string | null
@@ -420,6 +423,8 @@ export type Database = {
             | 'achat_godets' | 'repiquage_pleine_terre'
             | null
           espacement_cm: number | null
+          longueur_m: number | null
+          largeur_m: number | null
           certif_ab: boolean
           date_commande: string | null
           numero_facture: string | null
@@ -444,6 +449,8 @@ export type Database = {
             | 'achat_godets' | 'repiquage_pleine_terre'
             | null
           espacement_cm?: number | null
+          longueur_m?: number | null
+          largeur_m?: number | null
           certif_ab?: boolean
           date_commande?: string | null
           numero_facture?: string | null
@@ -468,6 +475,8 @@ export type Database = {
             | 'achat_godets' | 'repiquage_pleine_terre'
             | null
           espacement_cm?: number | null
+          longueur_m?: number | null
+          largeur_m?: number | null
           certif_ab?: boolean
           date_commande?: string | null
           numero_facture?: string | null

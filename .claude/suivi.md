@@ -2,6 +2,42 @@
 
 ---
 
+## [2026-03-02 10:00] — Ajout dimensions rangs et surfaces de plantation
+
+**Type :** `feature`
+**Fichiers concernés :** `supabase/migrations/006_add_dimensions_rows_plantings.sql`, `.claude/context.md`, `.claude/plan-action.md`, `src/lib/supabase/types.ts`
+
+### Description
+Ajout des colonnes de dimension sur `rows` (largeur_m) et `plantings` (longueur_m, largeur_m) pour permettre le calcul de surface et de rendement par variété et par saison.
+
+### Détails techniques
+- **Migration 006** : `ALTER TABLE rows ADD COLUMN largeur_m DECIMAL` + `ALTER TABLE plantings ADD COLUMN longueur_m DECIMAL, ADD COLUMN largeur_m DECIMAL`
+- **context.md §5.1** : ajout `largeur_m` dans le CREATE TABLE `rows` avec commentaire
+- **context.md §5.3** : ajout `longueur_m` + `largeur_m` dans `plantings` + 4 notes (pré-remplissage, avertissement dépassement, calcul surface, calcul rendement)
+- **context.md §8.1** : nouvelle ligne "Plantation → Dimensions" dans le tableau des validations
+- **context.md §13** : décision "Dimensions rangs" ajoutée
+- **plan-action.md A0** : CRUD Rangs inclut explicitement `largeur_m`
+- **plan-action.md A2** : plantation avec pré-remplissage dimensions, avertissements (dépassement + rang déjà actif), rendement calculable
+- **types.ts** : `rows.Row/Insert/Update` + `largeur_m: number | null` ; `plantings.Row/Insert/Update` + `longueur_m: number | null` + `largeur_m: number | null`
+- Surface m² et rendement kg/m² sont **calculés à la volée** (jamais stockés)
+
+---
+
+## [2026-03-02 00:00] — Avertissement rang déjà occupé lors d'une plantation
+
+**Type :** `docs`
+**Fichiers concernés :** `.claude/context.md`, `.claude/plan-action.md`
+
+### Description
+Ajout de la spécification d'avertissement pour le cas où un rang a déjà un planting actif au moment d'une nouvelle plantation. Pas de blocage — l'utilisateur confirme ou annule (2 variétés sur un même rang est un cas légitime).
+
+### Détails techniques
+- `context.md §5.3` : note ajoutée après le CREATE TABLE `plantings` décrivant le comportement attendu (message d'avertissement avec variété + date, bouton confirmer / annuler)
+- `context.md §8.1` : nouvelle ligne dans le tableau des capteurs et validations — "Plantation → Rang | Avertissement si le rang a déjà un planting actif. Pas de blocage."
+- `plan-action.md A2` : livrable Module Plantation complété avec la mention de cet avertissement
+
+---
+
 ## [2026-03-01 18:00] — feat(referentiel): ajout catégorie Sirop + matériaux externes associés
 
 **Type :** `feature`

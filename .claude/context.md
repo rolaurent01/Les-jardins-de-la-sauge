@@ -349,7 +349,8 @@ CREATE TABLE rows (
   parcel_id UUID REFERENCES parcels(id),
   numero TEXT NOT NULL,                    -- "1", "2", "3"... harmonisé
   ancien_numero TEXT,                      -- Pour garder la trace de l'ancien "1a", "1b"
-  longueur_m DECIMAL,                      -- Longueur du rang en mètres si connue
+  longueur_m DECIMAL,                      -- Longueur du rang en mètres (dimension de référence)
+  largeur_m DECIMAL,                       -- Largeur du rang en mètres
   position_ordre INTEGER,                  -- Ordre d'affichage (1, 2, 3...)
   notes TEXT,
   created_at TIMESTAMPTZ DEFAULT now(),
@@ -489,11 +490,24 @@ CREATE TABLE plantings (
   numero_facture TEXT,
   temps_min INTEGER,
   commentaire TEXT,
+  longueur_m DECIMAL,                        -- Longueur réelle de cette plantation en mètres — copiée depuis le rang à la création, modifiable
+  largeur_m DECIMAL,                         -- Largeur réelle de cette plantation en mètres — copiée depuis le rang à la création, modifiable
+  -- Dimensions réelles de cette plantation, copiées depuis le rang par défaut, modifiables (comme la recette copiée dans le lot)
   actif BOOLEAN DEFAULT true,               -- false si rang détruit/arraché
   deleted_at TIMESTAMPTZ DEFAULT NULL,       -- Soft delete
   created_at TIMESTAMPTZ DEFAULT now()
 );
 ```
+
+> **Pré-remplissage des dimensions** : à la création d'une plantation, `longueur_m` et `largeur_m` sont copiées depuis le rang sélectionné. L'utilisateur peut les modifier (ex : ne planter que sur 6m d'un rang de 10m, ou partager un rang entre 2 variétés).
+
+> **Avertissement dépassement** : si la somme des `longueur_m` des plantings actifs sur un rang dépasse la `longueur_m` du rang, afficher un avertissement informatif : « ⚠️ Ce rang fait 10m, les plantations actives occupent déjà 6m. Il reste 4m disponibles. » Pas de blocage.
+
+> **Calcul de surface** : `surface_m2 = longueur_m × largeur_m` — calculé, pas stocké.
+
+> **Calcul de rendement par saison** : `rendement_kg_m2 = total_cueilli_g(variety, annee) / surface_m2 / 1000` — calculé depuis `harvests` et `plantings` pour la même variété et année.
+
+> **Avertissement rang déjà planté** : à la création d'une plantation, si le rang sélectionné a déjà un ou plusieurs `plantings` actifs (`actif = true`), afficher un avertissement : « ⚠️ Ce rang a déjà une plantation active : [variété, date]. Continuer quand même ? » L'utilisateur peut confirmer (cas légitime : 2 variétés sur un même rang) ou annuler (erreur de saisie). Pas de blocage, juste un warning.
 
 #### `row_care` — Suivi de rang (étape 4)
 
@@ -1128,6 +1142,8 @@ Pour garantir l'intégrité des données, chaque formulaire doit avoir des valid
 | Parcelle → Rang | Le rang doit appartenir à la parcelle sélectionnée |
 | Cueillette / Suivi de rang | **Logique adaptative** : rang → requête plantings actifs → 1 variété = auto-remplie, plusieurs = dropdown |
 | Production → Stock | Vérifier que le stock est suffisant **dans l'état spécifié** pour chaque ingrédient AVANT de valider |
+| Plantation → Dimensions | Pré-remplies depuis le rang (`longueur_m` et `largeur_m`), modifiables. Avertissement si la somme des `longueur_m` des plantings actifs dépasse la longueur du rang. |
+| Plantation → Rang | Avertissement si le rang a déjà un planting actif. Pas de blocage. |
 | Vente directe → Stock | Vérifier que le stock est suffisant AVANT de valider |
 | Achat stock | Fournisseur obligatoire, état plante obligatoire |
 | Numéro de lot | Unique, format imposé, auto-généré |
@@ -1466,6 +1482,7 @@ app-ljs/
 | Vue Stock | Page dédiée : tableau temps réel × 6 états + alertes stock bas + graphique + export |
 | Vue Production totale | Page dédiée : table `production_summary` + tableau cumuls + prévisionnel + barres avancement + temps travail + graphiques + export |
 | Cumuls de production | Table matérialisée `production_summary` mise à jour par triggers + **fonction de recalcul complet admin** |
+| Dimensions rangs | `longueur_m` + `largeur_m` sur `rows` (référentiel) et `plantings` (opérationnel, modifiable). Surface et rendement calculés, pas stockés. Avertissement si somme des longueurs plantings actifs > longueur du rang. |
 | Sachet → Semis | 1 sachet peut donner N semis (on sème en plusieurs fois) |
 | Semis → Plantation | 1 semis peut être réparti sur N rangs |
 | Variétés par rang | Plusieurs variétés possibles (rare mais supporté) |

@@ -75,7 +75,7 @@ A7. Polish Phase A
 **Référentiel (1-2 jours)** :
 - CRUD Variétés avec recherche (nom vernaculaire, latin, famille, seuil alerte stock) + composant « Ajout rapide » réutilisable dans tous les formulaires contenant un sélecteur de variété
   - **`parties_utilisees`** : multi-select obligatoire (au moins 1 valeur), modifiable. Exemples : Menthe = [feuille], Calendula = [fleur, feuille], Fenouil = [feuille, graine], défaut = [plante_entiere]
-- CRUD Sites → Parcelles → Rangs (architecture hiérarchique)
+- CRUD Sites → Parcelles → Rangs (architecture hiérarchique) — CRUD Rangs inclut `longueur_m` **et** `largeur_m` (dimensions du rang dans le référentiel)
 - CRUD Matériaux externes (sel, sucre)
 - Le référentiel sera saisi manuellement via l'interface (~70 variétés, quelques parcelles). Pas de migration Excel.
 
@@ -107,7 +107,11 @@ A7. Polish Phase A
 **Durée** : 5-7 jours
 **Livrables** :
 - Module Travail de sol (`soil_works`) : par rang, type, temps
-- Module Plantation (`plantings`) : lien vers semis d'origine **OU** fournisseur pour plants achetés, 1 semis → N rangs, 1 rang → N variétés possibles
+- Module Plantation (`plantings`) : lien vers semis d'origine **OU** fournisseur pour plants achetés, 1 semis → N rangs, 1 rang → N variétés possibles.
+  - Dimensions pré-remplies depuis le rang (`longueur_m` et `largeur_m`), modifiables (ex : ne planter que sur 6m d'un rang de 10m, ou partager un rang entre 2 variétés)
+  - Avertissement si la somme des `longueur_m` des plantings actifs dépasse la longueur du rang (informatif, pas de blocage)
+  - Avertissement si plantation sur un rang déjà actif (pas de blocage, confirmation utilisateur)
+  - Rendement calculable par variété × année : `rendement_kg_m2 = total_cueilli_g / surface_m2 / 1000`
 - Module Suivi de rang (`row_care`) : désherbage, paillage, arrosage, avec **logique adaptative variété**
 - Module Cueillette (`harvests`) : parcelle (avec logique adaptative) ou sauvage (texte libre avec autocomplétion)
   - **`partie_plante` obligatoire** : logique adaptative basée sur `varieties.parties_utilisees`. Si 1 seule valeur → auto-rempli. Si plusieurs → dropdown obligatoire. La partie est choisie ici et héritée dans toute la chaîne.
