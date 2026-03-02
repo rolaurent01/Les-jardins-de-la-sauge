@@ -2,6 +2,24 @@
 
 ---
 
+## [2026-03-02 15:00] — docs(schema): ajout mode mélange sur production_lots
+
+**Type :** `docs`
+**Fichiers concernés :** `.claude/context.md`, `.claude/plan-action.md`
+
+### Description
+Ajout d'un deuxième mode de production "mélange" en complément du mode "produit" existant. Pas de migration SQL (tables pas encore créées). Modifications docs uniquement pour que le schéma soit correct au moment de coder A4.
+
+### Détails techniques
+- `production_lots.mode TEXT CHECK ('produit'|'melange') NOT NULL DEFAULT 'produit'` — choix du mode au lancement du wizard
+- `nb_unites INTEGER` — suppression NOT NULL (NULL en mode mélange, renseigné au conditionnement)
+- `poids_total_g DECIMAL` — suppression NOT NULL (calculé différemment selon le mode)
+- context.md §5.6 : processus de création réécrit avec les deux flux + action "Conditionnement"
+- context.md §13 : décision "Mode production" ajoutée
+- plan-action.md A4 : wizard décrit en 2 modes + badge et bouton "Conditionner" pour lots mélange sans nb_unites
+
+---
+
 ## [2026-03-02 14:00] — fix(schema): dates obligatoires pour la traçabilité + lune à la plantation
 
 **Type :** `fix`

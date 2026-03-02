@@ -171,19 +171,33 @@ A7. Polish Phase A
   - Ex: Tisane → Menthe feuille `tronconnee_sechee_triee`, Calendula fleur `tronconnee_sechee_triee`
   - Ex: Sel Ail des ours → Ail des ours feuille `frais`, Sel = matériau externe (partie_plante = NULL)
 - Catégories produits : Tisane, Aromate, Sel, Sucre, Vinaigre, Sirop
-- Workflow de production de lot — **wizard 4 étapes** :
-  1. Choix recette + nombre de sachets/pots + date
+- **Wizard de production — 2 modes proposés au lancement** :
+
+  **Mode "produit"** (wizard 4 étapes) :
+  1. Choix recette + **nombre de sachets/pots** + date
   2. Ajuster composition (modifier %, changer une plante, **changer l'état d'un ingrédient**)
-  3. Vérification stock **dans l'état ET la partie spécifiés pour chaque ingrédient** (les 3 dimensions : variété × partie × état) + **fournisseur obligatoire pour les matériaux externes**
-  4. Confirmation → génération numéro de lot + DDM → déduction stock
+  3. Vérification stock **dans l'état ET la partie spécifiés** (variété × partie × état) + fournisseur obligatoire matériaux externes
+  4. Confirmation → génération numéro de lot + DDM → déduction stock (`nb_unites` renseigné)
+
+  **Mode "mélange"** (wizard 4 étapes adapté) :
+  1. Choix recette + date — les % s'affichent comme guide
+  2. Saisie des **poids réels par ingrédient** ; les % se recalculent automatiquement (informatif)
+  3. Vérification stock (mêmes 3 dimensions) + fournisseur obligatoire matériaux externes
+  4. Confirmation → génération numéro de lot + DDM → déduction stock (`nb_unites = NULL`)
+
+  **Conditionnement** (action sur un lot existant en mode "mélange") :
+  - Mise à jour de `nb_unites` sur le lot une fois les sachets/pots remplis
+  - Accessible depuis la fiche du lot (bouton "Conditionner")
+
 - Stock produits finis (`product_stock_movements`) : entrées/sorties de sachets
 
 **UX bureau** :
 - Page Recettes : tableau + slide-over avec tableau d'ingrédients éditable (%, variété, état)
-- Page Production : tableau des lots + bouton [+ Produire un lot] → wizard pleine page (4 étapes)
+- Page Production : tableau des lots + bouton [+ Produire un lot] → choix du mode → wizard pleine page
 - Étape 3 du wizard : indicateurs ✅/⚠️ par ingrédient (stock suffisant ou pas)
+- Lots en mode "mélange" sans `nb_unites` : badge "À conditionner" + bouton dédié
 
-**Claude Code — Instruction** : Le workflow de production est LE moment critique pour le stock. Utiliser une transaction SQL. Le lot ne peut être validé que si le stock est suffisant pour CHAQUE ingrédient dans SA variété, SA partie ET SON état (les 3 dimensions).
+**Claude Code — Instruction** : Le workflow de production est LE moment critique pour le stock. Utiliser une transaction SQL. Le lot ne peut être validé que si le stock est suffisant pour CHAQUE ingrédient dans SA variété, SA partie ET SON état (les 3 dimensions). Vérifier `mode` pour adapter les calculs (`nb_unites × poids_sachet` en mode produit, somme des poids saisis en mode mélange).
 
 ---
 

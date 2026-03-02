@@ -901,10 +901,13 @@ CREATE TABLE production_lots (
   uuid_client UUID UNIQUE,                 -- UUID généré par le mobile, pour idempotence sync
   recipe_id UUID REFERENCES recipes(id),
   numero_lot TEXT NOT NULL UNIQUE,         -- "BD 20250604", généré : [CODE_RECETTE][DATE]
+  mode TEXT CHECK (mode IN ('produit', 'melange')) NOT NULL DEFAULT 'produit',
+  -- Mode "produit" : partir du nb de sachets → poids calculés depuis les %
+  -- Mode "mélange" : partir des poids réels → conditionnement (nb_unites) saisi plus tard
   date_production DATE NOT NULL,
   ddm DATE NOT NULL,                        -- Date de Durabilité Minimale
-  nb_unites INTEGER NOT NULL,              -- Nombre de sachets/pots
-  poids_total_g DECIMAL NOT NULL,          -- = nb_unites * poids_sachet
+  nb_unites INTEGER,                       -- NULL en mode mélange, renseigné au conditionnement
+  poids_total_g DECIMAL,                   -- En mode produit : nb_unites × poids_sachet. En mode mélange : somme des poids des ingrédients
   temps_min INTEGER,
   commentaire TEXT,
   deleted_at TIMESTAMPTZ DEFAULT NULL,       -- Soft delete
@@ -936,15 +939,24 @@ CREATE TABLE production_lot_ingredients (
 -- → Validation applicative : fournisseur obligatoire quand external_material_id IS NOT NULL
 ```
 
-**Processus de création de lot** :
-1. L'utilisateur choisit une recette et un nombre de sachets
-2. Le système copie les `recipe_ingredients` dans `production_lot_ingredients` (y compris `etat_plante` et `partie_plante` par ingrédient)
-3. L'utilisateur peut modifier les pourcentages (la somme doit rester = 1.0)
-4. L'utilisateur peut changer des plantes (remplacer une variété par une autre)
-5. L'utilisateur peut changer l'état d'un ingrédient (ex: utiliser du frais au lieu de trié)
-6. Le système calcule les poids réels et vérifie le stock disponible **dans l'état ET la partie spécifiés pour chaque ingrédient** (les 3 dimensions : variété × partie × état)
-7. À la validation, le système crée les `stock_movements` de sortie pour chaque ingrédient plante, **dans l'état ET la partie correspondants**
-8. Le lot est créé avec son numéro et sa DDM
+**Processus de création de lot — deux modes, choisis au lancement du wizard** :
+
+**Mode "produit"** (défaut) — partir du nombre de sachets :
+1. Choix recette + nombre de sachets/pots + date
+2. Le système copie les `recipe_ingredients` dans `production_lot_ingredients` (`etat_plante` et `partie_plante` inclus)
+3. L'utilisateur peut ajuster : modifier les pourcentages (somme = 1.0), changer une plante, changer l'état d'un ingrédient
+4. Le système calcule les poids réels (`poids_total_g = nb_unites × poids_sachet`, puis poids par ingrédient = poids_total × pourcentage)
+5. Vérification stock **dans l'état ET la partie spécifiés pour chaque ingrédient** (les 3 dimensions : variété × partie × état)
+6. À la validation : `stock_movements` SORTIE par ingrédient plante + lot créé (`nb_unites` renseigné, `mode = 'produit'`)
+
+**Mode "mélange"** — partir des poids réels :
+1. Choix recette + date (les % de la recette s'affichent comme guide non-contraignant)
+2. Le système copie les `recipe_ingredients` dans `production_lot_ingredients`
+3. L'utilisateur saisit les **poids réels par ingrédient** ; les % se recalculent automatiquement (informatif, somme non forcée à 1.0)
+4. `poids_total_g` = somme des poids saisis ; `nb_unites` = NULL (pas encore conditionné)
+5. Vérification stock (mêmes 3 dimensions)
+6. À la validation : `stock_movements` SORTIE par ingrédient plante + lot créé (`nb_unites = NULL`, `mode = 'melange'`)
+7. **Conditionnement ultérieur** : mise à jour du lot (`nb_unites`) une fois les sachets/pots remplis
 
 **Exemple** — Lot "Sel Ail des Ours" :
 ```
@@ -1555,3 +1567,4 @@ app-ljs/
 | **Année sur tables transfo** | **Pas de champ dédié. Utiliser `EXTRACT(year FROM date)` dans les requêtes.** |
 | **Associations polymorphiques** | **`stock_movements.source_type` + `source_id` sans FK. Traçabilité en code applicatif (B4).** |
 | **Fournisseur matériaux externes** | **Saisi au moment de la production du lot (dans `production_lot_ingredients`), pas dans le référentiel. Obligatoire pour les matériaux externes.** |
+| **Mode production** | **Deux modes coexistent : "produit" (partir du nombre de sachets, poids calculés depuis les %) et "melange" (partir des poids réels, conditionnement nb_unites saisi plus tard). Choix au début du wizard. La recette reste le point de départ dans les deux cas. Colonne `mode` sur `production_lots`, `nb_unites` et `poids_total_g` deviennent nullable.** |
