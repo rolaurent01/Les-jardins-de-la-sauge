@@ -21,7 +21,7 @@ const dateNotInFuture = z.string().refine(
 
 /** Décimal positif avec 2 décimales maximum */
 const positiveDecimal = z
-  .number({ invalid_type_error: 'Doit être un nombre' })
+  .number({ error: 'Doit être un nombre' })
   .positive('Doit être supérieur à 0')
   .refine((v) => Math.round(v * 100) / 100 === v, {
     message: 'Maximum 2 décimales',
@@ -29,13 +29,13 @@ const positiveDecimal = z
 
 /** Entier positif strict */
 const positiveInt = z
-  .number({ invalid_type_error: 'Doit être un entier' })
+  .number({ error: 'Doit être un entier' })
   .int('Doit être un entier')
   .positive('Doit être supérieur à 0')
 
 /** Entier >= 0 */
 const nonNegativeInt = z
-  .number({ invalid_type_error: 'Doit être un entier' })
+  .number({ error: 'Doit être un entier' })
   .int('Doit être un entier')
   .min(0, 'Doit être >= 0')
 

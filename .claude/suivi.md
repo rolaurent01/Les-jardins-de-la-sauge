@@ -2,6 +2,27 @@
 
 ---
 
+## [2026-03-02 23:00] — feat(semis): A1.2 — Server Actions sachets de graines (seed_lots)
+
+**Type :** `feature`
+**Fichiers concernés :** `src/app/(dashboard)/semis/sachets/actions.ts`, `src/lib/validation/semis.ts`
+
+### Description
+Création des Server Actions pour le CRUD des sachets de graines (`seed_lots`), en suivant exactement le pattern établi dans `referentiel/varietes/actions.ts`.
+
+Correction du bug Zod v4 dans `semis.ts` : `invalid_type_error` renommé en `error` (API v4).
+
+### Détails techniques
+- `parseSeedLotForm` : extraction et validation Zod de tous les champs formulaire (UUID, strings nullables, dates, float, boolean `certif_ab`)
+- `fetchSeedLots` : jointure `varieties(id, nom_vernaculaire, nom_latin)`, filtre `deleted_at IS NULL`, tri `created_at DESC`
+- `createSeedLot` : compte les `SL-{year}-%` (y compris archivés pour éviter les doublons), appelle `generateSeedLotNumber`, insert + revalidate
+- `updateSeedLot` : exclut `lot_interne` de la mise à jour (immutable)
+- `archiveSeedLot` / `restoreSeedLot` : soft delete (`deleted_at`) identique au pattern variétés
+- `mapSupabaseError` : code `23505` → message explicite de doublon
+- `npm run build` passe sans erreur TypeScript
+
+---
+
 ## [2026-03-02 22:00] — feat(semis): A1.1 — types, validation Zod, utilitaires et tests unitaires
 
 **Type :** `feature`
