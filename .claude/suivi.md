@@ -2,6 +2,45 @@
 
 ---
 
+## [2026-03-02] — feat(semis): A1.5 — Page Suivi des semis (UI bureau)
+
+**Type :** `feature`
+**Fichiers concernés :** `src/app/(dashboard)/semis/suivi/page.tsx` (création), `src/components/semis/SemisClient.tsx` (création), `src/components/semis/SemisSlideOver.tsx` (création)
+
+### Description
+Création de la page bureau `/semis/suivi` avec tableau filtrable, slide-over adaptatif et récapitulatif de perte en temps réel. Suit le même pattern que la page Sachets de graines.
+
+### Détails techniques
+
+**`page.tsx`** (Server Component) :
+- Appels parallèles `Promise.all([fetchSeedlings(), fetchSeedLotsForSelect(), fetchVarieties()])` pour optimiser les performances
+- `fetchVarieties` réutilisée depuis `semis/sachets/actions.ts`
+- Gestion des erreurs avec message affiché en ocre
+
+**`SemisClient.tsx`** (Client Component) :
+- Type `SeedLotForSelect` exporté et réutilisé par `SemisSlideOver`
+- **Filtres processus** : 3 boutons inline — "Tous" | "Mini-mottes" | "Caissette/Godet", filtrage côté client
+- **Colonnes** : Variété, Processus (badge vert/bleu), Sachet source, Date semis, Départ (nb_mottes ou nb_plants_caissette selon processus), Obtenus, Perte (badge coloré), Actions
+- **Perte colorée** : calcul via `computeSeedlingLossRate` — vert < 20%, orange 20-40%, rouge > 40%
+- Recherche insensible casse/accents sur `nom_vernaculaire`, `lot_interne`, `numero_caisse`
+- Archivage soft delete avec confirmation inline double-clic (auto-reset 4s)
+
+**`SemisSlideOver.tsx`** (Client Component) :
+- **Sélecteur processus** : 2 boutons en haut du panneau, modifiable en mode édition
+- **Champs adaptatifs** : sections "Mini-mottes" / "Caissette/Godet" affichées/masquées selon le processus sélectionné
+- Intégration `QuickAddVariety` et select contrôlé pour la variété
+- Select contrôlé pour le sachet source
+- **Récapitulatif de perte en temps réel** : bloc coloré affiché dès que `nb_plants_obtenus` est renseigné — calcul via objet `Seedling` virtuel passé à `computeSeedlingLossRate`
+- Composants locaux : `ProcessBtn`, `Separator`, `MiniMotteSummary`, `CaissetteSummary`, `perteColors`
+
+**Navigation sidebar** : lien `/semis/suivi` déjà présent — aucune modification nécessaire.
+
+### Vérification
+- `npm run build` ✅ sans erreur TypeScript
+- Route `/semis/suivi` listée comme `ƒ (Dynamic)`
+
+---
+
 ## [2026-03-02] — feat(semis): A1.4 — Server Actions suivi des semis (seedlings)
 
 **Type :** `feature`
