@@ -6,7 +6,7 @@ import { NextResponse, type NextRequest } from 'next/server'
  * - Non authentifié sur une route protégée → redirect /login
  * - Authentifié sur /login → redirect /dashboard
  */
-export async function middleware(request: NextRequest) {
+export async function proxy(request: NextRequest) {
   let response = NextResponse.next({ request })
 
   const supabase = createServerClient(
