@@ -2,7 +2,7 @@ import { createServerClient } from '@supabase/ssr'
 import { NextResponse, type NextRequest } from 'next/server'
 
 /**
- * Middleware d'authentification.
+ * Proxy d'authentification (anciennement middleware.ts).
  * - Non authentifié sur une route protégée → redirect /login
  * - Authentifié sur /login → redirect /dashboard
  */
