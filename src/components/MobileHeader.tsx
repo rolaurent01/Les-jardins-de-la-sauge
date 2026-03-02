@@ -50,6 +50,7 @@ const NAV: NavSection[] = [
       { label: 'Suivi de rang', href: '/parcelles/suivi-rang' },
       { label: 'Cueillette', href: '/parcelles/cueillette' },
       { label: 'Arrachage', href: '/parcelles/arrachage' },
+      { label: 'Occultation', href: '/parcelles/occultation' },
     ],
   },
   {

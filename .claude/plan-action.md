@@ -117,6 +117,12 @@ A7. Polish Phase A
   - **`partie_plante` obligatoire** : logique adaptative basée sur `varieties.parties_utilisees`. Si 1 seule valeur → auto-rempli. Si plusieurs → dropdown obligatoire. La partie est choisie ici et héritée dans toute la chaîne.
   - → La route API crée le stock_movement ENTRÉE frais (avec partie_plante) + met à jour production_summary (logique applicative, transaction SQL)
 - Module Arrachage (`uprootings`) : avec logique adaptative, passe `plantings.actif = false`
+- Module Occultation (`occultations`) : CRUD avec formulaire **adaptatif par méthode** (comme les 2 processus de semis)
+  - Méthode paille : champs `fournisseur` + `attestation` (tous deux obligatoires/visibles)
+  - Méthode foin : champ `fournisseur` uniquement
+  - Méthode bâche : champ `temps_retrait_min` (affiché à la clôture de l'occultation)
+  - Méthode engrais vert : `engrais_vert_nom` (autocomplétion sur valeurs existantes) + `engrais_vert_fournisseur` + `engrais_vert_facture` + `engrais_vert_certif_ab`
+  - Avertissement à la plantation si le rang a une occultation active (`date_fin IS NULL`). Pas de blocage.
 
 **Logique adaptative variété** (hook réutilisable `useRowVarieties(rowId)`) :
 - Sélection du rang → requête `plantings WHERE row_id = X AND actif = true`
@@ -215,6 +221,7 @@ Le mobile est UN TERMINAL DE SAISIE TERRAIN. Pas de consultation, pas de dashboa
     🧪 Produits
     ```
   - Tap sur un ensemble → sous-actions
+    - 🌿 Parcelle → Travail de sol, Plantation, Suivi de rang, Cueillette, Arrachage, **Occultation**
   - Tap sur une sous-action → formulaire minimaliste → Enregistrer → "✅" → retour
   - Barre de sync permanente + bouton "Forcer la synchronisation"
   - Timer start/stop optionnel pour mesurer le temps de travail

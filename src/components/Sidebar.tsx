@@ -129,11 +129,12 @@ const NAV: NavSection[] = [
     label: 'Suivi parcelle',
     emoji: '🌿',
     children: [
-      { label: 'Travail de sol', href: '/parcelles/travail-sol' },
-      { label: 'Plantation',     href: '/parcelles/plantation'  },
-      { label: 'Suivi de rang',  href: '/parcelles/suivi-rang'  },
-      { label: 'Cueillette',     href: '/parcelles/cueillette'  },
-      { label: 'Arrachage',      href: '/parcelles/arrachage'   },
+      { label: 'Travail de sol', href: '/parcelles/travail-sol'  },
+      { label: 'Plantation',     href: '/parcelles/plantation'   },
+      { label: 'Suivi de rang',  href: '/parcelles/suivi-rang'   },
+      { label: 'Cueillette',     href: '/parcelles/cueillette'   },
+      { label: 'Arrachage',      href: '/parcelles/arrachage'    },
+      { label: 'Occultation',    href: '/parcelles/occultation'  },
     ],
   },
   {

@@ -2,6 +2,29 @@
 
 ---
 
+## [2026-03-02 11:30] — feat(occultations): ajout module occultation de rangs
+
+**Type :** `feature`
+**Fichiers concernés :** `supabase/migrations/007_add_occultations.sql`, `src/lib/supabase/types.ts`, `src/components/Sidebar.tsx`, `src/components/MobileHeader.tsx`, `.claude/context.md`, `.claude/plan-action.md`
+
+### Description
+Ajout du module Occultation de rangs : table SQL, types TypeScript, navigation, et documentation complète. L'occultation régénère un rang entre deux cultures (arrachage → occultation → travail de sol → replantation).
+
+### Détails techniques
+- **Migration 007** : `CREATE TABLE occultations` avec 4 méthodes (paille, foin, bache, engrais_vert), champs adaptatifs par méthode, index sur `row_id` et `date_fin IS NULL`, RLS
+- **types.ts** : export `MethodeOccultation` (union des 4 valeurs) + type complet `occultations` (Row/Insert/Update/Relationships) inséré après `uprootings` dans la section Module Parcelles
+- **Sidebar.tsx** : ajout `{ label: 'Occultation', href: '/parcelles/occultation' }` dans 🌿 Suivi parcelle
+- **MobileHeader.tsx** : idem dans les sous-actions 🌿 Parcelle
+- **context.md §5.3** : nouvelle sous-section `occultations` avec CREATE TABLE, notes cycle, formulaire adaptatif, autocomplétion `engrais_vert_nom`, avertissement plantation sur rang occulté
+- **context.md §8.1** : 3 nouvelles lignes dans le tableau des validations (Plantation → Rang occulté, Occultation → Engrais vert, Occultation → Paille/Foin)
+- **context.md §13** : décision "Occultation de rangs" ajoutée
+- **context.md §4.2** : "Occultation" ajouté dans la sidebar 🌿 Suivi parcelle
+- **context.md §4.3** : "Occultation" ajouté dans les sous-actions 🌿 Parcelle
+- **plan-action.md A2** : Module Occultation ajouté avec détail formulaire adaptatif par méthode et avertissement
+- **plan-action.md A6** : Occultation ajouté dans la liste des sous-actions 🌿 Parcelle mobile
+
+---
+
 ## [2026-03-02 10:00] — Ajout dimensions rangs et surfaces de plantation
 
 **Type :** `feature`

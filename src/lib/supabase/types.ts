@@ -23,6 +23,13 @@ export type PartiePlante =
   | 'fruit'
   | 'plante_entiere'
 
+// Méthodes d'occultation — les 4 valeurs possibles (migration 007)
+export type MethodeOccultation =
+  | 'paille'
+  | 'foin'
+  | 'bache'
+  | 'engrais_vert'
+
 export type Database = {
   public: {
     Tables: {
@@ -602,6 +609,64 @@ export type Database = {
           row_id?: string
           variety_id?: string | null
           date?: string
+          temps_min?: number | null
+          commentaire?: string | null
+          created_at?: string
+        }
+        Relationships: []
+      }
+
+      occultations: {
+        Row: {
+          id: string
+          uuid_client: string | null
+          row_id: string
+          date_debut: string
+          date_fin: string | null
+          methode: MethodeOccultation
+          fournisseur: string | null
+          attestation: string | null
+          engrais_vert_nom: string | null
+          engrais_vert_fournisseur: string | null
+          engrais_vert_facture: string | null
+          engrais_vert_certif_ab: boolean
+          temps_retrait_min: number | null
+          temps_min: number | null
+          commentaire: string | null
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          uuid_client?: string | null
+          row_id: string
+          date_debut: string
+          date_fin?: string | null
+          methode: MethodeOccultation
+          fournisseur?: string | null
+          attestation?: string | null
+          engrais_vert_nom?: string | null
+          engrais_vert_fournisseur?: string | null
+          engrais_vert_facture?: string | null
+          engrais_vert_certif_ab?: boolean
+          temps_retrait_min?: number | null
+          temps_min?: number | null
+          commentaire?: string | null
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          uuid_client?: string | null
+          row_id?: string
+          date_debut?: string
+          date_fin?: string | null
+          methode?: MethodeOccultation
+          fournisseur?: string | null
+          attestation?: string | null
+          engrais_vert_nom?: string | null
+          engrais_vert_fournisseur?: string | null
+          engrais_vert_facture?: string | null
+          engrais_vert_certif_ab?: boolean
+          temps_retrait_min?: number | null
           temps_min?: number | null
           commentaire?: string | null
           created_at?: string

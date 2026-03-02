@@ -218,7 +218,7 @@ Le bureau est le centre de commande. C'est ici que tout se passe : saisie, consu
 - **Dashboard** avec widgets personnalisables : état des parcelles, stocks, avancement prévisionnel, temps de travail
 - **Navigation claire** par les 5 ensembles métier dans une sidebar :
   - 🌱 Semis : Sachets de graines, Suivi semis
-  - 🌿 Suivi parcelle : Travail sol, Plantation, Suivi rang, Cueillette, Arrachage
+  - 🌿 Suivi parcelle : Travail sol, Plantation, Suivi rang, Cueillette, Arrachage, Occultation
   - 🔄 Transformation : Tronçonnage, Séchage, Triage
   - 🧪 Création de produit : Recettes, Production de lots, Stock produits finis
   - 📦 Affinage du stock : Achats, Ventes directes, Ajustements
@@ -242,7 +242,7 @@ Le mobile est un **terminal de saisie terrain**. Rien d'autre. L'objectif : ne p
    ```
 2. **Écran 1b** — Choix de la sous-action (tap sur un ensemble) :
    - 🌱 Semis → Sachet de graines, Suivi semis
-   - 🌿 Parcelle → Travail sol, Plantation, Suivi rang, Cueillette, Arrachage
+   - 🌿 Parcelle → Travail sol, Plantation, Suivi rang, Cueillette, Arrachage, Occultation
    - 🔄 Transfo → Tronçonnage, Séchage, Triage
    - 📦 Stock → Achat, Vente directe
    - 🧪 Produits → Production de lot
@@ -574,6 +574,47 @@ CREATE TABLE uprootings (
 );
 -- → Passe plantings.actif = false pour la variété arrachée sur ce rang
 ```
+
+#### `occultations` — Occultation de rangs (étape 2b, entre arrachage et replantation)
+
+L'occultation régénère un rang. Quatre méthodes : paille (fournisseur + attestation), foin (fournisseur), bâche (temps de retrait au démontage), engrais vert (nom de la graine + fournisseur + facture + certif AB, en champs texte — pas de lien avec le référentiel variétés).
+
+**Cycle** : arrachage → occultation (début) → … → occultation (fin, `date_fin` renseignée) → travail de sol (`soil_works`) → replantation
+
+```sql
+CREATE TABLE occultations (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  uuid_client UUID UNIQUE,                  -- UUID généré par le mobile, pour idempotence sync
+  row_id UUID REFERENCES rows(id) NOT NULL,
+  date_debut DATE NOT NULL,
+  date_fin DATE,                             -- NULL = en cours
+  methode TEXT CHECK (methode IN ('paille', 'foin', 'bache', 'engrais_vert')) NOT NULL,
+  -- Paille / Foin
+  fournisseur TEXT,                          -- Provenance (paille et foin)
+  attestation TEXT,                          -- Certification (paille uniquement)
+  -- Engrais vert
+  engrais_vert_nom TEXT,                     -- "Moutarde blanche", "Seigle"
+  engrais_vert_fournisseur TEXT,             -- Provenance des graines
+  engrais_vert_facture TEXT,                 -- Numéro de facture
+  engrais_vert_certif_ab BOOLEAN DEFAULT false,
+  -- Bâche
+  temps_retrait_min INTEGER,                 -- Temps pour retirer la bâche (bâche uniquement)
+  -- Commun
+  temps_min INTEGER,                         -- Temps de mise en place
+  commentaire TEXT,
+  created_at TIMESTAMPTZ DEFAULT now()
+);
+```
+
+> **Avertissement plantation sur rang occulté** : si un rang a une occultation active (`date_fin IS NULL`), afficher un avertissement à la plantation : « ⚠️ Ce rang est en occultation depuis le [date]. Continuer quand même ? » Pas de blocage.
+
+> **Formulaire adaptatif par méthode** (comme les 2 processus de semis) : les champs `fournisseur`/`attestation` apparaissent pour paille/foin, les champs engrais vert pour engrais_vert, `temps_retrait_min` pour bâche.
+
+> **Autocomplétion** : `engrais_vert_nom` utilise une autocomplétion sur les valeurs déjà saisies (comme `lieu_sauvage` sur les cueillettes).
+
+> **Temps** : `temps_min` = temps de mise en place. `temps_retrait_min` concerne uniquement la méthode bâche (saisi lors de la clôture de l'occultation).
+
+> **Retravail du sol** : le travail du sol après l'occultation est saisi comme un `soil_works` classique — pas de champ spécifique sur l'occultation.
 
 ### 5.4 Module Transformation (étapes 7 à 9)
 
@@ -1144,6 +1185,9 @@ Pour garantir l'intégrité des données, chaque formulaire doit avoir des valid
 | Production → Stock | Vérifier que le stock est suffisant **dans l'état spécifié** pour chaque ingrédient AVANT de valider |
 | Plantation → Dimensions | Pré-remplies depuis le rang (`longueur_m` et `largeur_m`), modifiables. Avertissement si la somme des `longueur_m` des plantings actifs dépasse la longueur du rang. |
 | Plantation → Rang | Avertissement si le rang a déjà un planting actif. Pas de blocage. |
+| Plantation → Rang occulté | Avertissement si le rang a une occultation active (`date_fin IS NULL`). Pas de blocage. |
+| Occultation → Engrais vert | `engrais_vert_nom` et `engrais_vert_fournisseur` obligatoires si méthode = engrais_vert |
+| Occultation → Paille/Foin | `fournisseur` obligatoire si méthode = paille ou foin |
 | Vente directe → Stock | Vérifier que le stock est suffisant AVANT de valider |
 | Achat stock | Fournisseur obligatoire, état plante obligatoire |
 | Numéro de lot | Unique, format imposé, auto-généré |
@@ -1493,6 +1537,7 @@ app-ljs/
 | Découpage projet | Phase A (socle données + saisie + mobile) → Phase B (vues + analyse, second temps) |
 | Vues Phase B | Indépendantes entre elles, ordre flexible selon priorités |
 | Catégorie Sirop | Ajoutée aux catégories produits. Contient plantes fraîches ou séchées + Eau (mL) + Sucre blond de canne bio (g). Conditionnement en bouteille (770mL ou 520mL). Poids en grammes en base, UI affiche mL pour les matériaux liquides. |
+| Occultation de rangs | 4 méthodes (paille, foin, bâche, engrais vert). L'engrais vert est tracé en champs texte directement sur la table (pas de lien variétés). Formulaire adaptatif par méthode. Avertissement non-bloquant si plantation sur rang occulté. Le retravail du sol après occultation passe par `soil_works`. |
 | Plants achetés | Plantation avec fournisseur (seedling_id NULL + fournisseur rempli). Pas besoin de semis. |
 | Charte graphique | Palette officielle LJS : Vert Sauge #3A5A40/#588157, Fond Crème #F9F8F6/#FAF5E9, Texte #2C3E2D/#333, Accent Ocre #DDA15E/#BC6C25 |
 | Extension Miel (Phase C) | Module autonome dans le même projet, tables 100% séparées des tables PAM. Seuls l'environnement technique (Next.js, Supabase, auth, PWA) et l'interface (sidebar, charte) sont partagés. |
