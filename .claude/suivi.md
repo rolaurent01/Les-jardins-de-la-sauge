@@ -2,6 +2,24 @@
 
 ---
 
+## [2026-03-02] — fix(referentiel): select fermé pour l'unité de mesure dans MaterielSlideOver
+
+**Type :** `fix`
+**Fichiers concernés :** `src/components/referentiel/MaterielSlideOver.tsx`
+
+### Description
+Remplacement du champ `<input type="text" list="unites-list">` + `<datalist>` par un `<select>` fermé avec 2 options uniquement : `g (grammes)` et `mL (millilitres)`. Suppression de la constante `UNITES` devenue inutile.
+
+### Détails techniques
+- Avant : saisie libre avec suggestions datalist — l'utilisatrice pouvait entrer n'importe quelle valeur (ex : "kg", "KG", "Grammes")
+- Après : `<select>` fermé — uniquement `g` et `mL`, valeur par défaut `g`
+- Styles `inputStyle`, `onFocus`, `onBlur` conservés pour cohérence visuelle
+
+### Vérification
+- `npm run build` ✅ sans erreur TypeScript
+
+---
+
 ## [2026-03-02] — test(semis): A1.6 — Tests + Polish du module Semis
 
 **Type :** `test`

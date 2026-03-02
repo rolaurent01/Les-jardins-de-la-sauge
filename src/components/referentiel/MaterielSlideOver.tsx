@@ -3,8 +3,6 @@
 import { useState, useTransition, useEffect, useRef } from 'react'
 import type { ExternalMaterial, ActionResult } from '@/lib/types'
 
-/* Unités courantes */
-const UNITES = ['g', 'mL']
 
 type Props = {
   open: boolean
@@ -121,20 +119,17 @@ export default function MaterielSlideOver({ open, material, onClose, onSubmit, o
 
             {/* Unité */}
             <Field label="Unité de mesure">
-              <input
+              <select
                 name="unite"
-                type="text"
-                list="unites-list"
                 defaultValue={material?.unite ?? 'g'}
                 disabled={isPending}
-                placeholder="ex : g"
                 style={inputStyle}
                 onFocus={focusStyle}
                 onBlur={blurStyle}
-              />
-              <datalist id="unites-list">
-                {UNITES.map(u => <option key={u} value={u} />)}
-              </datalist>
+              >
+                <option value="g">g (grammes)</option>
+                <option value="mL">mL (millilitres)</option>
+              </select>
             </Field>
 
             {/* Notes */}
