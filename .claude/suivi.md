@@ -2,6 +2,49 @@
 
 ---
 
+## [2026-03-02 22:00] — feat(semis): A1.1 — types, validation Zod, utilitaires et tests unitaires
+
+**Type :** `feature`
+**Fichiers concernés :** `src/lib/types.ts`, `src/lib/validation/semis.ts`, `src/lib/utils/lots.ts`, `src/lib/utils/seedling-stats.ts`, `src/tests/semis/lots.test.ts`, `src/tests/semis/seedling-stats.test.ts`, `src/tests/semis/validation.test.ts`
+
+### Description
+Mise en place de la couche fondatrice du module Semis (A1.1) : types TypeScript, schémas de validation Zod, utilitaires métier et tests unitaires complets (39 tests passants). Aucun composant UI ni Server Action (prévu en A1.2 / A1.3).
+
+### Détails techniques
+
+**`src/lib/types.ts`** (ajouts) :
+- `Processus = 'caissette_godet' | 'mini_motte'`
+- `SeedLot` : tous les champs de la table `seed_lots` (id, uuid_client, lot_interne, variety_id, fournisseur, numero_lot_fournisseur, date_achat, date_facture, numero_facture, poids_sachet_g, certif_ab, deleted_at, created_at)
+- `SeedLotWithVariety` : SeedLot + varieties jointure (id, nom_vernaculaire, nom_latin)
+- `Seedling` : tous les champs de la table `seedlings` (processus, champs mini-motte, champs caissette/godet, champs communs)
+- `SeedlingWithRelations` : Seedling + varieties + seed_lots jointures
+
+**`src/lib/validation/semis.ts`** (nouveau) :
+- `seedLotSchema` : variety_id (UUID RFC 4122 strict), date_achat (≤ aujourd'hui), poids_sachet_g (décimal > 0, max 2 décimales), certif_ab (boolean, default false)
+- `seedlingSchema` : processus (enum), date_semis (≤ aujourd'hui), validation conditionnelle via `.superRefine()` — nb_mottes obligatoire si mini_motte, nb_caissettes + nb_plants_caissette obligatoires si caissette_godet
+- `SeedLotFormData` et `SeedlingFormData` exportés via `z.infer<>`
+
+**`src/lib/utils/lots.ts`** (nouveau) :
+- `generateSeedLotNumber(year, existingCount)` → `SL-AAAA-NNN` (padding 3 chiffres)
+- `generateSeedlingNumber(year, existingCount)` → `SM-AAAA-NNN` (stub pour A1.2)
+- `generateProductionLotNumber(recipeCode, date)` → `[CODE]AAAAMMJJ` (stub pour A4)
+
+**`src/lib/utils/seedling-stats.ts`** (nouveau) :
+- `computeMiniMotteLossRate(seedling)` → `{ total_depart, mortes, donnees, plantes, perte_pct }` — perte = 1 - (nb_plants_obtenus / nb_mottes), arrondi à 2 décimales
+- `computeCaissetteGodetLossRate(seedling)` → `{ total_depart, mortes_caissette, mortes_godet, donnees, plantes, perte_caissette_pct, perte_godet_pct, perte_globale_pct }` — 3 taux selon les formules du context.md
+- `computeSeedlingLossRate(seedling)` → dispatcher ; retourne null pour chaque taux si les données sont manquantes ou si le départ = 0
+
+**Tests** (39 tests, 100% passants) :
+- `lots.test.ts` : 5 tests (format, padding, incrémentation, années multiples, dépassement 999)
+- `seedling-stats.test.ts` : 11 tests incluant les exemples exacts du context.md (98 mottes → 23%, 50 caissette → 30%), cas nulls, zéros, dispatcher
+- `validation.test.ts` : 21 tests (cas valides et invalides pour les deux schémas + champs conditionnels)
+
+### Notes
+- Zod v4.3.6 installé — UUID validation plus stricte qu'en v3 (RFC 4122, versions 1-8 uniquement). Tests adaptés avec de vrais UUIDs v4.
+- Dépendance ajoutée : `zod@^4.3.6`
+
+---
+
 ## [2026-03-02 15:00] — docs(schema): ajout mode mélange sur production_lots
 
 **Type :** `docs`
