@@ -46,6 +46,21 @@ function mapSupabaseError(code: string | undefined, fallback: string): string {
 
 // ---- Requêtes ----
 
+/** Récupère toutes les variétés actives pour le sélecteur du formulaire */
+export async function fetchVarieties(): Promise<Pick<import('@/lib/types').Variety, 'id' | 'nom_vernaculaire' | 'nom_latin'>[]> {
+  const supabase = await createClient()
+
+  const { data, error } = await supabase
+    .from('varieties')
+    .select('id, nom_vernaculaire, nom_latin')
+    .is('deleted_at', null)
+    .order('nom_vernaculaire')
+
+  if (error) throw new Error(`Erreur lors du chargement des variétés : ${error.message}`)
+
+  return data ?? []
+}
+
 /** Récupère tous les sachets actifs avec leur variété jointe */
 export async function fetchSeedLots(): Promise<SeedLotWithVariety[]> {
   const supabase = await createClient()

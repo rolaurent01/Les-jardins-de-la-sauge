@@ -2,6 +2,46 @@
 
 ---
 
+## [2026-03-02 23:45] — feat(semis): A1.3 — Page Sachets de graines (UI bureau)
+
+**Type :** `feature`
+**Fichiers concernés :** `src/app/(dashboard)/semis/sachets/actions.ts`, `src/app/(dashboard)/semis/sachets/page.tsx`, `src/components/semis/SachetsClient.tsx`, `src/components/semis/SachetSlideOver.tsx`
+
+### Description
+Création de la page bureau `/semis/sachets` avec tableau + slide-over, en suivant exactement le même pattern UX et code que le CRUD Variétés existant.
+
+### Détails techniques
+
+**`actions.ts`** (extension) :
+- `fetchVarieties` : requête des variétés actives (`deleted_at IS NULL`), triées par `nom_vernaculaire`, retourne `Pick<Variety, 'id' | 'nom_vernaculaire' | 'nom_latin'>[]` — utilisée pour populer le select du formulaire
+
+**`page.tsx`** (Server Component) :
+- Appels parallèles `Promise.all([fetchSeedLots(), fetchVarieties()])` pour optimiser les performances
+- Passe les données à `SachetsClient`
+- Gestion des erreurs avec message affiché en ocre
+
+**`SachetsClient.tsx`** (Client Component) :
+- Même structure que `VarietesClient.tsx` : toolbar recherche + bouton Nouveau sachet + toggle archivés + tableau + état vide
+- Colonnes : Lot (gras), Variété, Fournisseur, Date achat (JJ/MM/AAAA), Poids sachet (g), AB (badge vert), Actions
+- Recherche insensible casse/accents sur `lot_interne`, `nom_vernaculaire`, `fournisseur`
+- Archivage soft delete avec confirmation inline double-clic (auto-reset 4s)
+- `formatDate` helper pour le format JJ/MM/AAAA
+- `router.refresh()` après chaque mutation pour re-fetch Server Component
+
+**`SachetSlideOver.tsx`** (Client Component) :
+- Même pattern que `VarieteSlideOver.tsx` : panneau coulissant droit (480→500px), overlay blur, Escape pour fermer
+- Mode création : titre "Nouveau sachet de graines", bouton "Créer le sachet"
+- Mode édition : badge `lot_interne` en lecture seule dans l'en-tête, pré-remplissage de tous les champs
+- Intégration `QuickAddVariety` à côté du label Variété — nouvelle variété créée → ajoutée au select local et auto-sélectionnée
+- Champs en grille 2 colonnes : date_achat/date_facture, numero_facture/numero_lot_fournisseur, poids_sachet_g/certif_ab
+- `selectedVarietyId` state contrôlé pour le select (synchronisé avec `fd.set` à la soumission)
+
+**Navigation sidebar** : lien `/semis/sachets` déjà présent — aucune modification nécessaire.
+
+**`npm run build`** : passe sans erreur TypeScript. Route `/semis/sachets` listée comme `ƒ (Dynamic)`.
+
+---
+
 ## [2026-03-02 23:00] — feat(semis): A1.2 — Server Actions sachets de graines (seed_lots)
 
 **Type :** `feature`
