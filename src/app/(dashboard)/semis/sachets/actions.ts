@@ -2,41 +2,11 @@
 
 import { createClient } from '@/lib/supabase/server'
 import { revalidatePath } from 'next/cache'
-import { seedLotSchema } from '@/lib/validation/semis'
 import { generateSeedLotNumber } from '@/lib/utils/lots'
+import { parseSeedLotForm } from '@/lib/utils/semis-parsers'
 import type { ActionResult, SeedLot, SeedLotWithVariety } from '@/lib/types'
 
 // ---- Helpers ----
-
-/** Extrait et valide les champs du formulaire sachet avec Zod */
-function parseSeedLotForm(
-  formData: FormData,
-): { data: ReturnType<typeof seedLotSchema.parse> } | { error: string } {
-  const raw = {
-    variety_id:              (formData.get('variety_id') as string) || '',
-    fournisseur:             (formData.get('fournisseur') as string)?.trim()              || null,
-    numero_lot_fournisseur:  (formData.get('numero_lot_fournisseur') as string)?.trim()   || null,
-    date_achat:              (formData.get('date_achat') as string)  || '',
-    date_facture:            (formData.get('date_facture') as string)?.trim()             || null,
-    numero_facture:          (formData.get('numero_facture') as string)?.trim()           || null,
-    poids_sachet_g:          (() => {
-      const v = formData.get('poids_sachet_g') as string
-      return v ? parseFloat(v) : null
-    })(),
-    certif_ab: formData.get('certif_ab') === 'on' || formData.get('certif_ab') === 'true',
-    commentaire: (formData.get('commentaire') as string)?.trim() || null,
-  }
-
-  const result = seedLotSchema.safeParse(raw)
-  if (!result.success) {
-    // Retourner le premier message d'erreur Zod
-    const first = result.error.issues[0]
-    const field = first.path.length > 0 ? `${String(first.path[0])} : ` : ''
-    return { error: `${field}${first.message}` }
-  }
-
-  return { data: result.data }
-}
 
 /** Mappe les codes d'erreur Supabase vers des messages lisibles */
 function mapSupabaseError(code: string | undefined, fallback: string): string {

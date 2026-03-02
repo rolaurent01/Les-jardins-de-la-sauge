@@ -2,6 +2,56 @@
 
 ---
 
+## [2026-03-02] — test(semis): A1.6 — Tests + Polish du module Semis
+
+**Type :** `test`
+**Fichiers concernés :**
+- `src/lib/utils/semis-parsers.ts` (création — extraction des parsers pour testabilité)
+- `src/app/(dashboard)/semis/sachets/actions.ts` (refactor — import parseSeedLotForm depuis utils)
+- `src/app/(dashboard)/semis/suivi/actions.ts` (refactor — import parseSeedlingForm depuis utils)
+- `src/tests/semis/actions-parse.test.ts` (création)
+- `src/tests/semis/lots-edge-cases.test.ts` (création)
+
+### Description
+Tests supplémentaires, vérification de cohérence schéma SQL ↔ TypeScript et polish du module Semis (A1.6).
+
+### Détails techniques
+
+**Vérification cohérence code ↔ schéma SQL** :
+- `seed_lots` (SQL) ↔ `SeedLot` (TypeScript) : ✅ tous les champs couverts, `uuid_client` et `deleted_at` présents
+- `seedlings` (SQL) ↔ `Seedling` (TypeScript) : ✅ tous les champs couverts
+- Contraintes SQL (NOT NULL, DEFAULT, CHECK) ↔ Zod : ✅ cohérents
+- Navigation sidebar : ✅ `/semis/sachets` et `/semis/suivi` déjà présents
+
+**Refactoring pour testabilité** :
+- `parseSeedLotForm` et `parseSeedlingForm` extraites vers `src/lib/utils/semis-parsers.ts`
+- Raison : Next.js interdit d'exporter des fonctions synchrones depuis un fichier `'use server'` (toutes les exports doivent être `async`)
+- Les actions importent maintenant ces fonctions depuis le module utilitaire — comportement identique
+
+**`actions-parse.test.ts`** (26 tests) :
+- `parseSeedLotForm` : formulaire minimal, certif_ab `'on'`/`'true'`/absent, poids_sachet_g float, champs optionnels vides → null, erreurs (variety_id manquant, UUID invalide, date future, poids négatif, trop de décimales)
+- `parseSeedlingForm` — mini_motte : parsing basique, champs caissette_godet → null, nb_mortes defaulté à 0, comportement NOT NULL des colonnes mortes (envoi 0 pour l'autre processus), erreur si nb_mottes absent
+- `parseSeedlingForm` — caissette_godet : parsing basique, champs mini_motte → null, nb_mortes defaulté à 0, erreurs nb_caissettes/nb_plants_caissette manquants
+- `parseSeedlingForm` — cas invalides communs : processus absent, processus inconnu, variety_id absent, date_semis future
+
+**`lots-edge-cases.test.ts`** (11 tests) :
+- `generateSeedlingNumber` : format SM-AAAA-NNN, padding 3 chiffres, années multiples, count élevé (> 99, > 999)
+- `generateProductionLotNumber` : format [CODE]AAAAMMJJ, padding mois/jour, fin d'année, préfixe multi-caractères
+
+**Revue de code (6 fichiers du module Semis)** :
+- Aucun `console.log` trouvé ✅
+- Aucun code mort ou commenté ✅
+- Gestion d'erreurs explicite partout ✅
+- Tous les imports utilisés ✅
+- Commentaires en français ✅
+- Nommage en anglais ✅
+
+### Résultats
+- `npm run build` ✅ sans erreur TypeScript, routes `/semis/sachets` et `/semis/suivi` listées comme `ƒ (Dynamic)`
+- `npm run test:run` ✅ **76 tests passants** (2 smoke + 5 lots + 11 lots-edge-cases + 11 seedling-stats + 21 validation + 26 actions-parse)
+
+---
+
 ## [2026-03-02] — feat(semis): A1.5 — Page Suivi des semis (UI bureau)
 
 **Type :** `feature`
