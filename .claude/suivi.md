@@ -2,6 +2,42 @@
 
 ---
 
+## [2026-03-04 21:00] — feat(parcelles): A2.2 — Module Travail de sol (backend + UI)
+
+**Type :** `feature`
+**Fichiers concernés :** `src/lib/utils/format.ts`, `src/lib/utils/parcelles-parsers.ts`, `src/app/(dashboard)/parcelles/shared-actions.ts`, `src/app/(dashboard)/parcelles/travail-sol/actions.ts`, `src/app/(dashboard)/parcelles/travail-sol/page.tsx`, `src/components/parcelles/TravailSolClient.tsx`, `src/components/parcelles/TravailSolSlideOver.tsx`
+
+### Description
+Implémentation complète du module Travail de sol : parser de formulaire, Server Actions CRUD, page serveur, tableau client avec recherche et badges colorés, slide-over avec select rang groupé par site/parcelle.
+
+### Détails techniques
+- **`format.ts`** : `formatDuration` (→ "1h30") et `formatDate` (→ "JJ/MM/AAAA") réutilisables dans tous les modules A2-A7.
+- **`parcelles-parsers.ts`** : `parseSoilWorkForm` — extraction + validation Zod des champs FormData.
+- **`shared-actions.ts`** : `fetchRowsForSelect` — rangs actifs avec jointure, triés JS-side (site → parcelle → position_ordre → numero). Réutilisé par A2.3-A2.7.
+- **`actions.ts`** : CRUD complet. Suppression réelle (pas de soft delete sur `soil_works`).
+- **`TravailSolClient`** : badges colorés par type, recherche multi-critères, confirmation suppression 2-clics (auto-annulation 4s).
+- **`TravailSolSlideOver`** : select rang groupé via `<optgroup>` (Site — Parcelle → Rang N).
+- Build ✅ — route `/parcelles/travail-sol` dynamique.
+
+---
+
+## [2026-03-04 20:17] — feat(parcelles): A2.1 — Types, validation Zod et hooks adaptatifs
+
+**Type :** `feature`
+**Fichiers concernés :** `src/lib/types.ts`, `src/lib/validation/parcelles.ts`, `src/hooks/useRowVarieties.ts`, `src/hooks/useVarietyParts.ts`, `src/tests/parcelles/validation.test.ts`
+
+### Description
+Implémentation complète de la couche fondatrice du module Parcelles : types TypeScript, schémas de validation Zod pour les 6 tables, hooks logiques adaptatifs variété/partie_plante, et tests unitaires.
+
+### Détails techniques
+- **Types** dans `src/lib/types.ts` : 8 nouveaux types de base (`SoilWork`, `Planting`, `RowCare`, `Harvest`, `Uprooting`, `Occultation` + variantes `WithRelations`) + types annexes (`TypeTravailSol`, `TypePlant`, `TypeSoin`, `LunePlantation`). Réutilisation de `MethodeOccultation` importé de `supabase/types.ts`.
+- **Validation** dans `src/lib/validation/parcelles.ts` : 6 schémas Zod (`soilWorkSchema`, `plantingSchema`, `rowCareSchema`, `harvestSchema`, `uprootingSchema`, `occultationSchema`) avec validations conditionnelles via `.superRefine()` (cueillette parcelle/sauvage, seedling vs fournisseur pour plantation, méthode occultation).
+- **Hook `useRowVarieties`** : requête `plantings WHERE row_id=X AND actif=true AND deleted_at IS NULL`, dédoublonnage par variety_id, `autoVariety` non-null si exactement 1 variété.
+- **Hook `useVarietyParts`** : requête `varieties.parties_utilisees`, `autoPart` non-null si exactement 1 partie.
+- **Tests** : 71 nouveaux tests (147 total) couvrant cas valides, cas invalides et validations conditionnelles pour les 6 schémas.
+
+---
+
 ## [2026-03-02] — fix(referentiel): select fermé pour l'unité de mesure dans MaterielSlideOver
 
 **Type :** `fix`

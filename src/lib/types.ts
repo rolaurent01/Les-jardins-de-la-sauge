@@ -3,6 +3,9 @@
  * Ces types reflètent le schéma Supabase défini dans les migrations SQL.
  */
 
+import type { MethodeOccultation } from '@/lib/supabase/types'
+export type { MethodeOccultation }
+
 export type TypeCycle = 'annuelle' | 'bisannuelle' | 'perenne' | 'vivace'
 
 /** Parties récoltables d'une plante — synchronisé avec la migration 004 */
@@ -176,4 +179,204 @@ export type Seedling = {
 export type SeedlingWithRelations = Seedling & {
   varieties: Pick<Variety, 'id' | 'nom_vernaculaire' | 'nom_latin'> | null
   seed_lots: Pick<SeedLot, 'id' | 'lot_interne' | 'fournisseur'> | null
+}
+
+// ---- Module Parcelles ----
+
+// ---- Travail de sol ----
+
+/** Types de travaux de sol */
+export type TypeTravailSol = 'depaillage' | 'motoculteur' | 'amendement' | 'autre'
+
+/** Travail de sol sur un rang — table soil_works */
+export type SoilWork = {
+  id: string
+  uuid_client: string | null
+  row_id: string | null
+  date: string
+  type_travail: TypeTravailSol | null
+  detail: string | null
+  temps_min: number | null
+  commentaire: string | null
+  created_at: string
+}
+
+/** Travail de sol avec le rang joint (numéro, parcelle et site) */
+export type SoilWorkWithRelations = SoilWork & {
+  rows:
+    | (Pick<Row, 'id' | 'numero'> & {
+        parcels:
+          | (Pick<Parcel, 'id' | 'nom'> & {
+              sites: Pick<Site, 'id' | 'nom'> | null
+            })
+          | null
+      })
+    | null
+}
+
+// ---- Plantation ----
+
+/** Types de plant pour une plantation */
+export type TypePlant =
+  | 'godet'
+  | 'caissette'
+  | 'mini_motte'
+  | 'plant_achete'
+  | 'division'
+  | 'bouture'
+  | 'marcottage'
+  | 'stolon'
+  | 'rhizome'
+  | 'semis_direct'
+
+/** Phase lunaire lors de la plantation */
+export type LunePlantation = 'montante' | 'descendante'
+
+/** Plantation sur un rang — table plantings */
+export type Planting = {
+  id: string
+  uuid_client: string | null
+  row_id: string | null
+  variety_id: string | null
+  seedling_id: string | null
+  fournisseur: string | null
+  annee: number
+  date_plantation: string
+  lune: LunePlantation | null
+  nb_plants: number | null
+  type_plant: TypePlant | null
+  espacement_cm: number | null
+  certif_ab: boolean
+  date_commande: string | null
+  numero_facture: string | null
+  temps_min: number | null
+  commentaire: string | null
+  longueur_m: number | null
+  largeur_m: number | null
+  actif: boolean
+  deleted_at: string | null
+  created_at: string
+}
+
+/** Plantation avec variété, rang (parcelle + site) et semis d'origine joints */
+export type PlantingWithRelations = Planting & {
+  varieties: Pick<Variety, 'id' | 'nom_vernaculaire'> | null
+  rows:
+    | (Pick<Row, 'id' | 'numero'> & {
+        parcels: Pick<Parcel, 'id' | 'nom'> | null
+      })
+    | null
+  seedlings: Pick<Seedling, 'id' | 'processus'> | null
+}
+
+// ---- Suivi de rang ----
+
+/** Types de soins de rang */
+export type TypeSoin = 'desherbage' | 'paillage' | 'arrosage' | 'autre'
+
+/** Suivi de rang — table row_care */
+export type RowCare = {
+  id: string
+  uuid_client: string | null
+  row_id: string | null
+  variety_id: string
+  date: string
+  type_soin: TypeSoin | null
+  temps_min: number | null
+  commentaire: string | null
+  created_at: string
+}
+
+/** Suivi de rang avec rang et variété joints */
+export type RowCareWithRelations = RowCare & {
+  rows:
+    | (Pick<Row, 'id' | 'numero'> & {
+        parcels: Pick<Parcel, 'id' | 'nom'> | null
+      })
+    | null
+  varieties: Pick<Variety, 'id' | 'nom_vernaculaire'> | null
+}
+
+// ---- Cueillette ----
+
+/** Cueillette (parcelle ou sauvage) — table harvests */
+export type Harvest = {
+  id: string
+  uuid_client: string | null
+  type_cueillette: 'parcelle' | 'sauvage'
+  row_id: string | null
+  lieu_sauvage: string | null
+  variety_id: string
+  partie_plante: PartiePlante
+  date: string
+  poids_g: number
+  temps_min: number | null
+  commentaire: string | null
+  deleted_at: string | null
+  created_at: string
+}
+
+/** Cueillette avec rang (optionnel si sauvage) et variété joints */
+export type HarvestWithRelations = Harvest & {
+  rows:
+    | (Pick<Row, 'id' | 'numero'> & {
+        parcels: Pick<Parcel, 'id' | 'nom'> | null
+      })
+    | null
+  varieties: Pick<Variety, 'id' | 'nom_vernaculaire'> | null
+}
+
+// ---- Arrachage ----
+
+/** Arrachage d'un rang — table uprootings */
+export type Uprooting = {
+  id: string
+  uuid_client: string | null
+  row_id: string
+  variety_id: string | null
+  date: string
+  temps_min: number | null
+  commentaire: string | null
+  created_at: string
+}
+
+/** Arrachage avec rang et variété joints */
+export type UprootingWithRelations = Uprooting & {
+  rows:
+    | (Pick<Row, 'id' | 'numero'> & {
+        parcels: Pick<Parcel, 'id' | 'nom'> | null
+      })
+    | null
+  varieties: Pick<Variety, 'id' | 'nom_vernaculaire'> | null
+}
+
+// ---- Occultation ----
+
+/** Occultation d'un rang — table occultations */
+export type Occultation = {
+  id: string
+  uuid_client: string | null
+  row_id: string
+  date_debut: string
+  date_fin: string | null
+  methode: MethodeOccultation
+  fournisseur: string | null
+  attestation: string | null
+  engrais_vert_nom: string | null
+  engrais_vert_fournisseur: string | null
+  engrais_vert_facture: string | null
+  engrais_vert_certif_ab: boolean
+  temps_retrait_min: number | null
+  temps_min: number | null
+  commentaire: string | null
+  created_at: string
+}
+
+/** Occultation avec rang joint */
+export type OccultationWithRelations = Occultation & {
+  rows:
+    | (Pick<Row, 'id' | 'numero'> & {
+        parcels: Pick<Parcel, 'id' | 'nom'> | null
+      })
+    | null
 }
