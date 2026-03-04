@@ -1,7 +1,7 @@
 'use server'
 
 import { createClient } from '@/lib/supabase/server'
-import type { RowWithParcel } from '@/lib/types'
+import type { RowWithParcel, Variety } from '@/lib/types'
 
 /**
  * Récupère tous les rangs actifs avec leur parcelle et site pour les selects de formulaires.
@@ -37,4 +37,22 @@ export async function fetchRowsForSelect(): Promise<RowWithParcel[]> {
 
     return a.numero.localeCompare(b.numero, 'fr', { numeric: true })
   })
+}
+
+/**
+ * Récupère toutes les variétés actives pour les selects de formulaires.
+ * Utilisé par les modules Plantation (A2.3), Cueillette, Suivi de rang, Arrachage.
+ */
+export async function fetchVarietiesForSelect(): Promise<Pick<Variety, 'id' | 'nom_vernaculaire'>[]> {
+  const supabase = await createClient()
+
+  const { data, error } = await supabase
+    .from('varieties')
+    .select('id, nom_vernaculaire')
+    .is('deleted_at', null)
+    .order('nom_vernaculaire', { ascending: true })
+
+  if (error) throw new Error(`Erreur lors du chargement des variétés : ${error.message}`)
+
+  return (data ?? []) as Pick<Variety, 'id' | 'nom_vernaculaire'>[]
 }

@@ -77,6 +77,7 @@ export type Row = {
   numero: string
   ancien_numero: string | null
   longueur_m: number | null
+  largeur_m: number | null  // ajouté par migration 006
   position_ordre: number | null
   notes: string | null
   deleted_at: string | null

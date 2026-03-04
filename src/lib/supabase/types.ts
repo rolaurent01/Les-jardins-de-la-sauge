@@ -427,8 +427,8 @@ export type Database = {
           lune: 'montante' | 'descendante' | null
           nb_plants: number | null
           type_plant:
-            | 'mini_motte' | 'godet' | 'caissette'
-            | 'achat_godets' | 'repiquage_pleine_terre'
+            | 'godet' | 'caissette' | 'mini_motte' | 'plant_achete'
+            | 'division' | 'bouture' | 'marcottage' | 'stolon' | 'rhizome' | 'semis_direct'
             | null
           espacement_cm: number | null
           longueur_m: number | null
@@ -454,8 +454,8 @@ export type Database = {
           lune?: 'montante' | 'descendante' | null
           nb_plants?: number | null
           type_plant?:
-            | 'mini_motte' | 'godet' | 'caissette'
-            | 'achat_godets' | 'repiquage_pleine_terre'
+            | 'godet' | 'caissette' | 'mini_motte' | 'plant_achete'
+            | 'division' | 'bouture' | 'marcottage' | 'stolon' | 'rhizome' | 'semis_direct'
             | null
           espacement_cm?: number | null
           longueur_m?: number | null
@@ -481,8 +481,8 @@ export type Database = {
           lune?: 'montante' | 'descendante' | null
           nb_plants?: number | null
           type_plant?:
-            | 'mini_motte' | 'godet' | 'caissette'
-            | 'achat_godets' | 'repiquage_pleine_terre'
+            | 'godet' | 'caissette' | 'mini_motte' | 'plant_achete'
+            | 'division' | 'bouture' | 'marcottage' | 'stolon' | 'rhizome' | 'semis_direct'
             | null
           espacement_cm?: number | null
           longueur_m?: number | null

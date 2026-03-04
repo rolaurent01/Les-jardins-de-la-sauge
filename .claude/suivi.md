@@ -2,6 +2,34 @@
 
 ---
 
+## [2026-03-04 22:30] — feat(parcelles): A2.3 — Plantation Server Actions (backend)
+
+**Type :** `feature`
+**Fichiers concernés :**
+- `src/app/(dashboard)/parcelles/plantations/actions.ts` *(nouveau)*
+- `src/lib/utils/parcelles-parsers.ts`
+- `src/app/(dashboard)/parcelles/shared-actions.ts`
+- `src/lib/types.ts`
+- `src/lib/supabase/types.ts`
+
+### Description
+Implémentation complète du backend du module Plantation (A2.3) : parsers, Server Actions CRUD, et helpers partagés. Aucun composant UI créé (prévu en A2.4).
+
+### Détails techniques
+- **`parsePlantingForm`** : nouveau parser dans `parcelles-parsers.ts`. Valide via `plantingSchema` (Zod). Les champs `date_commande` et `numero_facture` sont absents du schéma Zod et ajoutés manuellement après validation. Nouveaux helpers `parseOptionalDecimal` et `parseBool` (gestion `'on'`/`'true'`/`'1'`).
+- **`fetchVarietiesForSelect`** : ajouté dans `shared-actions.ts`, filtre `deleted_at IS NULL`, tri par `nom_vernaculaire`. Réutilisable par tous les modules A2.
+- **`fetchPlantings`** : jointures profondes (varieties, rows → parcels → sites, seedlings), filtre `deleted_at IS NULL`, tri `date_plantation DESC`.
+- **`fetchSeedlingsForSelect`** : semis actifs avec variété jointure, pour le dropdown "Semis d'origine".
+- **`fetchRowWarnings`** : action serveur à la demande (appelée par le client lors de la sélection d'un rang). Retourne : plantings actifs, somme longueurs utilisées, longueur/largeur du rang, occultation sans date_fin. Type `RowWarnings` défini localement.
+- **`createPlanting`** : pré-remplissage `longueur_m`/`largeur_m` depuis le rang si non saisis. `actif: true` forcé à la création.
+- **`updatePlanting`** : update standard, sans toucher à `actif` (réservé à l'arrachage A2.8).
+- **`archivePlanting`** / **`restorePlanting`** : soft delete (`deleted_at`).
+- **Bugs corrigés** :
+  - `Row` type (types.ts) : `largeur_m` manquant malgré migration 006 → ajouté.
+  - `type_plant` (supabase/types.ts) : enum stale (`achat_godets`, `repiquage_pleine_terre`) → mis à jour avec les 10 valeurs actuelles de la migration.
+
+---
+
 ## [2026-03-04 21:00] — feat(parcelles): A2.2 — Module Travail de sol (backend + UI)
 
 **Type :** `feature`
