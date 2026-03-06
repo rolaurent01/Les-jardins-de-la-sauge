@@ -69,23 +69,42 @@ Implémentation complète du module Cueillette (A2.6) : premier module avec mouv
 
 ---
 
-## [2026-03-06] — fix(auth): login — "aucune organisation associée" après signIn
+## [2026-03-06] — fix(auth): login + navigation post-login — RLS auto-referente sur memberships
 
 **Type :** `fix`
 **Fichiers concernés :**
-- `src/app/login/actions.ts` *(modifié)*
+- `src/app/login/actions.ts` *(modifie)*
+- `supabase/migrations/013_fix_membership_rls.sql` *(nouveau)*
 
 ### Description
-Correction du bug où le login réussissait (signInWithPassword OK) mais la requête `memberships` suivante retournait null, affichant "Aucune organisation associée à ce compte".
+Correction de deux blocages empechant la connexion et la navigation apres login.
 
-### Cause racine
-Après `signInWithPassword`, le client SSR Supabase écrit les tokens de session via `setAll` (cookies de réponse), mais `getAll` lit les cookies de la requête entrante. Dans la même Server Action, les cookies fraîchement écrits ne sont pas relus — `auth.uid()` retourne donc NULL dans les politiques RLS PostgreSQL. La politique `membership_isolation` (self-referencing : `organization_id IN (SELECT organization_id FROM memberships WHERE user_id = auth.uid())`) filtre alors toutes les lignes.
+### Probleme 1 : Server Action login (corrige precedemment)
+Apres `signInWithPassword`, la requete `memberships` dans la meme Server Action utilisait le client SSR (anon key + RLS). Les cookies de session ecrits via `setAll` ne sont pas relus par `getAll` dans la meme requete — `auth.uid()` retourne NULL dans les politiques RLS.
+**Fix** : utilisation de `createAdminClient()` (service role, bypass RLS) pour la requete post-login.
 
-### Correction
-Remplacement du client Supabase classique (anon key + RLS) par `createAdminClient()` (service role, bypass RLS) pour la requête de résolution du membership post-login. L'utilisateur est déjà authentifié via `signInWithPassword`, donc le `user_id` provient de `authData.user.id` (fiable).
+### Probleme 2 : Politique RLS auto-referente sur memberships (cause racine)
+La politique `membership_isolation` utilisait une sous-requete sur sa propre table :
+```sql
+USING (organization_id IN (
+  SELECT organization_id FROM memberships WHERE user_id = auth.uid()
+))
+```
+Cette sous-requete est elle-meme soumise a la meme politique RLS, creant une reference circulaire. PostgreSQL peut retourner zero ligne, ce qui casse en cascade :
+- **Proxy** : query `organizations` (dont la RLS depend de memberships) → org null → redirect vers `resolveFirstOrgSlug` → aussi bloque → redirect `/login` → boucle infinie
+- **OrgSlugLayout** : query `organizations` → null → `notFound()` → page blanche/404
+- **DashboardLayout** : query `organizations` + `farms` → null → erreur rendu
 
-### Résultats
+**Fix** (migration 013) : politique simplifiee sans auto-reference :
+```sql
+CREATE POLICY membership_isolation ON memberships FOR ALL
+  USING (user_id = auth.uid());
+```
+Un utilisateur voit ses propres memberships. Les policies dependantes (`org_isolation`, `farm_isolation` via `user_farm_ids()`) fonctionnent car leur sous-requete sur memberships n'est plus bloquee.
+
+### Resultats
 - **TypeScript** : `tsc --noEmit` ✅ 0 erreur
+- **Migration** : `013_fix_membership_rls.sql` a executer sur Supabase
 
 ---
 
