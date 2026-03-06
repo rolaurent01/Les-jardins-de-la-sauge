@@ -3,7 +3,7 @@
  * Fonctions pures extraites des Server Actions pour être testables sans dépendances serveur.
  */
 
-import { soilWorkSchema, plantingSchema } from '@/lib/validation/parcelles'
+import { soilWorkSchema, plantingSchema, rowCareSchema } from '@/lib/validation/parcelles'
 
 // ---- Helpers partagés ----
 
@@ -103,4 +103,29 @@ export function parsePlantingForm(
       numero_facture,
     },
   }
+}
+
+// ---- Suivi de rang ----
+
+/** Extrait et valide les champs du formulaire suivi de rang avec Zod */
+export function parseRowCareForm(
+  formData: FormData,
+): { data: ReturnType<typeof rowCareSchema.parse> } | { error: string } {
+  const raw = {
+    row_id:      (formData.get('row_id') as string) || '',
+    variety_id:  (formData.get('variety_id') as string) || '',
+    date:        (formData.get('date') as string) || '',
+    type_soin:   (formData.get('type_soin') as string) || '',
+    temps_min:   parseOptionalInt(formData, 'temps_min'),
+    commentaire: (formData.get('commentaire') as string)?.trim() || null,
+  }
+
+  const result = rowCareSchema.safeParse(raw)
+  if (!result.success) {
+    const first = result.error.issues[0]
+    const field = first.path.length > 0 ? `${String(first.path[0])} : ` : ''
+    return { error: `${field}${first.message}` }
+  }
+
+  return { data: result.data }
 }

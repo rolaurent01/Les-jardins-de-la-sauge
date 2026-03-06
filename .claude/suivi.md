@@ -2,6 +2,38 @@
 
 ---
 
+## [2026-03-06] — feat(parcelles): A2.5 — Module Suivi de rang (backend + UI)
+
+**Type :** `feature`
+**Fichiers concernés :**
+- `src/lib/utils/parcelles-parsers.ts` *(ajout `parseRowCareForm`)*
+- `src/app/[orgSlug]/(dashboard)/parcelles/suivi-rang/actions.ts` *(nouveau)*
+- `src/app/[orgSlug]/(dashboard)/parcelles/suivi-rang/page.tsx` *(nouveau)*
+- `src/components/parcelles/SuiviRangClient.tsx` *(nouveau)*
+- `src/components/parcelles/SuiviRangSlideOver.tsx` *(nouveau)*
+
+### Description
+Implementation complete du module Suivi de rang (A2.5) : parser de formulaire, Server Actions CRUD, page serveur, tableau client avec recherche et badges colores, slide-over avec logique adaptative variete via le hook `useRowVarieties`.
+
+### Details techniques
+- **`parseRowCareForm`** : nouveau parser dans `parcelles-parsers.ts`. Valide via `rowCareSchema` (Zod). Extrait row_id, variety_id, date, type_soin, temps_min, commentaire.
+- **`actions.ts`** : CRUD complet avec `getContext()` et `buildPath()`. Jointures profondes (rows → parcels → sites, varieties). Filtre `farm_id`. Suppression reelle (pas de soft delete sur `row_care`).
+- **`page.tsx`** : Server Component avec appels paralleles `fetchRowCare()`, `fetchRowsForSelect()`, `fetchVarietiesForSelect()`.
+- **`SuiviRangClient.tsx`** : tableau avec colonnes Variete (gras), Rang, Date, Type (badge colore : desherbage/paillage/arrosage/autre), Temps, Commentaire (tronque), Actions. Recherche insensible casse/accents. Confirmation suppression 2-clics (auto-reset 4s).
+- **`SuiviRangSlideOver.tsx`** : formulaire avec logique adaptative variete :
+  - Hook `useRowVarieties(rowId)` declenche au changement de rang
+  - 1 variete active → auto-selection + message informatif
+  - Plusieurs varietes → dropdown restreint + bandeau avertissement
+  - 0 variete → avertissement + fallback catalogue complet
+  - Indicateur de chargement pendant la requete du hook
+
+### Resultats
+- **Build** : ✅ compile avec succes, 0 erreur
+- **Tests** : 147/147 ✅
+- **Route** : `/[orgSlug]/parcelles/suivi-rang` listee comme `ƒ (Dynamic)`
+
+---
+
 ## [2026-03-06] — feat(parcelles): A2.4 — Module Plantation (UI bureau)
 
 **Type :** `feature`
