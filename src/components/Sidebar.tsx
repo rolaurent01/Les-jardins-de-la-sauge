@@ -134,7 +134,7 @@ const NAV: NavSection[] = [
     emoji: '🌿',
     children: [
       { label: 'Travail de sol', href: '/parcelles/travail-sol'  },
-      { label: 'Plantation',     href: '/parcelles/plantation'   },
+      { label: 'Plantation',     href: '/parcelles/plantations'  },
       { label: 'Suivi de rang',  href: '/parcelles/suivi-rang'   },
       { label: 'Cueillette',     href: '/parcelles/cueillette'   },
       { label: 'Arrachage',      href: '/parcelles/arrachage'    },

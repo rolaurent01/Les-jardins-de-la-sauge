@@ -2,6 +2,20 @@
 
 ---
 
+## [2026-03-06] — fix: lien Sidebar plantation → plantations (404)
+
+**Type :** `fix`
+**Fichiers concernés :**
+- `src/components/Sidebar.tsx` *(modifié)*
+
+### Description
+La page `/parcelles/plantations` retournait 404. Le fichier `page.tsx` existait au bon endroit et le build listait la route. Le problème était un typo dans la Sidebar : le lien pointait vers `/parcelles/plantation` (singulier) au lieu de `/parcelles/plantations` (pluriel).
+
+### Résultats
+- **Build** : ✅ compilé avec succès, 0 erreur
+
+---
+
 ## [2026-03-06] — fix: cookies Server Component + casts jointures sites
 
 **Type :** `fix`
