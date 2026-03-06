@@ -21,7 +21,7 @@ export async function fetchRowsForSelect(): Promise<RowWithParcel[]> {
 
   if (error) throw new Error(`Erreur lors du chargement des rangs : ${error.message}`)
 
-  const rows = (data ?? []) as RowWithParcel[]
+  const rows = (data ?? []) as unknown as RowWithParcel[]
 
   // Tri : site nom → parcelle nom → position_ordre puis numero
   return rows.sort((a, b) => {

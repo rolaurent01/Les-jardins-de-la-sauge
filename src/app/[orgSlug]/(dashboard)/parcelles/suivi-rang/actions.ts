@@ -22,7 +22,7 @@ export async function fetchRowCare(): Promise<RowCareWithRelations[]> {
 
   if (error) throw new Error(`Erreur lors du chargement des suivis de rang : ${error.message}`)
 
-  return (data ?? []) as RowCareWithRelations[]
+  return (data ?? []) as unknown as RowCareWithRelations[]
 }
 
 // ---- Actions ----

@@ -10,7 +10,7 @@ import { NextResponse } from 'next/server'
 export async function GET() {
   try {
     const supabase = createAdminClient()
-    const { error } = await supabase.rpc('ping').single()
+    const { error } = await (supabase as any).rpc('ping').single()
 
     // Si la fonction RPC n'existe pas, on fait un fallback sur une requête brute
     if (error) {

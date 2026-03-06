@@ -44,7 +44,7 @@ export async function fetchSeedlings(): Promise<SeedlingWithRelations[]> {
 
   if (error) throw new Error(`Erreur lors du chargement des semis : ${error.message}`)
 
-  return (data ?? []) as SeedlingWithRelations[]
+  return (data ?? []) as unknown as SeedlingWithRelations[]
 }
 
 /** Récupère les sachets actifs de la ferme courante pour le sélecteur du formulaire */

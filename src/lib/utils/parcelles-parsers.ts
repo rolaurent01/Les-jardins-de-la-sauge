@@ -3,7 +3,7 @@
  * Fonctions pures extraites des Server Actions pour être testables sans dépendances serveur.
  */
 
-import { soilWorkSchema, plantingSchema, rowCareSchema } from '@/lib/validation/parcelles'
+import { soilWorkSchema, plantingSchema, rowCareSchema, harvestSchema } from '@/lib/validation/parcelles'
 
 // ---- Helpers partagés ----
 
@@ -121,6 +121,34 @@ export function parseRowCareForm(
   }
 
   const result = rowCareSchema.safeParse(raw)
+  if (!result.success) {
+    const first = result.error.issues[0]
+    const field = first.path.length > 0 ? `${String(first.path[0])} : ` : ''
+    return { error: `${field}${first.message}` }
+  }
+
+  return { data: result.data }
+}
+
+// ---- Cueillette ----
+
+/** Extrait et valide les champs du formulaire cueillette avec Zod */
+export function parseHarvestForm(
+  formData: FormData,
+): { data: ReturnType<typeof harvestSchema.parse> } | { error: string } {
+  const raw = {
+    type_cueillette: (formData.get('type_cueillette') as string) || '',
+    variety_id:      (formData.get('variety_id') as string) || '',
+    partie_plante:   (formData.get('partie_plante') as string) || '',
+    date:            (formData.get('date') as string) || '',
+    poids_g:         parseOptionalDecimal(formData, 'poids_g') ?? 0,
+    row_id:          (formData.get('row_id') as string)?.trim() || null,
+    lieu_sauvage:    (formData.get('lieu_sauvage') as string)?.trim() || null,
+    temps_min:       parseOptionalInt(formData, 'temps_min'),
+    commentaire:     (formData.get('commentaire') as string)?.trim() || null,
+  }
+
+  const result = harvestSchema.safeParse(raw)
   if (!result.success) {
     const first = result.error.issues[0]
     const field = first.path.length > 0 ? `${String(first.path[0])} : ` : ''

@@ -1992,7 +1992,26 @@ export type Database = {
         Relationships: []
       }
     }
-    Functions: Record<string, never>
+    Functions: {
+      /** Cree un harvest + stock_movement d'entree (frais) dans une seule transaction */
+      create_harvest_with_stock: {
+        Args: {
+          p_farm_id: string
+          p_uuid_client: string | null
+          p_type_cueillette: string
+          p_row_id: string | null
+          p_lieu_sauvage: string | null
+          p_variety_id: string
+          p_partie_plante: string
+          p_date: string
+          p_poids_g: number
+          p_temps_min: number | null
+          p_commentaire: string | null
+          p_created_by: string
+        }
+        Returns: string
+      }
+    }
     Enums: Record<string, never>
   }
 }

@@ -2,6 +2,93 @@
 
 ---
 
+## [2026-03-06] — feat(parcelles): A2.6 — Module Cueillette (backend + UI + transaction stock)
+
+**Type :** `feature`
+**Fichiers concernés :**
+- `supabase/migrations/012_harvest_rpc.sql` *(nouveau)*
+- `src/lib/supabase/types.ts` *(mis à jour — Functions RPC + cast fixes)*
+- `src/lib/utils/parcelles-parsers.ts` *(ajout parseHarvestForm)*
+- `src/app/[orgSlug]/(dashboard)/parcelles/cueillette/actions.ts` *(nouveau)*
+- `src/app/[orgSlug]/(dashboard)/parcelles/cueillette/page.tsx` *(nouveau)*
+- `src/components/parcelles/CueilletteClient.tsx` *(nouveau)*
+- `src/components/parcelles/CueilletteSlideOver.tsx` *(nouveau)*
+- `src/app/api/keep-alive/route.ts` *(fix — cast RPC ping)*
+- 5 fichiers actions existants *(fix — `as unknown as` pour les casts jointures)*
+
+### Description
+Implémentation complète du module Cueillette (A2.6) : premier module avec mouvement de stock. La cueillette génère un mouvement d'ENTRÉE de stock à l'état `frais`, de façon atomique via une fonction RPC transactionnelle. Formulaire adaptatif parcelle/sauvage avec logique adaptative variété (useRowVarieties) et partie_plante (useVarietyParts).
+
+### Détails techniques
+
+#### Transaction stock — choix RPC
+- **Option choisie** : fonction SQL `create_harvest_with_stock` (SECURITY DEFINER, plpgsql)
+- **Raison** : vraie transaction SQL — impossible d'avoir un harvest sans stock_movement. L'option INSERT séquentiel avec rollback manuel est moins sûre (race condition théorique).
+- La vérification d'accès est faite AVANT l'appel RPC côté Server Action via `getContext()`.
+
+#### Migration `012_harvest_rpc.sql`
+- Fonction `create_harvest_with_stock(12 params)` → INSERT harvest + INSERT stock_movement `entree`/`frais` dans la même transaction. Retourne l'UUID du harvest créé.
+
+#### Types Supabase (`types.ts`)
+- Ajout de la section `Functions` avec le type de `create_harvest_with_stock` (Args + Returns) — remplace `Record<string, never>`.
+- **Effet de bord** : le SDK Supabase v2.x est devenu plus strict sur les casts de jointures une fois `Functions` non-vide. Tous les `as Type[]` avec jointures dans les actions existantes ont dû être convertis en `as unknown as Type[]` (7 fichiers).
+- Fix `keep-alive/route.ts` : `supabase.rpc('ping')` casté via `(supabase as any)` car `ping` n'est pas déclaré dans Functions.
+
+#### Parser `parseHarvestForm`
+- Extrait `type_cueillette`, `variety_id`, `partie_plante`, `date`, `poids_g`, `row_id`, `lieu_sauvage`, `temps_min`, `commentaire`
+- Valide via `harvestSchema` (Zod) avec superRefine : parcelle → row_id obligatoire, sauvage → lieu_sauvage obligatoire
+
+#### Actions (6 Server Actions)
+- `fetchHarvests()` : jointures varieties + rows → parcels, filtre farm_id + deleted_at
+- `fetchLieuxSauvages()` : SELECT DISTINCT lieu_sauvage pour autocomplétion (dédoublonnage + tri JS)
+- `createHarvest(fd)` : parse + `supabase.rpc('create_harvest_with_stock', {...})` — transactionnel
+- `updateHarvest(id, fd)` : UPDATE harvest + UPDATE stock_movement correspondant (via source_type='cueillette' + source_id)
+- `archiveHarvest(id)` : soft delete harvest + soft delete stock_movement correspondant — **critique pour la cohérence du stock**
+- `restoreHarvest(id)` : restaure harvest + stock_movement correspondant
+
+#### CueilletteClient.tsx
+- Colonnes : Type (badge), Variété, Partie (badge coloré), Lieu, Date, Poids (formatté kg/g), Temps, Actions
+- Filtres type de cueillette : Tous / Parcelle / Sauvage (boutons inline)
+- Recherche insensible casse/accents sur variété, lieu, commentaire
+- Toggle archives + confirmation archivage 2-clics (auto-reset 4s)
+- Restauration depuis la vue archives
+
+#### CueilletteSlideOver.tsx — formulaire adaptatif le plus complexe du projet
+- **Type de cueillette** : 2 boutons toggle (Parcelle/Sauvage). Non modifiable en édition.
+- **Mode Parcelle** : select rang groupé (optgroup Site — Parcelle) → `useRowVarieties(rowId)` pour la variété
+- **Mode Sauvage** : input texte avec datalist (autocomplétion lieux existants) → select variété catalogue complet
+- **Variété** : logique adaptative — auto si 1 seule variété active sur le rang, dropdown si plusieurs, fallback catalogue si aucune
+- **Partie plante** : logique adaptative via `useVarietyParts(varietyId)` — auto si 1 seule partie (ex: Menthe → feuille), dropdown si plusieurs (ex: Calendula → feuille/fleur)
+- **Enchaînement des hooks** : rang → variété → partie. Si rang mono-variété + variété mono-partie, l'utilisateur n'a qu'à saisir date + poids (cas 95% du temps).
+- Poids, date, temps, commentaire en champs communs
+
+### Résultats
+- **Build** : ✅ compilé avec succès, 0 erreur
+- **Tests** : 147/147 ✅
+- **Route** : `/[orgSlug]/parcelles/cueillette` listée comme `ƒ (Dynamic)`
+
+---
+
+## [2026-03-06] — fix(auth): login — "aucune organisation associée" après signIn
+
+**Type :** `fix`
+**Fichiers concernés :**
+- `src/app/login/actions.ts` *(modifié)*
+
+### Description
+Correction du bug où le login réussissait (signInWithPassword OK) mais la requête `memberships` suivante retournait null, affichant "Aucune organisation associée à ce compte".
+
+### Cause racine
+Après `signInWithPassword`, le client SSR Supabase écrit les tokens de session via `setAll` (cookies de réponse), mais `getAll` lit les cookies de la requête entrante. Dans la même Server Action, les cookies fraîchement écrits ne sont pas relus — `auth.uid()` retourne donc NULL dans les politiques RLS PostgreSQL. La politique `membership_isolation` (self-referencing : `organization_id IN (SELECT organization_id FROM memberships WHERE user_id = auth.uid())`) filtre alors toutes les lignes.
+
+### Correction
+Remplacement du client Supabase classique (anon key + RLS) par `createAdminClient()` (service role, bypass RLS) pour la requête de résolution du membership post-login. L'utilisateur est déjà authentifié via `signInWithPassword`, donc le `user_id` provient de `authData.user.id` (fiable).
+
+### Résultats
+- **TypeScript** : `tsc --noEmit` ✅ 0 erreur
+
+---
+
 ## [2026-03-06] — feat(parcelles): A2.5 — Module Suivi de rang (backend + UI)
 
 **Type :** `feature`

@@ -22,7 +22,7 @@ export async function fetchSoilWorks(): Promise<SoilWorkWithRelations[]> {
 
   if (error) throw new Error(`Erreur lors du chargement des travaux de sol : ${error.message}`)
 
-  return (data ?? []) as SoilWorkWithRelations[]
+  return (data ?? []) as unknown as SoilWorkWithRelations[]
 }
 
 // ---- Actions ----

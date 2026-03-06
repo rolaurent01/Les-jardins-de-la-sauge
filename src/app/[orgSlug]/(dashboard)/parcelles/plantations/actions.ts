@@ -50,7 +50,7 @@ export async function fetchPlantings(): Promise<PlantingWithRelations[]> {
 
   if (error) throw new Error(`Erreur lors du chargement des plantations : ${error.message}`)
 
-  return (data ?? []) as PlantingWithRelations[]
+  return (data ?? []) as unknown as PlantingWithRelations[]
 }
 
 /** Récupère les semis actifs de la ferme courante pour le dropdown "Semis d'origine" */
@@ -67,7 +67,7 @@ export async function fetchSeedlingsForSelect(): Promise<SeedlingForSelect[]> {
 
   if (error) throw new Error(`Erreur lors du chargement des semis : ${error.message}`)
 
-  return (data ?? []) as SeedlingForSelect[]
+  return (data ?? []) as unknown as SeedlingForSelect[]
 }
 
 /**

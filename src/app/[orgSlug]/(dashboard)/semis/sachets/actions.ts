@@ -57,7 +57,7 @@ export async function fetchSeedLots(): Promise<SeedLotWithVariety[]> {
 
   if (error) throw new Error(`Erreur lors du chargement des sachets : ${error.message}`)
 
-  return (data ?? []) as SeedLotWithVariety[]
+  return (data ?? []) as unknown as SeedLotWithVariety[]
 }
 
 // ---- Actions ----

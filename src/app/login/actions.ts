@@ -1,6 +1,6 @@
 'use server'
 
-import { createClient } from '@/lib/supabase/server'
+import { createClient, createAdminClient } from '@/lib/supabase/server'
 import { redirect } from 'next/navigation'
 
 export async function login(formData: FormData): Promise<{ error: string } | never> {
@@ -15,8 +15,11 @@ export async function login(formData: FormData): Promise<{ error: string } | nev
     return { error: 'Identifiants incorrects. Vérifiez votre email et mot de passe.' }
   }
 
-  // Récupérer la première organisation de l'utilisateur pour construire l'URL de redirection
-  const { data: membership } = await supabase
+  // Récupérer la première organisation de l'utilisateur pour construire l'URL de redirection.
+  // On utilise le client admin (service role) car les cookies de session ne sont pas encore
+  // lisibles dans la même requête — auth.uid() retourne NULL dans les politiques RLS.
+  const admin = createAdminClient()
+  const { data: membership } = await admin
     .from('memberships')
     .select('organizations(slug)')
     .eq('user_id', authData.user.id)
