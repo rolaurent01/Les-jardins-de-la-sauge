@@ -33,9 +33,9 @@ export default async function SitesPage() {
 
   return (
     <SitesParcelsClient
-      initialSites={(sitesRes.data as Site[]) ?? []}
-      initialParcels={(parcelsRes.data as ParcelWithSite[]) ?? []}
-      initialRows={(rowsRes.data as RowWithParcel[]) ?? []}
+      initialSites={(sitesRes.data ?? []) as Site[]}
+      initialParcels={(parcelsRes.data ?? []) as unknown as ParcelWithSite[]}
+      initialRows={(rowsRes.data ?? []) as unknown as RowWithParcel[]}
     />
   )
 }

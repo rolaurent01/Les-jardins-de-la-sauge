@@ -33,7 +33,7 @@ export async function getContext(): Promise<AppContext> {
   }
 
   // Fallback : première ferme via membership
-  return resolveFirstFarmContext(supabase, user.id, cookieStore)
+  return resolveFirstFarmContext(supabase, user.id)
 }
 
 /** Résout le contexte depuis un farm_id donné (vérifié par RLS) */
@@ -76,8 +76,6 @@ async function resolveFirstFarmContext(
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   supabase: any,
   userId: string,
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  cookieStore: any
 ): Promise<AppContext> {
   const { data: membership } = await supabase
     .from('memberships')
@@ -93,14 +91,6 @@ async function resolveFirstFarmContext(
 
   const farmId = org.farms[0].id
   const orgSlug = org.slug
-
-  // Mémoriser la ferme active pour les prochaines requêtes
-  cookieStore.set('active_farm_id', farmId, {
-    path: '/',
-    httpOnly: true,
-    sameSite: 'lax',
-    maxAge: 60 * 60 * 24 * 365, // 1 an
-  })
 
   return {
     userId,

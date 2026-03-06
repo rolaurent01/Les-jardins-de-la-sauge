@@ -2,6 +2,29 @@
 
 ---
 
+## [2026-03-06] — fix: cookies Server Component + casts jointures sites
+
+**Type :** `fix`
+**Fichiers concernés :**
+- `src/lib/context.ts` *(modifié — suppression du cookieStore.set dans le fallback)*
+- `src/proxy.ts` *(modifié — initialisation du cookie active_farm_id dans le middleware)*
+- `src/app/[orgSlug]/(dashboard)/referentiel/sites/page.tsx` *(fix casts jointures as unknown as)*
+
+### Description
+Correction de 2 bugs post-déploiement :
+
+**Bug 1 — "Cookies can only be modified in a Server Action or Route Handler"**
+`getContext()` faisait un `cookieStore.set('active_farm_id', ...)` dans son fallback quand le cookie n'existait pas. Ce set() était appelé depuis des Server Components (via fetchSeedLots, fetchSoilWorks, etc.), ce que Next.js interdit. Fix : suppression du set dans `getContext()`, déplacement de l'initialisation du cookie dans le middleware `proxy.ts` (qui a le droit d'écrire des cookies via `response.cookies.set()`).
+
+**Bug 2 — /referentiel/sites : server-side exception**
+Les casts de jointures Supabase (`as ParcelWithSite[]`, `as RowWithParcel[]`) échouaient depuis l'ajout de la section `Functions` dans `types.ts`. Correction en `as unknown as` comme les autres fichiers.
+
+### Résultats
+- **Build** : ✅ compilé avec succès, 0 erreur
+- Toutes les routes dynamiques générées correctement
+
+---
+
 ## [2026-03-06] — feat(parcelles): A2.6 — Module Cueillette (backend + UI + transaction stock)
 
 **Type :** `feature`

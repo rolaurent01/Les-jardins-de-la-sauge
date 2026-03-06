@@ -46,6 +46,19 @@ export async function proxy(request: NextRequest) {
     return NextResponse.redirect(new URL('/login', request.url))
   }
 
+  // Initialiser le cookie active_farm_id si absent
+  if (!request.cookies.get('active_farm_id')?.value) {
+    const farmId = await resolveFirstFarmId(supabase, user.id)
+    if (farmId) {
+      response.cookies.set('active_farm_id', farmId, {
+        path: '/',
+        httpOnly: true,
+        sameSite: 'lax',
+        maxAge: 365 * 24 * 60 * 60, // 1 an
+      })
+    }
+  }
+
   // Redirection de la racine vers la première organisation de l'utilisateur
   if (pathname === '/') {
     const orgSlug = await resolveFirstOrgSlug(supabase, user.id)
@@ -102,6 +115,23 @@ async function resolveFirstOrgSlug(
     .single()
 
   return (data?.organizations as { slug: string } | null)?.slug ?? null
+}
+
+/** Résout l'id de la première ferme accessible à l'utilisateur */
+async function resolveFirstFarmId(
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  supabase: any,
+  userId: string
+): Promise<string | null> {
+  const { data } = await supabase
+    .from('memberships')
+    .select('organizations(farms(id))')
+    .eq('user_id', userId)
+    .limit(1)
+    .single()
+
+  const org = data?.organizations as { farms: { id: string }[] } | null
+  return org?.farms?.[0]?.id ?? null
 }
 
 export const config = {
