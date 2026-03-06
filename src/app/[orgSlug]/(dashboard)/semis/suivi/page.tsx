@@ -1,5 +1,5 @@
 import { fetchSeedlings, fetchSeedLotsForSelect } from './actions'
-import { fetchVarieties } from '@/app/(dashboard)/semis/sachets/actions'
+import { fetchVarieties } from '@/app/[orgSlug]/(dashboard)/semis/sachets/actions'
 import SemisClient from '@/components/semis/SemisClient'
 
 export default async function SuiviSemisPage() {

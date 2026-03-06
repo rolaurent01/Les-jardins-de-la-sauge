@@ -4,12 +4,13 @@ import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { useState } from 'react'
 import { logout } from '@/app/login/actions'
+import FarmSelector from '@/components/layout/FarmSelector'
 
 /* ---------------------------------------------------------------
-   Design tokens
+   Design tokens — couleurs structurelles (non liées au branding)
+   Le fond de la sidebar utilise var(--color-primary) injecté par [orgSlug]/layout.tsx
 --------------------------------------------------------------- */
 const C = {
-  sidebar:       '#3A5A40',
   // Item actif
   activeBg:      'rgba(255,255,255,0.13)',
   activeBar:     '#7DC87D',
@@ -34,41 +35,43 @@ const C = {
 } as const
 
 /* ---------------------------------------------------------------
-   BrandHeader — compact, app SaaS
+   BrandHeader — logo dynamique par organisation
 --------------------------------------------------------------- */
-function BrandHeader() {
+function BrandHeader({
+  organization,
+}: {
+  organization: { nom_affiche: string | null; logo_url: string | null }
+}) {
+  const displayName = organization.nom_affiche ?? 'Mon Jardin'
+
   return (
     <div
       className="flex items-center gap-2.5 px-4 py-[12px] flex-shrink-0"
       style={{ borderBottom: `1px solid ${C.divider}` }}
     >
-      <div
-        className="w-[26px] h-[26px] rounded-[6px] flex items-center justify-center flex-shrink-0"
-        style={{ background: 'rgba(255,255,255,0.09)', border: '1px solid rgba(255,255,255,0.1)' }}
-      >
-        <svg viewBox="0 0 24 24" className="w-3.5 h-3.5" fill="none">
-          <path
-            d="M12.5 12.2c2.2-4.3 6.2-6 8.5-6.2-.2 2.3-1.9 6.3-6.2 8.5-1.1.6-2.4.9-3.7.9.4-1.1.8-2.2 1.4-3.2Z"
-            fill="rgba(155,210,130,0.95)"
-          />
-          <path
-            d="M11.5 12.2C9.3 7.9 5.3 6.2 3 6c.2 2.3 1.9 6.3 6.2 8.5 1.1.6 2.4.9 3.7.9-.4-1.1-.8-2.2-1.4-3.2Z"
-            fill="rgba(155,210,130,0.68)"
-          />
-          <path
-            d="M12 21c0-3.5 0-6.2 1.2-8.6"
-            stroke="rgba(155,210,130,0.82)"
-            strokeWidth="1.5"
-            strokeLinecap="round"
-          />
-        </svg>
-      </div>
-      <div className="leading-[1.25]">
-        <p className="text-[12.5px] font-semibold" style={{ color: 'rgba(255,255,255,0.88)' }}>
-          Les Jardins
-        </p>
-        <p className="text-[10.5px]" style={{ color: 'rgba(255,255,255,0.36)' }}>
-          de la Sauge
+      {/* Logo ou placeholder lettre */}
+      {organization.logo_url ? (
+        // eslint-disable-next-line @next/next/no-img-element
+        <img
+          src={organization.logo_url}
+          alt={displayName}
+          className="w-[26px] h-[26px] rounded-[6px] object-contain flex-shrink-0"
+        />
+      ) : (
+        <div
+          className="w-[26px] h-[26px] rounded-[6px] flex items-center justify-center flex-shrink-0 text-white font-semibold"
+          style={{
+            backgroundColor: 'var(--color-primary-light)',
+            fontSize: '12px',
+          }}
+        >
+          {displayName.charAt(0).toUpperCase()}
+        </div>
+      )}
+
+      <div className="leading-[1.25] truncate">
+        <p className="text-[12.5px] font-semibold truncate" style={{ color: 'rgba(255,255,255,0.88)' }}>
+          {displayName}
         </p>
       </div>
     </div>
@@ -114,6 +117,7 @@ type NavSection = {
   phaseLabel?: string
 }
 
+/** Chemins relatifs — préfixés avec /{orgSlug} au rendu via href() */
 const NAV: NavSection[] = [
   {
     id: 'semis',
@@ -172,8 +176,8 @@ const NAV: NavSection[] = [
     label: 'Référentiel',
     emoji: '⚙️',
     children: [
-      { label: 'Variétés',           href: '/referentiel/varietes'  },
-      { label: 'Sites & Parcelles',  href: '/referentiel/sites'     },
+      { label: 'Variétés',                 href: '/referentiel/varietes'  },
+      { label: 'Sites & Parcelles',        href: '/referentiel/sites'     },
       { label: 'Produits complémentaires', href: '/referentiel/materiaux' },
     ],
   },
@@ -190,11 +194,27 @@ const NAV: NavSection[] = [
 /* ---------------------------------------------------------------
    Sidebar principale
 --------------------------------------------------------------- */
-export default function Sidebar({ userEmail }: { userEmail?: string }) {
+type SidebarProps = {
+  userEmail?: string
+  organization: { nom_affiche: string | null; logo_url: string | null }
+  farms: { id: string; nom: string }[]
+  activeFarmId: string
+  orgSlug: string
+}
+
+export default function Sidebar({ userEmail, organization, farms, activeFarmId, orgSlug }: SidebarProps) {
   const pathname = usePathname()
 
+  /** Construit le chemin absolu avec le préfixe orgSlug */
+  function h(path: string) {
+    return `/${orgSlug}${path}`
+  }
+
+  const dashboardHref = h('/dashboard')
+  const isDashActive = pathname === dashboardHref
+
   const initialOpen = NAV
-    .filter(s => s.children.some(c => pathname.startsWith(c.href)))
+    .filter(s => s.children.some(c => pathname.startsWith(h(c.href))))
     .map(s => s.id)
 
   const [openSection, setOpenSection] = useState<string | null>(
@@ -205,21 +225,22 @@ export default function Sidebar({ userEmail }: { userEmail?: string }) {
     setOpenSection(prev => (prev === id ? null : id))
   }
 
-  const isDashActive = pathname === '/dashboard' && openSection === null
-
   return (
     <aside
       className="flex flex-col h-screen w-60 flex-shrink-0 overflow-y-auto"
-      style={{ backgroundColor: C.sidebar }}
+      style={{ backgroundColor: 'var(--color-primary)' }}
     >
 
       {/* ── Header ─────────────────────────────── */}
-      <BrandHeader />
+      <BrandHeader organization={organization} />
+
+      {/* ── Sélecteur de ferme (visible si ≥ 2 fermes) ── */}
+      <FarmSelector farms={farms} activeFarmId={activeFarmId} />
 
       {/* ── Dashboard ──────────────────────────── */}
       <div className="px-3 pt-2.5 pb-1">
         <Link
-          href="/dashboard"
+          href={dashboardHref}
           onClick={() => setOpenSection(null)}
           className="flex items-center gap-2.5 rounded-md text-[13px] font-medium"
           style={{
@@ -257,7 +278,7 @@ export default function Sidebar({ userEmail }: { userEmail?: string }) {
           return (
             <div key={section.id} style={{ marginTop: idx === 0 ? '6px' : '10px' }}>
 
-              {/* ── Section header (label de catégorie) ── */}
+              {/* ── Section header ── */}
               <button
                 onClick={() => !section.disabled && toggleSection(section.id)}
                 disabled={section.disabled}
@@ -289,7 +310,6 @@ export default function Sidebar({ userEmail }: { userEmail?: string }) {
                   }
                 }}
               >
-                {/* Emoji */}
                 <span
                   style={{
                     fontSize: '13px',
@@ -303,7 +323,6 @@ export default function Sidebar({ userEmail }: { userEmail?: string }) {
 
                 <span className="flex-1 truncate">{section.label}</span>
 
-                {/* Badge phase */}
                 {section.phaseLabel && (
                   <span
                     className="flex-shrink-0 rounded"
@@ -319,7 +338,6 @@ export default function Sidebar({ userEmail }: { userEmail?: string }) {
                   </span>
                 )}
 
-                {/* Chevron */}
                 {!section.disabled && section.children.length > 0 && (
                   <Chevron open={isOpen} />
                 )}
@@ -332,11 +350,12 @@ export default function Sidebar({ userEmail }: { userEmail?: string }) {
                   style={{ paddingLeft: '6px' }}
                 >
                   {section.children.map(child => {
-                    const isActive = pathname.startsWith(child.href)
+                    const childHref = h(child.href)
+                    const isActive = pathname.startsWith(childHref)
                     return (
                       <Link
                         key={child.href}
-                        href={child.href}
+                        href={childHref}
                         className="flex items-center rounded-md text-[13px]"
                         style={{
                           paddingTop:    '6px',

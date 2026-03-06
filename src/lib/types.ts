@@ -38,9 +38,15 @@ export type Variety = {
   type_cycle: TypeCycle | null
   duree_peremption_mois: number
   parties_utilisees: PartiePlante[]
-  seuil_alerte_g: number | null
   notes: string | null
   deleted_at: string | null
+  // champs catalogue multi-tenant (migration 011)
+  created_by_farm_id: string | null
+  created_by: string | null
+  updated_by: string | null
+  verified: boolean
+  aliases: string[] | null
+  merged_into_id: string | null
   created_at: string
   updated_at: string
 }
@@ -49,20 +55,26 @@ export type Variety = {
 
 export type Site = {
   id: string
+  farm_id: string
   nom: string
   description: string | null
   deleted_at: string | null
+  created_by: string | null
+  updated_by: string | null
   created_at: string
 }
 
 export type Parcel = {
   id: string
+  farm_id: string
   site_id: string | null
   nom: string
   code: string
   orientation: string | null
   description: string | null
   deleted_at: string | null
+  created_by: string | null
+  updated_by: string | null
   created_at: string
 }
 
@@ -73,14 +85,17 @@ export type ParcelWithSite = Parcel & {
 
 export type Row = {
   id: string
+  farm_id: string
   parcel_id: string | null
   numero: string
   ancien_numero: string | null
   longueur_m: number | null
-  largeur_m: number | null  // ajouté par migration 006
+  largeur_m: number | null
   position_ordre: number | null
   notes: string | null
   deleted_at: string | null
+  created_by: string | null
+  updated_by: string | null
   created_at: string
 }
 
@@ -102,6 +117,10 @@ export type ExternalMaterial = {
   unite: string
   notes: string | null
   deleted_at: string | null
+  // champs catalogue multi-tenant (migration 011)
+  created_by_farm_id: string | null
+  created_by: string | null
+  updated_by: string | null
   created_at: string
 }
 
@@ -122,6 +141,7 @@ export type Processus = 'caissette_godet' | 'mini_motte'
 /** Sachet de graines acheté — table seed_lots */
 export type SeedLot = {
   id: string
+  farm_id: string
   uuid_client: string | null
   lot_interne: string
   variety_id: string | null
@@ -134,6 +154,8 @@ export type SeedLot = {
   certif_ab: boolean
   commentaire: string | null
   deleted_at: string | null
+  created_by: string | null
+  updated_by: string | null
   created_at: string
 }
 
@@ -145,6 +167,7 @@ export type SeedLotWithVariety = SeedLot & {
 /** Suivi d'un semis — table seedlings */
 export type Seedling = {
   id: string
+  farm_id: string
   uuid_client: string | null
   seed_lot_id: string | null
   variety_id: string | null
@@ -173,6 +196,8 @@ export type Seedling = {
   temps_repiquage_min: number | null
   commentaire: string | null
   deleted_at: string | null
+  created_by: string | null
+  updated_by: string | null
   created_at: string
 }
 
@@ -192,6 +217,7 @@ export type TypeTravailSol = 'depaillage' | 'motoculteur' | 'amendement' | 'autr
 /** Travail de sol sur un rang — table soil_works */
 export type SoilWork = {
   id: string
+  farm_id: string
   uuid_client: string | null
   row_id: string | null
   date: string
@@ -199,6 +225,8 @@ export type SoilWork = {
   detail: string | null
   temps_min: number | null
   commentaire: string | null
+  created_by: string | null
+  updated_by: string | null
   created_at: string
 }
 
@@ -236,6 +264,7 @@ export type LunePlantation = 'montante' | 'descendante'
 /** Plantation sur un rang — table plantings */
 export type Planting = {
   id: string
+  farm_id: string
   uuid_client: string | null
   row_id: string | null
   variety_id: string | null
@@ -256,6 +285,8 @@ export type Planting = {
   largeur_m: number | null
   actif: boolean
   deleted_at: string | null
+  created_by: string | null
+  updated_by: string | null
   created_at: string
 }
 
@@ -278,6 +309,7 @@ export type TypeSoin = 'desherbage' | 'paillage' | 'arrosage' | 'autre'
 /** Suivi de rang — table row_care */
 export type RowCare = {
   id: string
+  farm_id: string
   uuid_client: string | null
   row_id: string | null
   variety_id: string
@@ -285,6 +317,8 @@ export type RowCare = {
   type_soin: TypeSoin | null
   temps_min: number | null
   commentaire: string | null
+  created_by: string | null
+  updated_by: string | null
   created_at: string
 }
 
@@ -303,6 +337,7 @@ export type RowCareWithRelations = RowCare & {
 /** Cueillette (parcelle ou sauvage) — table harvests */
 export type Harvest = {
   id: string
+  farm_id: string
   uuid_client: string | null
   type_cueillette: 'parcelle' | 'sauvage'
   row_id: string | null
@@ -314,6 +349,8 @@ export type Harvest = {
   temps_min: number | null
   commentaire: string | null
   deleted_at: string | null
+  created_by: string | null
+  updated_by: string | null
   created_at: string
 }
 
@@ -332,12 +369,15 @@ export type HarvestWithRelations = Harvest & {
 /** Arrachage d'un rang — table uprootings */
 export type Uprooting = {
   id: string
+  farm_id: string
   uuid_client: string | null
   row_id: string
   variety_id: string | null
   date: string
   temps_min: number | null
   commentaire: string | null
+  created_by: string | null
+  updated_by: string | null
   created_at: string
 }
 
@@ -356,6 +396,7 @@ export type UprootingWithRelations = Uprooting & {
 /** Occultation d'un rang — table occultations */
 export type Occultation = {
   id: string
+  farm_id: string
   uuid_client: string | null
   row_id: string
   date_debut: string
@@ -370,6 +411,8 @@ export type Occultation = {
   temps_retrait_min: number | null
   temps_min: number | null
   commentaire: string | null
+  created_by: string | null
+  updated_by: string | null
   created_at: string
 }
 
@@ -380,4 +423,67 @@ export type OccultationWithRelations = Occultation & {
         parcels: Pick<Parcel, 'id' | 'nom'> | null
       })
     | null
+}
+
+// ---- Plateforme multi-tenant (migration 011) ----
+
+/** Organisation propriétaire de une ou plusieurs fermes */
+export type Organization = {
+  id: string
+  nom: string
+  slug: string
+  nom_affiche: string | null
+  logo_url: string | null
+  couleur_primaire: string
+  couleur_secondaire: string
+  max_farms: number
+  max_users: number
+  plan: 'starter' | 'pro' | 'enterprise'
+  created_at: string
+  updated_at: string
+}
+
+/** Ferme (unité de production isolée par RLS) */
+export type Farm = {
+  id: string
+  organization_id: string
+  nom: string
+  slug: string
+  created_at: string
+  updated_at: string
+}
+
+/** Rôle d'un utilisateur dans une organisation */
+export type MembershipRole = 'owner' | 'admin' | 'member'
+
+/** Permission d'un utilisateur sur une ferme */
+export type FarmAccessPermission = 'full' | 'read' | 'write'
+
+/** Membre d'une organisation */
+export type Membership = {
+  id: string
+  organization_id: string
+  user_id: string
+  role: MembershipRole
+  created_at: string
+}
+
+/** Accès d'un utilisateur à une ferme */
+export type FarmAccess = {
+  id: string
+  farm_id: string
+  user_id: string
+  permission: FarmAccessPermission
+  created_at: string
+}
+
+/**
+ * Contexte applicatif courant — ferme active + identifiants de l'utilisateur.
+ * Résolu côté serveur dans les Server Actions via getContext() (src/lib/context.ts).
+ */
+export type AppContext = {
+  userId: string
+  farmId: string
+  organizationId: string
+  orgSlug: string
 }

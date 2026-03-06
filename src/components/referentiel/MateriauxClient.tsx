@@ -3,7 +3,7 @@
 import { useState, useEffect, useTransition } from 'react'
 import { useRouter } from 'next/navigation'
 import type { ExternalMaterial } from '@/lib/types'
-import { archiveMaterial, restoreMaterial, createMaterial, updateMaterial } from '@/app/(dashboard)/referentiel/materiaux/actions'
+import { archiveMaterial, restoreMaterial, createMaterial, updateMaterial } from '@/app/[orgSlug]/(dashboard)/referentiel/materiaux/actions'
 import MaterielSlideOver from './MaterielSlideOver'
 
 /* Normalise pour la recherche insensible casse + accents */
@@ -108,7 +108,7 @@ export default function MateriauxClient({ initialMaterials }: { initialMaterials
         <button
           onClick={openCreate}
           className="flex items-center gap-1.5 px-4 py-2 rounded-lg text-sm font-medium"
-          style={{ backgroundColor: '#3A5A40', color: '#F9F8F6' }}
+          style={{ backgroundColor: 'var(--color-primary)', color: '#F9F8F6' }}
         >
           <span className="text-base leading-none">＋</span>
           Nouveau matériau
@@ -128,7 +128,7 @@ export default function MateriauxClient({ initialMaterials }: { initialMaterials
             onChange={e => setSearch(e.target.value)}
             className="w-full pl-9 pr-3 py-2 text-sm rounded-lg border outline-none"
             style={{ backgroundColor: '#FAF5E9', borderColor: '#D8E0D9', color: '#2C3E2D' }}
-            onFocus={e  => (e.target.style.borderColor = '#3A5A40')}
+            onFocus={e  => (e.target.style.borderColor = 'var(--color-primary)')}
             onBlur={e   => (e.target.style.borderColor = '#D8E0D9')}
           />
         </div>
@@ -138,9 +138,9 @@ export default function MateriauxClient({ initialMaterials }: { initialMaterials
             onClick={() => setShowArchived(s => !s)}
             className="flex items-center gap-1.5 px-3 py-2 rounded-lg text-sm border"
             style={{
-              borderColor: showArchived ? '#3A5A40' : '#D8E0D9',
-              backgroundColor: showArchived ? '#3A5A4012' : 'transparent',
-              color: showArchived ? '#3A5A40' : '#9CA89D',
+              borderColor: showArchived ? 'var(--color-primary)' : '#D8E0D9',
+              backgroundColor: showArchived ? 'color-mix(in srgb, var(--color-primary) 7%, transparent)' : 'transparent',
+              color: showArchived ? 'var(--color-primary)' : '#9CA89D',
             }}
           >
             {showArchived ? '← Actifs' : `Archivés (${archived.length})`}
@@ -217,7 +217,7 @@ export default function MateriauxClient({ initialMaterials }: { initialMaterials
                             onClick={() => handleRestore(m.id)}
                             disabled={isPending}
                             className="px-2.5 py-1 rounded-lg text-xs border"
-                            style={{ borderColor: '#3A5A40', color: '#3A5A40' }}
+                            style={{ borderColor: 'var(--color-primary)', color: 'var(--color-primary)' }}
                           >
                             Restaurer
                           </button>
@@ -245,7 +245,7 @@ export default function MateriauxClient({ initialMaterials }: { initialMaterials
                               className="p-1.5 rounded-lg"
                               title="Modifier"
                               style={{ color: '#9CA89D' }}
-                              onMouseEnter={e => ((e.currentTarget as HTMLElement).style.color = '#3A5A40')}
+                              onMouseEnter={e => ((e.currentTarget as HTMLElement).style.color = 'var(--color-primary)')}
                               onMouseLeave={e => ((e.currentTarget as HTMLElement).style.color = '#9CA89D')}
                             >
                               ✏️

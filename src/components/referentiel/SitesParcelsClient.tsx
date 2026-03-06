@@ -7,7 +7,7 @@ import {
   createSite, updateSite, archiveSite, restoreSite,
   createParcel, updateParcel, archiveParcel, restoreParcel,
   createRow, updateRow, archiveRow, restoreRow,
-} from '@/app/(dashboard)/referentiel/sites/actions'
+} from '@/app/[orgSlug]/(dashboard)/referentiel/sites/actions'
 import SiteSlideOver from './SiteSlideOver'
 import ParcelleSlideOver from './ParcelleSlideOver'
 import RangSlideOver from './RangSlideOver'
@@ -120,8 +120,8 @@ export default function SitesParcelsClient({ initialSites, initialParcels, initi
             onClick={() => setActiveTab(tab.key)}
             className="px-4 py-2.5 text-sm font-medium transition-colors"
             style={{
-              color: activeTab === tab.key ? '#3A5A40' : '#9CA89D',
-              borderBottom: activeTab === tab.key ? '2px solid #3A5A40' : '2px solid transparent',
+              color: activeTab === tab.key ? 'var(--color-primary)' : '#9CA89D',
+              borderBottom: activeTab === tab.key ? '2px solid var(--color-primary)' : '2px solid transparent',
               marginBottom: '-1px',
             }}
           >
@@ -129,8 +129,8 @@ export default function SitesParcelsClient({ initialSites, initialParcels, initi
             <span
               className="ml-1.5 text-xs px-1.5 py-0.5 rounded-full"
               style={{
-                backgroundColor: activeTab === tab.key ? '#3A5A4018' : '#F5F2ED',
-                color: activeTab === tab.key ? '#3A5A40' : '#9CA89D',
+                backgroundColor: activeTab === tab.key ? 'color-mix(in srgb, var(--color-primary) 10%, transparent)' : '#F5F2ED',
+                color: activeTab === tab.key ? 'var(--color-primary)' : '#9CA89D',
               }}
             >
               {tab.count}
@@ -390,7 +390,7 @@ function ParcellesTab({
                   opacity: (!!p.deleted_at || pendingId === p.id) ? 0.5 : 1,
                 }}
               >
-                <td className="px-4 py-3 font-mono text-sm font-medium" style={{ color: '#3A5A40' }}>
+                <td className="px-4 py-3 font-mono text-sm font-medium" style={{ color: 'var(--color-primary)' }}>
                   {p.code}
                 </td>
                 <td className="px-4 py-3 font-medium" style={{ color: '#2C3E2D' }}>{p.nom}</td>
@@ -519,7 +519,7 @@ function RangsTab({
                 <td className="px-4 py-3 text-sm">
                   {r.parcels ? (
                     <span>
-                      <span className="font-mono" style={{ color: '#3A5A40' }}>{r.parcels.code}</span>
+                      <span className="font-mono" style={{ color: 'var(--color-primary)' }}>{r.parcels.code}</span>
                       <span style={{ color: '#6B7B6C' }}> · {r.parcels.nom}</span>
                     </span>
                   ) : <Dash />}
@@ -582,7 +582,7 @@ function Toolbar({
           onChange={e => onSearch(e.target.value)}
           className="w-full pl-9 pr-3 py-2 text-sm rounded-lg border outline-none"
           style={{ backgroundColor: '#FAF5E9', borderColor: '#D8E0D9', color: '#2C3E2D' }}
-          onFocus={e  => (e.target.style.borderColor = '#3A5A40')}
+          onFocus={e  => (e.target.style.borderColor = 'var(--color-primary)')}
           onBlur={e   => (e.target.style.borderColor = '#D8E0D9')}
         />
       </div>
@@ -593,9 +593,9 @@ function Toolbar({
           onClick={onToggleArchived}
           className="flex items-center gap-1.5 px-3 py-2 rounded-lg text-sm border"
           style={{
-            borderColor: showArchived ? '#3A5A40' : '#D8E0D9',
-            backgroundColor: showArchived ? '#3A5A4012' : 'transparent',
-            color: showArchived ? '#3A5A40' : '#9CA89D',
+            borderColor: showArchived ? 'var(--color-primary)' : '#D8E0D9',
+            backgroundColor: showArchived ? 'color-mix(in srgb, var(--color-primary) 7%, transparent)' : 'transparent',
+            color: showArchived ? 'var(--color-primary)' : '#9CA89D',
           }}
         >
           {showArchived ? '← Actifs' : `Archivés (${archivedCount})`}
@@ -606,7 +606,7 @@ function Toolbar({
       <button
         onClick={onAdd}
         className="ml-auto flex items-center gap-1.5 px-4 py-2 rounded-lg text-sm font-medium"
-        style={{ backgroundColor: '#3A5A40', color: '#F9F8F6' }}
+        style={{ backgroundColor: 'var(--color-primary)', color: '#F9F8F6' }}
       >
         <span className="text-base leading-none">＋</span>
         {addLabel}
@@ -700,7 +700,7 @@ function RowActions({
           onClick={onRestore}
           disabled={isPending}
           className="px-2.5 py-1 rounded-lg text-xs border"
-          style={{ borderColor: '#3A5A40', color: '#3A5A40' }}
+          style={{ borderColor: 'var(--color-primary)', color: 'var(--color-primary)' }}
         >
           Restaurer
         </button>
@@ -728,7 +728,7 @@ function RowActions({
             className="p-1.5 rounded-lg"
             title="Modifier"
             style={{ color: '#9CA89D' }}
-            onMouseEnter={e => ((e.currentTarget as HTMLElement).style.color = '#3A5A40')}
+            onMouseEnter={e => ((e.currentTarget as HTMLElement).style.color = 'var(--color-primary)')}
             onMouseLeave={e => ((e.currentTarget as HTMLElement).style.color = '#9CA89D')}
           >
             ✏️

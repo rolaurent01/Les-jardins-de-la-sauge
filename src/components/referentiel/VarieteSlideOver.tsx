@@ -220,8 +220,8 @@ export default function VarieteSlideOver({ open, variety, onClose, onSubmit, onS
                         gap: '6px',
                         padding: '5px 10px',
                         borderRadius: '20px',
-                        border: `1px solid ${checked ? '#3A5A40' : '#D8E0D9'}`,
-                        backgroundColor: checked ? '#3A5A4014' : '#F9F8F6',
+                        border: `1px solid ${checked ? 'var(--color-primary)' : '#D8E0D9'}`,
+                        backgroundColor: checked ? 'color-mix(in srgb, var(--color-primary) 8%, transparent)' : '#F9F8F6',
                         cursor: isPending ? 'not-allowed' : 'pointer',
                         fontSize: '13px',
                         color: checked ? '#2C3E2D' : '#6B7B6C',
@@ -236,7 +236,7 @@ export default function VarieteSlideOver({ open, variety, onClose, onSubmit, onS
                         checked={checked}
                         disabled={isPending}
                         onChange={() => togglePartie(partie)}
-                        style={{ accentColor: '#3A5A40' }}
+                        style={{ accentColor: 'var(--color-primary)' }}
                       />
                       {PARTIE_PLANTE_LABELS[partie]}
                     </label>
@@ -250,37 +250,21 @@ export default function VarieteSlideOver({ open, variety, onClose, onSubmit, onS
               )}
             </Field>
 
-            {/* Durée péremption + Seuil alerte — en ligne */}
-            <div className="grid grid-cols-2 gap-4">
-              <Field label="Péremption (mois)">
-                <input
-                  name="duree_peremption_mois"
-                  type="number"
-                  min="1"
-                  max="120"
-                  defaultValue={variety?.duree_peremption_mois ?? 24}
-                  disabled={isPending}
-                  style={inputStyle}
-                  onFocus={focusStyle}
-                  onBlur={blurStyle}
-                />
-              </Field>
-
-              <Field label="Seuil alerte (g)" hint="Laissez vide = pas d'alerte">
-                <input
-                  name="seuil_alerte_g"
-                  type="number"
-                  min="0"
-                  step="0.1"
-                  defaultValue={variety?.seuil_alerte_g ?? ''}
-                  disabled={isPending}
-                  placeholder="ex : 100"
-                  style={inputStyle}
-                  onFocus={focusStyle}
-                  onBlur={blurStyle}
-                />
-              </Field>
-            </div>
+            {/* Durée péremption */}
+            <Field label="Péremption (mois)">
+              <input
+                name="duree_peremption_mois"
+                type="number"
+                min="1"
+                max="120"
+                defaultValue={variety?.duree_peremption_mois ?? 24}
+                disabled={isPending}
+                style={inputStyle}
+                onFocus={focusStyle}
+                onBlur={blurStyle}
+              />
+            </Field>
+            {/* TODO: seuil_alerte_g déplacé vers farm_variety_settings — à réimplémenter */}
 
             {/* Notes */}
             <Field label="Notes">
@@ -334,7 +318,7 @@ export default function VarieteSlideOver({ open, variety, onClose, onSubmit, onS
               disabled={isPending}
               className="px-5 py-2 rounded-lg text-sm font-medium transition-opacity"
               style={{
-                backgroundColor: '#3A5A40',
+                backgroundColor: 'var(--color-primary)',
                 color: '#F9F8F6',
                 opacity: isPending ? 0.6 : 1,
               }}
@@ -363,7 +347,7 @@ const inputStyle: React.CSSProperties = {
 }
 
 function focusStyle(e: React.FocusEvent<HTMLElement>) {
-  ;(e.target as HTMLElement).style.borderColor = '#3A5A40'
+  ;(e.target as HTMLElement).style.borderColor = 'var(--color-primary)'
 }
 function blurStyle(e: React.FocusEvent<HTMLElement>) {
   ;(e.target as HTMLElement).style.borderColor = '#D8E0D9'

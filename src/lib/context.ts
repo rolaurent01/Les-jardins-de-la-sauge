@@ -1,0 +1,111 @@
+import { createClient } from '@/lib/supabase/server'
+import { cookies } from 'next/headers'
+
+/**
+ * Contexte applicatif résolu côté serveur.
+ * Utilisé par toutes les Server Actions pour identifier la ferme active et l'utilisateur.
+ */
+export type AppContext = {
+  userId: string
+  farmId: string
+  organizationId: string
+  orgSlug: string
+}
+
+/**
+ * Résout le contexte applicatif courant depuis la session et le cookie active_farm_id.
+ * Priorise le cookie, puis la première ferme de la première organisation.
+ * @throws Error si l'utilisateur n'est pas authentifié ou n'a pas d'organisation
+ */
+export async function getContext(): Promise<AppContext> {
+  const supabase = await createClient()
+
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) throw new Error('Not authenticated')
+
+  const cookieStore = await cookies()
+  const activeFarmId = cookieStore.get('active_farm_id')?.value
+
+  // Tentative avec le cookie active_farm_id
+  if (activeFarmId) {
+    const ctx = await resolveFarmContext(supabase, user.id, activeFarmId)
+    if (ctx) return ctx
+  }
+
+  // Fallback : première ferme via membership
+  return resolveFirstFarmContext(supabase, user.id, cookieStore)
+}
+
+/** Résout le contexte depuis un farm_id donné (vérifié par RLS) */
+async function resolveFarmContext(
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  supabase: any,
+  userId: string,
+  farmId: string
+): Promise<AppContext | null> {
+  const { data: farm } = await supabase
+    .from('farms')
+    .select('id, organization_id, organizations(slug)')
+    .eq('id', farmId)
+    .single()
+
+  if (!farm) return null
+
+  // Vérifier que l'utilisateur est membre de cette organisation
+  const { data: membership } = await supabase
+    .from('memberships')
+    .select('organization_id')
+    .eq('organization_id', farm.organization_id)
+    .eq('user_id', userId)
+    .single()
+
+  if (!membership) return null
+
+  const orgSlug = (farm.organizations as { slug: string } | null)?.slug ?? ''
+
+  return {
+    userId,
+    farmId: farm.id,
+    organizationId: farm.organization_id,
+    orgSlug,
+  }
+}
+
+/** Résout le contexte depuis la première ferme accessible à l'utilisateur */
+async function resolveFirstFarmContext(
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  supabase: any,
+  userId: string,
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  cookieStore: any
+): Promise<AppContext> {
+  const { data: membership } = await supabase
+    .from('memberships')
+    .select('organization_id, organizations(slug, farms(id))')
+    .eq('user_id', userId)
+    .limit(1)
+    .single()
+
+  if (!membership) throw new Error('No organization access')
+
+  const org = membership.organizations as { slug: string; farms: { id: string }[] } | null
+  if (!org || !org.farms || org.farms.length === 0) throw new Error('No farm access')
+
+  const farmId = org.farms[0].id
+  const orgSlug = org.slug
+
+  // Mémoriser la ferme active pour les prochaines requêtes
+  cookieStore.set('active_farm_id', farmId, {
+    path: '/',
+    httpOnly: true,
+    sameSite: 'lax',
+    maxAge: 60 * 60 * 24 * 365, // 1 an
+  })
+
+  return {
+    userId,
+    farmId,
+    organizationId: membership.organization_id,
+    orgSlug,
+  }
+}

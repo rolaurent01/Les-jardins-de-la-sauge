@@ -2,9 +2,9 @@
 
 import { createClient } from '@/lib/supabase/server'
 import { revalidatePath } from 'next/cache'
+import { getContext } from '@/lib/context'
+import { buildPath } from '@/lib/utils/path'
 import type { ActionResult, Site, ParcelWithSite, RowWithParcel } from '@/lib/types'
-
-const REVALIDATE = '/referentiel/sites'
 
 // ============================================================
 // SITES
@@ -12,6 +12,8 @@ const REVALIDATE = '/referentiel/sites'
 
 export async function createSite(formData: FormData): Promise<ActionResult<Site>> {
   const supabase = await createClient()
+  const { userId, farmId, orgSlug } = await getContext()
+
   const nom = (formData.get('nom') as string).trim()
   const description = (formData.get('description') as string)?.trim() || null
 
@@ -19,7 +21,7 @@ export async function createSite(formData: FormData): Promise<ActionResult<Site>
 
   const { data, error } = await supabase
     .from('sites')
-    .insert({ nom, description })
+    .insert({ nom, description, farm_id: farmId, created_by: userId })
     .select()
     .single()
 
@@ -28,12 +30,14 @@ export async function createSite(formData: FormData): Promise<ActionResult<Site>
     return { error: `Erreur : ${error.message}` }
   }
 
-  revalidatePath(REVALIDATE)
+  revalidatePath(buildPath(orgSlug, '/referentiel/sites'))
   return { success: true, data: data as Site }
 }
 
 export async function updateSite(id: string, formData: FormData): Promise<ActionResult> {
   const supabase = await createClient()
+  const { userId, orgSlug } = await getContext()
+
   const nom = (formData.get('nom') as string).trim()
   const description = (formData.get('description') as string)?.trim() || null
 
@@ -41,7 +45,7 @@ export async function updateSite(id: string, formData: FormData): Promise<Action
 
   const { error } = await supabase
     .from('sites')
-    .update({ nom, description })
+    .update({ nom, description, updated_by: userId })
     .eq('id', id)
 
   if (error) {
@@ -49,31 +53,35 @@ export async function updateSite(id: string, formData: FormData): Promise<Action
     return { error: `Erreur : ${error.message}` }
   }
 
-  revalidatePath(REVALIDATE)
+  revalidatePath(buildPath(orgSlug, '/referentiel/sites'))
   return { success: true }
 }
 
 export async function archiveSite(id: string): Promise<ActionResult> {
   const supabase = await createClient()
+  const { userId, orgSlug } = await getContext()
+
   const { error } = await supabase
     .from('sites')
-    .update({ deleted_at: new Date().toISOString() })
+    .update({ deleted_at: new Date().toISOString(), updated_by: userId })
     .eq('id', id)
 
   if (error) return { error: `Erreur lors de l'archivage : ${error.message}` }
-  revalidatePath(REVALIDATE)
+  revalidatePath(buildPath(orgSlug, '/referentiel/sites'))
   return { success: true }
 }
 
 export async function restoreSite(id: string): Promise<ActionResult> {
   const supabase = await createClient()
+  const { userId, orgSlug } = await getContext()
+
   const { error } = await supabase
     .from('sites')
-    .update({ deleted_at: null })
+    .update({ deleted_at: null, updated_by: userId })
     .eq('id', id)
 
   if (error) return { error: `Erreur lors de la restauration : ${error.message}` }
-  revalidatePath(REVALIDATE)
+  revalidatePath(buildPath(orgSlug, '/referentiel/sites'))
   return { success: true }
 }
 
@@ -93,6 +101,7 @@ function parseParcelForm(formData: FormData) {
 
 export async function createParcel(formData: FormData): Promise<ActionResult<ParcelWithSite>> {
   const supabase = await createClient()
+  const { userId, farmId, orgSlug } = await getContext()
   const fields = parseParcelForm(formData)
 
   if (!fields.nom) return { error: 'Le nom de la parcelle est obligatoire.' }
@@ -101,7 +110,7 @@ export async function createParcel(formData: FormData): Promise<ActionResult<Par
 
   const { data, error } = await supabase
     .from('parcels')
-    .insert(fields)
+    .insert({ ...fields, farm_id: farmId, created_by: userId })
     .select('*, sites(id, nom)')
     .single()
 
@@ -110,12 +119,13 @@ export async function createParcel(formData: FormData): Promise<ActionResult<Par
     return { error: `Erreur : ${error.message}` }
   }
 
-  revalidatePath(REVALIDATE)
+  revalidatePath(buildPath(orgSlug, '/referentiel/sites'))
   return { success: true, data: data as ParcelWithSite }
 }
 
 export async function updateParcel(id: string, formData: FormData): Promise<ActionResult> {
   const supabase = await createClient()
+  const { userId, orgSlug } = await getContext()
   const fields = parseParcelForm(formData)
 
   if (!fields.nom) return { error: 'Le nom de la parcelle est obligatoire.' }
@@ -124,7 +134,7 @@ export async function updateParcel(id: string, formData: FormData): Promise<Acti
 
   const { error } = await supabase
     .from('parcels')
-    .update(fields)
+    .update({ ...fields, updated_by: userId })
     .eq('id', id)
 
   if (error) {
@@ -132,31 +142,35 @@ export async function updateParcel(id: string, formData: FormData): Promise<Acti
     return { error: `Erreur : ${error.message}` }
   }
 
-  revalidatePath(REVALIDATE)
+  revalidatePath(buildPath(orgSlug, '/referentiel/sites'))
   return { success: true }
 }
 
 export async function archiveParcel(id: string): Promise<ActionResult> {
   const supabase = await createClient()
+  const { userId, orgSlug } = await getContext()
+
   const { error } = await supabase
     .from('parcels')
-    .update({ deleted_at: new Date().toISOString() })
+    .update({ deleted_at: new Date().toISOString(), updated_by: userId })
     .eq('id', id)
 
   if (error) return { error: `Erreur lors de l'archivage : ${error.message}` }
-  revalidatePath(REVALIDATE)
+  revalidatePath(buildPath(orgSlug, '/referentiel/sites'))
   return { success: true }
 }
 
 export async function restoreParcel(id: string): Promise<ActionResult> {
   const supabase = await createClient()
+  const { userId, orgSlug } = await getContext()
+
   const { error } = await supabase
     .from('parcels')
-    .update({ deleted_at: null })
+    .update({ deleted_at: null, updated_by: userId })
     .eq('id', id)
 
   if (error) return { error: `Erreur lors de la restauration : ${error.message}` }
-  revalidatePath(REVALIDATE)
+  revalidatePath(buildPath(orgSlug, '/referentiel/sites'))
   return { success: true }
 }
 
@@ -181,6 +195,7 @@ function parseRowForm(formData: FormData) {
 
 export async function createRow(formData: FormData): Promise<ActionResult<RowWithParcel>> {
   const supabase = await createClient()
+  const { userId, farmId, orgSlug } = await getContext()
   const fields = parseRowForm(formData)
 
   if (!fields.numero) return { error: 'Le numéro de rang est obligatoire.' }
@@ -188,7 +203,7 @@ export async function createRow(formData: FormData): Promise<ActionResult<RowWit
 
   const { data, error } = await supabase
     .from('rows')
-    .insert(fields)
+    .insert({ ...fields, farm_id: farmId, created_by: userId })
     .select('*, parcels(id, nom, code, sites(id, nom))')
     .single()
 
@@ -197,12 +212,13 @@ export async function createRow(formData: FormData): Promise<ActionResult<RowWit
     return { error: `Erreur : ${error.message}` }
   }
 
-  revalidatePath(REVALIDATE)
+  revalidatePath(buildPath(orgSlug, '/referentiel/sites'))
   return { success: true, data: data as RowWithParcel }
 }
 
 export async function updateRow(id: string, formData: FormData): Promise<ActionResult> {
   const supabase = await createClient()
+  const { userId, orgSlug } = await getContext()
   const fields = parseRowForm(formData)
 
   if (!fields.numero) return { error: 'Le numéro de rang est obligatoire.' }
@@ -210,7 +226,7 @@ export async function updateRow(id: string, formData: FormData): Promise<ActionR
 
   const { error } = await supabase
     .from('rows')
-    .update(fields)
+    .update({ ...fields, updated_by: userId })
     .eq('id', id)
 
   if (error) {
@@ -218,30 +234,34 @@ export async function updateRow(id: string, formData: FormData): Promise<ActionR
     return { error: `Erreur : ${error.message}` }
   }
 
-  revalidatePath(REVALIDATE)
+  revalidatePath(buildPath(orgSlug, '/referentiel/sites'))
   return { success: true }
 }
 
 export async function archiveRow(id: string): Promise<ActionResult> {
   const supabase = await createClient()
+  const { userId, orgSlug } = await getContext()
+
   const { error } = await supabase
     .from('rows')
-    .update({ deleted_at: new Date().toISOString() })
+    .update({ deleted_at: new Date().toISOString(), updated_by: userId })
     .eq('id', id)
 
   if (error) return { error: `Erreur lors de l'archivage : ${error.message}` }
-  revalidatePath(REVALIDATE)
+  revalidatePath(buildPath(orgSlug, '/referentiel/sites'))
   return { success: true }
 }
 
 export async function restoreRow(id: string): Promise<ActionResult> {
   const supabase = await createClient()
+  const { userId, orgSlug } = await getContext()
+
   const { error } = await supabase
     .from('rows')
-    .update({ deleted_at: null })
+    .update({ deleted_at: null, updated_by: userId })
     .eq('id', id)
 
   if (error) return { error: `Erreur lors de la restauration : ${error.message}` }
-  revalidatePath(REVALIDATE)
+  revalidatePath(buildPath(orgSlug, '/referentiel/sites'))
   return { success: true }
 }

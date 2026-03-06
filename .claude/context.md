@@ -34,6 +34,9 @@ Application de gestion complète pour une micro-structure de plantes aromatiques
 }
 ```
 
+### Stockage des logos (Supabase Storage)
+Les logos des organisations sont stockés dans un bucket Supabase Storage `org-logos`, avec une politique d'accès publique en lecture (les logos sont affichés sur la page de login et dans la sidebar, sans authentification nécessaire). Le chemin est `org-logos/{organization_id}/logo.png`. Le super admin uploade le logo lors de la création du compte client (onboarding manuel).
+
 ---
 
 ## 3. ARCHITECTURE APPLICATIVE
@@ -158,6 +161,10 @@ Fonctionnement :
 // }
 ```
 
+#### Cache local et multi-tenant
+
+Le cache IndexedDB ne contient que les données de la **ferme active** (ferme sélectionnée via le cookie `active_farm_id`). Au switch de ferme, le cache est entièrement rechargé depuis le serveur. Chaque enregistrement dans `sync_queue` inclut `farm_id` dans son payload — ce champ est validé côté serveur pour correspondre à une ferme accessible à l'utilisateur.
+
 #### Indicateurs visuels mobile (barre de sync permanente)
 
 | État | Affichage | Couleur |
@@ -192,6 +199,84 @@ Le bureau est le CENTRE DE COMMANDE complet. Le mobile est un TERMINAL DE SAISIE
 | **Gestion recettes/variétés** | Oui (CRUD complet) | Ajout rapide de variété uniquement (depuis un formulaire). Pas de modification/suppression. |
 | **Traitement des données** | Tout le traitement, la vérification, l'analyse se fait ici | Les données saisies sur mobile sont traitées/vérifiées sur le bureau |
 
+### 3.4 Architecture Multi-Tenant
+
+L'application est conçue pour accueillir plusieurs structures indépendantes (fermes) sur la même plateforme technique. L'isolation des données est garantie par RLS PostgreSQL.
+
+#### Hiérarchie à 3 niveaux
+
+```
+PLATEFORME
+├── platform_admins (super admins — opérateurs de la plateforme)
+│
+├── organizations (compte client, entité juridique, facturation)
+│   ├── memberships (user × organization × role)
+│   │     role = 'owner' | 'admin' | 'member'
+│   │
+│   └── farms (unité opérationnelle — là où vivent les données métier)
+│       ├── farm_access (user × farm × permission)
+│       │     permission = 'full' | 'read' | 'write'
+│       │
+│       ├── farm_modules (modules activés : 'pam', 'apiculture', 'maraichage')
+│       │
+│       └── [TOUTES les tables métier opérationnelles avec farm_id]
+│
+├── CATALOGUE PARTAGÉ (pas de farm_id — visible par tous)
+│   ├── varieties (référentiel plantes, partagé plateforme)
+│   ├── external_materials (matières premières non-plantes)
+│   └── product_categories (catégories de produits)
+│
+└── PRÉFÉRENCES PAR FERME (personnalisation du catalogue)
+    ├── farm_variety_settings (farm_id, variety_id → hidden, seuil_alerte_g)
+    └── farm_material_settings (farm_id, external_material_id → hidden)
+```
+
+#### Principes clés
+
+- **Base unique** : toutes les données dans la même base Supabase, isolation logique par `farm_id`.
+- **Catalogue partagé** : `varieties`, `external_materials`, `product_categories` sont visibles par toutes les fermes. Chaque ferme peut masquer les entrées non pertinentes via `farm_variety_settings` / `farm_material_settings`.
+- **Données métier scopées** : toutes les tables opérationnelles (sites, parcels, rows, seed_lots, plantings, harvests…) ont une colonne `farm_id NOT NULL`.
+- **Ownership du catalogue** : une variété est créable par n'importe quelle ferme (CREATE pour tous les authentifiés). Elle est ensuite modifiable uniquement par la ferme créatrice (`created_by_farm_id`) ou un super admin. Cela favorise l'enrichissement collectif du référentiel tout en protégeant l'intégrité.
+- **Sélecteur de ferme** : dans le layout bureau (au-dessus de la sidebar), un sélecteur permet de choisir la ferme active. Une seule ferme est active à la fois. Les owners/admins d'une organisation ont accès à toutes ses fermes sans entrée dans `farm_access`.
+- **Contexte applicatif** : le helper `getContext()` (src/lib/context.ts) retourne `{ userId, farmId, organizationId }` depuis le cookie `active_farm_id`. Toutes les Server Actions l'utilisent pour scoper automatiquement les opérations.
+- **Modules activables** : chaque ferme active les modules qu'elle utilise via `farm_modules`. La sidebar s'adapte en conséquence (module PAM = sections Semis, Parcelles, etc. ; module Apiculture = sections Miel en Phase C).
+- **Audit trail** : colonnes `created_by UUID` et `updated_by UUID` sur toutes les tables métier, plus table `audit_log` pour les opérations CUD critiques.
+
+### 3.5 Routing multi-tenant par path
+
+Chaque organisation a un slug unique utilisé dans l'URL : `https://[domaine]/[orgSlug]/dashboard`, `https://[domaine]/[orgSlug]/semis/sachets`, etc.
+
+**Structure des routes Next.js :**
+```
+src/app/
+├── login/                          # Page login générique (sans slug, branding plateforme)
+├── [orgSlug]/                      # Segment dynamique — résout l'organisation
+│   ├── layout.tsx                  # Charge l'orga par slug, injecte le branding (CSS variables)
+│   ├── (dashboard)/                # Routes métier
+│   │   ├── dashboard/
+│   │   ├── semis/
+│   │   ├── parcelles/
+│   │   ├── referentiel/
+│   │   └── ...
+│   └── admin/                      # Routes super admin (si platform_admin)
+└── api/                            # Routes API (inchangées, pas de slug)
+```
+
+**Résolution du slug :**
+- Le layout `[orgSlug]/layout.tsx` résout l'organisation via `SELECT * FROM organizations WHERE slug = :slug`
+- Si le slug n'existe pas → 404
+- Si l'utilisateur n'est pas membre de cette organisation → redirect vers sa propre organisation
+- Le branding (couleurs, logo, nom affiché) est injecté comme CSS variables dans le layout
+
+**Page de login :**
+- `/login` est la page générique (branding plateforme par défaut)
+- Après login, l'utilisateur est redirigé vers `/{orgSlug}/dashboard` de sa première organisation
+
+**Migration des routes existantes :**
+- Les routes actuelles `/(dashboard)/semis/sachets` deviennent `/[orgSlug]/(dashboard)/semis/sachets`
+- Chaque `revalidatePath('/semis/sachets')` dans les Server Actions doit être mis à jour vers `revalidatePath('/[orgSlug]/semis/sachets')` (ou utiliser un helper `buildPath(slug, '/semis/sachets')`)
+- Le middleware vérifie l'authentification et l'appartenance à l'organisation du slug
+
 ---
 
 ## 4. CHARTE GRAPHIQUE & UX
@@ -211,6 +296,21 @@ Le bureau est le CENTRE DE COMMANDE complet. Le mobile est un TERMINAL DE SAISIE
 - **Formes** : Blocs arrondis (border-radius généreux), pas d'angles vifs
 - **Icônes** : Emojis nature / icônes douces (🌱 🌿 🌻 ☀️ 🍃 📦 ⏱️)
 - **Typographie** : Une police ronde et lisible (ex: Inter, Nunito)
+
+### 4.1b Thème dynamique par organisation
+
+Les couleurs de la charte ne sont pas hardcodées. Le layout `[orgSlug]/layout.tsx` injecte les couleurs de l'organisation comme CSS variables :
+
+```css
+:root {
+  --color-primary: #3A5A40;       /* organizations.couleur_primaire */
+  --color-primary-light: #588157; /* organizations.couleur_secondaire */
+}
+```
+
+Les composants (Sidebar, MobileHeader, boutons, badges) utilisent ces variables au lieu de valeurs hex hardcodées. La palette par défaut (#3A5A40 / #588157) reste celle des nouvelles organisations si elles ne personnalisent pas leurs couleurs.
+
+Le logo de l'organisation (depuis `organizations.logo_url`) remplace le logo LJS dans la sidebar et le MobileHeader. Si pas de logo configuré, un placeholder avec la première lettre de `nom_affiche` est affiché.
 
 ### 4.2 UX Bureau — EXPÉRIENCE COMPLÈTE
 Le bureau est le centre de commande. C'est ici que tout se passe : saisie, consultation, analyse, gestion.
@@ -272,22 +372,35 @@ Le mobile est un **terminal de saisie terrain**. Rien d'autre. L'objectif : ne p
 
 ### 5.1 Tables de référence
 
-#### `varieties` — Référentiel plantes
-C'est LA table centrale. Chaque plante cultivée ou récoltée à l'état sauvage y est référencée.
+#### `varieties` — Référentiel plantes (catalogue partagé plateforme)
+C'est LA table centrale. Chaque plante cultivée ou récoltée à l'état sauvage y est référencée. **Catalogue partagé** : visible par toutes les fermes, créable par n'importe quelle ferme authentifiée, modifiable uniquement par la ferme créatrice ou un super admin. `seuil_alerte_g` est déplacé dans `farm_variety_settings` pour être personnalisable par ferme.
 ```sql
 CREATE TABLE varieties (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  nom_vernaculaire TEXT NOT NULL UNIQUE,    -- "Lavande vraie", "Menthe marocaine" — UNIQUE pour éviter les doublons
+  nom_vernaculaire TEXT NOT NULL,           -- "Lavande vraie", "Menthe marocaine"
   nom_latin TEXT,                           -- "Lavandula angustifolia"
   famille TEXT,                             -- "Lamiacées", "Astéracées"
   type_cycle TEXT CHECK (type_cycle IN ('annuelle', 'bisannuelle', 'perenne', 'vivace')),
   duree_peremption_mois INTEGER DEFAULT 24, -- Durée après séchage en mois
-  parties_utilisees TEXT[] NOT NULL DEFAULT '{"plante_entiere"}', -- Parties récoltables (au moins 1 obligatoire) : 'feuille', 'fleur', 'graine', 'racine', 'fruit', 'plante_entiere'
+  parties_utilisees TEXT[] NOT NULL DEFAULT '{"plante_entiere"}', -- Parties récoltables (au moins 1 obligatoire)
   notes TEXT,
-  deleted_at TIMESTAMPTZ DEFAULT NULL,       -- Soft delete (NULL = actif)
+  -- Catalogue partagé — traçabilité création/modification
+  created_by_farm_id UUID REFERENCES farms(id), -- Ferme créatrice (peut modifier/supprimer)
+  created_by UUID,                          -- auth.uid() du créateur
+  updated_by UUID,                          -- auth.uid() du dernier modificateur
+  -- Qualité du référentiel
+  verified BOOLEAN DEFAULT false,           -- Validée par super admin
+  aliases TEXT[],                           -- Noms alternatifs pour recherche fuzzy : ['Menthe nanah', 'Nana mint']
+  merged_into_id UUID REFERENCES varieties(id), -- Si doublon fusionné, pointe vers la variété cible
+  -- Soft delete
+  deleted_at TIMESTAMPTZ DEFAULT NULL,
   created_at TIMESTAMPTZ DEFAULT now(),
   updated_at TIMESTAMPTZ DEFAULT now()
 );
+-- Contrainte UNIQUE insensible à la casse et aux accents sur nom_vernaculaire (index existant)
+-- CREATE UNIQUE INDEX idx_varieties_nom_vernaculaire_unique ON varieties (lower(immutable_unaccent(nom_vernaculaire)));
+-- Contrainte UNIQUE sur nom_latin quand renseigné
+-- CREATE UNIQUE INDEX idx_varieties_nom_latin_unique ON varieties (lower(immutable_unaccent(nom_latin))) WHERE nom_latin IS NOT NULL;
 ```
 
 **IMPORTANT — Nettoyage des noms** : Dans les Excel historiques, la même plante peut apparaître sous plusieurs noms (ex: "Matricaire" / "Camomille matricaire" / "Camomille romaine" sont des plantes différentes). La saisie manuelle du référentiel devra créer un référentiel propre et dédoublonné. Liste des variétés identifiées dans les fichiers (non exhaustive) :
@@ -302,50 +415,70 @@ Autres familles : Verveine citronnée (Verbénacées), Verveine argentine, Pavot
 
 Sauvages (non cultivées) : Sureau, Frêne, Bruyère, Ronce, Coucou, Ortie, Rose, Aubépine, Reine des prés, Ail des ours, Jeune pousse de sapin, Lotier, Cassis (feuille)
 
-#### `external_materials` — Matières premières non-plantes
-Pour les ingrédients qui ne sont pas des plantes (sel, sucre, etc.)
+#### `external_materials` — Matières premières non-plantes (catalogue partagé plateforme)
+Pour les ingrédients qui ne sont pas des plantes (sel, sucre, etc.). Même règles que `varieties` : catalogue partagé, masquable par ferme via `farm_material_settings`.
 ```sql
 CREATE TABLE external_materials (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   nom TEXT NOT NULL,                       -- "Sel de Guérande", "Sucre blond de canne"
   unite TEXT DEFAULT 'g',
   notes TEXT,
+  -- Catalogue partagé — traçabilité création/modification
+  created_by_farm_id UUID REFERENCES farms(id),
+  created_by UUID,
+  updated_by UUID,
+  deleted_at TIMESTAMPTZ DEFAULT NULL,     -- Soft delete
   created_at TIMESTAMPTZ DEFAULT now()
 );
 ```
 
-#### `sites` — Sites de culture
+> **Note** : contrairement à `varieties`, les matériaux externes n'ont pas de colonnes `verified`, `aliases`, `merged_into_id`. Le risque de doublon est faible (quelques dizaines d'entrées maximum : sel, sucre, eau, vinaigre). Si un doublon est créé, le super admin peut le corriger manuellement via `audit_log` et SQL direct.
+
+#### `sites` — Sites de culture (table métier — scopée par ferme)
 ```sql
 CREATE TABLE sites (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  nom TEXT NOT NULL UNIQUE,                 -- "La Sauge", "Le Combet"
+  farm_id UUID NOT NULL REFERENCES farms(id), -- Ferme propriétaire
+  nom TEXT NOT NULL,                        -- "La Sauge", "Le Combet"
   description TEXT,
-  created_at TIMESTAMPTZ DEFAULT now()
+  created_by UUID,
+  updated_by UUID,
+  deleted_at TIMESTAMPTZ DEFAULT NULL,      -- Soft delete
+  created_at TIMESTAMPTZ DEFAULT now(),
+  UNIQUE(farm_id, nom)
 );
+-- CREATE INDEX idx_sites_farm ON sites(farm_id);
 ```
 
-#### `parcels` — Parcelles
+#### `parcels` — Parcelles (table métier — scopée par ferme)
 ```sql
 CREATE TABLE parcels (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  farm_id UUID NOT NULL REFERENCES farms(id), -- Ferme propriétaire
   site_id UUID REFERENCES sites(id),
   nom TEXT NOT NULL,                       -- "Parcelle principale", "Jardin 1", "Jardin 2", etc.
-  code TEXT NOT NULL UNIQUE,               -- "SAU", "COM-J1", "COM-J2", etc.
+  code TEXT NOT NULL,                      -- "SAU", "COM-J1", "COM-J2", etc.
   orientation TEXT,                         -- "EST-OUEST", "NORD-SUD"
   description TEXT,
+  created_by UUID,
+  updated_by UUID,
+  deleted_at TIMESTAMPTZ DEFAULT NULL,     -- Soft delete
   created_at TIMESTAMPTZ DEFAULT now(),
+  UNIQUE(farm_id, code),                   -- Code unique par ferme (pas global)
   UNIQUE(site_id, nom)
 );
+-- CREATE INDEX idx_parcels_farm ON parcels(farm_id);
 ```
 
 Parcelles à créer :
 - **La Sauge** : "Rang 1 à 17" (code SAU-A), "Rang 18 à 34" (code SAU-B), "Rangs proches serre" (code SAU-S)
 - **Le Combet** : "Jardin 1" (COM-J1), "Jardin 2" (COM-J2), "Jardin 3 Petits fruits" (COM-J3), "Jardin 4" (COM-J4), "Jardin 5" (COM-J5)
 
-#### `rows` — Rangs (harmonisés)
+#### `rows` — Rangs (table métier — scopée par ferme)
 ```sql
 CREATE TABLE rows (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  farm_id UUID NOT NULL REFERENCES farms(id), -- Ferme propriétaire
   parcel_id UUID REFERENCES parcels(id),
   numero TEXT NOT NULL,                    -- "1", "2", "3"... harmonisé
   ancien_numero TEXT,                      -- Pour garder la trace de l'ancien "1a", "1b"
@@ -353,12 +486,143 @@ CREATE TABLE rows (
   largeur_m DECIMAL,                       -- Largeur du rang en mètres
   position_ordre INTEGER,                  -- Ordre d'affichage (1, 2, 3...)
   notes TEXT,
+  created_by UUID,
+  updated_by UUID,
+  deleted_at TIMESTAMPTZ DEFAULT NULL,     -- Soft delete
   created_at TIMESTAMPTZ DEFAULT now(),
   UNIQUE(parcel_id, numero)
 );
+-- CREATE INDEX idx_rows_farm ON rows(farm_id);
 ```
 
 **Harmonisation des rangs** : Les anciens sous-rangs (1a, 1b, 1c) deviennent des rangs à part entière avec une numérotation séquentielle. L'ancien numéro est conservé dans `ancien_numero` pour la traçabilité. Exemple pour Le Combet J2 : ancien "1a" → rang 1, ancien "1b" → rang 2, ancien "1" → rang 3, etc.
+
+### 5.1b Tables Plateforme
+
+Ces tables gèrent la hiérarchie multi-tenant : organisations, fermes, accès utilisateurs, modules, et les tables transversales (notifications, audit).
+
+```sql
+-- Organisations (compte client, entité juridique, facturation)
+CREATE TABLE organizations (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  nom TEXT NOT NULL,
+  slug TEXT NOT NULL UNIQUE,               -- pour l'URL (/app/mon-jardin)
+  nom_affiche TEXT,                        -- Nom affiché dans l'UI ("Les Jardins de la Sauge"), peut différer du nom légal
+  logo_url TEXT,                           -- URL du logo dans Supabase Storage (bucket 'org-logos', chemin : {org_id}/logo.png)
+  couleur_primaire TEXT DEFAULT '#3A5A40', -- Couleur principale (hex) — sidebar, boutons, header
+  couleur_secondaire TEXT DEFAULT '#588157', -- Couleur secondaire (hex) — accents, hover, badges
+  max_farms INTEGER NOT NULL DEFAULT 1,    -- Limite du plan
+  max_users INTEGER NOT NULL DEFAULT 3,    -- Limite du plan
+  plan TEXT NOT NULL DEFAULT 'starter' CHECK (plan IN ('starter', 'pro', 'enterprise')),
+  created_at TIMESTAMPTZ DEFAULT now(),
+  updated_at TIMESTAMPTZ DEFAULT now()
+);
+
+-- Fermes (unité opérationnelle — là où vivent les données métier)
+CREATE TABLE farms (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  organization_id UUID NOT NULL REFERENCES organizations(id),
+  nom TEXT NOT NULL,
+  slug TEXT NOT NULL,                      -- unique au sein de l'orga
+  created_at TIMESTAMPTZ DEFAULT now(),
+  updated_at TIMESTAMPTZ DEFAULT now(),
+  UNIQUE(organization_id, slug)
+);
+
+-- Memberships (user × organization × role)
+CREATE TABLE memberships (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  organization_id UUID NOT NULL REFERENCES organizations(id),
+  user_id UUID NOT NULL,                   -- auth.uid()
+  role TEXT NOT NULL DEFAULT 'member' CHECK (role IN ('owner', 'admin', 'member')),
+  created_at TIMESTAMPTZ DEFAULT now(),
+  UNIQUE(organization_id, user_id)
+);
+
+-- Accès ferme (user × farm × permission)
+-- Note : les owners et admins de l'organisation ont accès à TOUTES les fermes sans entrée ici
+CREATE TABLE farm_access (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  farm_id UUID NOT NULL REFERENCES farms(id),
+  user_id UUID NOT NULL,                   -- auth.uid()
+  permission TEXT NOT NULL DEFAULT 'full' CHECK (permission IN ('full', 'read', 'write')),
+  created_at TIMESTAMPTZ DEFAULT now(),
+  UNIQUE(farm_id, user_id)
+);
+
+-- Modules activés par ferme
+CREATE TABLE farm_modules (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  farm_id UUID NOT NULL REFERENCES farms(id),
+  module TEXT NOT NULL CHECK (module IN ('pam', 'apiculture', 'maraichage')),
+  activated_at TIMESTAMPTZ DEFAULT now(),
+  UNIQUE(farm_id, module)
+);
+
+-- Super admins plateforme (opérateurs)
+CREATE TABLE platform_admins (
+  user_id UUID PRIMARY KEY,                -- auth.uid()
+  created_at TIMESTAMPTZ DEFAULT now()
+);
+
+-- Préférences variétés par ferme (masquage + seuil d'alerte)
+CREATE TABLE farm_variety_settings (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  farm_id UUID NOT NULL REFERENCES farms(id),
+  variety_id UUID NOT NULL REFERENCES varieties(id),
+  hidden BOOLEAN NOT NULL DEFAULT false,   -- Masquer du catalogue pour cette ferme
+  seuil_alerte_g DECIMAL,                  -- Seuil d'alerte stock bas (déplacé depuis varieties)
+  UNIQUE(farm_id, variety_id)
+);
+
+-- Préférences matériaux par ferme (masquage)
+CREATE TABLE farm_material_settings (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  farm_id UUID NOT NULL REFERENCES farms(id),
+  external_material_id UUID NOT NULL REFERENCES external_materials(id),
+  hidden BOOLEAN NOT NULL DEFAULT false,
+  UNIQUE(farm_id, external_material_id)
+);
+
+-- Notifications (alertes stock bas, erreurs sync, backups)
+CREATE TABLE notifications (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  farm_id UUID REFERENCES farms(id),       -- NULL = notification plateforme
+  user_id UUID,                            -- NULL = tous les users de la ferme
+  type TEXT NOT NULL,                      -- 'stock_bas', 'sync_error', 'backup_failed', etc.
+  title TEXT NOT NULL,
+  message TEXT,
+  read BOOLEAN NOT NULL DEFAULT false,
+  metadata JSONB,
+  created_at TIMESTAMPTZ DEFAULT now()
+);
+
+-- Audit log (traçabilité des opérations CUD sur les tables métier)
+-- Rempli par les Server Actions (logique applicative, pas de trigger)
+CREATE TABLE audit_log (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  farm_id UUID REFERENCES farms(id),       -- NULL pour les opérations plateforme
+  user_id UUID NOT NULL,                   -- auth.uid()
+  action TEXT NOT NULL,                    -- 'create', 'update', 'delete', 'archive', 'restore'
+  table_name TEXT NOT NULL,               -- 'varieties', 'seed_lots', etc.
+  record_id UUID NOT NULL,                -- ID de l'enregistrement modifié
+  old_data JSONB,                          -- état avant modification (NULL pour create)
+  new_data JSONB,                          -- état après modification (NULL pour delete)
+  created_at TIMESTAMPTZ DEFAULT now()
+);
+```
+
+**Fonction helper RLS** :
+```sql
+CREATE OR REPLACE FUNCTION user_farm_ids() RETURNS SETOF UUID AS $$
+  -- Fermes accessibles via farm_access (membres) OU via membership owner/admin (accès toutes fermes de l'orga)
+  SELECT fa.farm_id FROM farm_access fa WHERE fa.user_id = auth.uid()
+  UNION
+  SELECT f.id FROM farms f
+  JOIN memberships m ON m.organization_id = f.organization_id
+  WHERE m.user_id = auth.uid() AND m.role IN ('owner', 'admin')
+$$ LANGUAGE SQL SECURITY DEFINER STABLE SET search_path = public;
+```
 
 ### 5.2 Module Semis (étape 1)
 
@@ -368,8 +632,9 @@ Relation : `seed_lots (1) ←── (N) seedlings`
 ```sql
 CREATE TABLE seed_lots (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  farm_id UUID NOT NULL REFERENCES farms(id), -- Ferme propriétaire
   uuid_client UUID UNIQUE,                   -- UUID généré par le mobile, pour idempotence sync
-  lot_interne TEXT NOT NULL UNIQUE,        -- N° auto-attribué par le système : "SL-2025-001"
+  lot_interne TEXT NOT NULL,               -- N° auto-attribué par le système : "SL-2025-001"
   variety_id UUID REFERENCES varieties(id),
   fournisseur TEXT,                         -- "Agrosemens", "Sativa", etc.
   numero_lot_fournisseur TEXT,             -- Lot du fournisseur
@@ -379,9 +644,13 @@ CREATE TABLE seed_lots (
   poids_sachet_g DECIMAL,
   certif_ab BOOLEAN DEFAULT false,
   commentaire TEXT,
+  created_by UUID,
+  updated_by UUID,
   deleted_at TIMESTAMPTZ DEFAULT NULL,       -- Soft delete
-  created_at TIMESTAMPTZ DEFAULT now()
+  created_at TIMESTAMPTZ DEFAULT now(),
+  UNIQUE(farm_id, lot_interne)             -- Numérotation unique par ferme
 );
+-- CREATE INDEX idx_seed_lots_farm ON seed_lots(farm_id);
 ```
 
 #### `seedlings` — Semis et levée
@@ -395,43 +664,40 @@ Deux processus possibles, avec **suivi des pertes** (mortes vs données) :
 ```sql
 CREATE TABLE seedlings (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  farm_id UUID NOT NULL REFERENCES farms(id), -- Ferme propriétaire
   uuid_client UUID UNIQUE,                   -- UUID généré par le mobile, pour idempotence sync
   seed_lot_id UUID REFERENCES seed_lots(id),
   variety_id UUID REFERENCES varieties(id),
   processus TEXT CHECK (processus IN ('caissette_godet', 'mini_motte')),
 
   -- ===== PROCESS 1 : MINI-MOTTES =====
-  -- La caisse est l'identifiant physique terrain (ex: "Caisse A", "Caisse B")
   numero_caisse TEXT,                      -- "A", "B"... identifiant terrain
-  nb_mottes INTEGER,                       -- Nombre de mottes au départ (ex: 98)
-  nb_mortes_mottes INTEGER DEFAULT 0,      -- Mortes avant plantation
-  -- nb_donnees (champ commun ci-dessous)
+  nb_mottes INTEGER,
+  nb_mortes_mottes INTEGER DEFAULT 0,
 
-  -- ===== PROCESS 2 : CAISSETTE/GODET (2 étapes de perte) =====
-  -- Étape 1 : Caissette
-  nb_caissettes INTEGER,                   -- Nombre de caissettes (ex: 1)
-  nb_plants_caissette INTEGER,             -- Nombre de plants dans la caissette au départ (ex: 50)
-  nb_mortes_caissette INTEGER DEFAULT 0,   -- Mortes en caissette avant repiquage (ex: 5)
-  -- Étape 2 : Repiquage en godets
-  nb_godets INTEGER,                       -- Nombre repiqués en godets (ex: 45)
-  nb_mortes_godet INTEGER DEFAULT 0,       -- Mortes en godet avant plantation (ex: 5)
-  -- nb_donnees (champ commun ci-dessous)
+  -- ===== PROCESS 2 : CAISSETTE/GODET =====
+  nb_caissettes INTEGER,
+  nb_plants_caissette INTEGER,
+  nb_mortes_caissette INTEGER DEFAULT 0,
+  nb_godets INTEGER,
+  nb_mortes_godet INTEGER DEFAULT 0,
 
   -- ===== COMMUN AUX 2 PROCESSUS =====
-  nb_donnees INTEGER DEFAULT 0,            -- Plants donnés (pas morts mais pas plantés)
-  nb_plants_obtenus INTEGER,               -- Plants effectivement plantés (résultat final)
-  -- Dates
+  nb_donnees INTEGER DEFAULT 0,
+  nb_plants_obtenus INTEGER,
   date_semis DATE NOT NULL,
   poids_graines_utilise_g DECIMAL,
   date_levee DATE,
-  date_repiquage DATE,                     -- Date du repiquage caissette → godet (process 2 uniquement)
-  -- Temps de travail (en minutes)
+  date_repiquage DATE,
   temps_semis_min INTEGER,
   temps_repiquage_min INTEGER,
   commentaire TEXT,
+  created_by UUID,
+  updated_by UUID,
   deleted_at TIMESTAMPTZ DEFAULT NULL,       -- Soft delete
   created_at TIMESTAMPTZ DEFAULT now()
 );
+-- CREATE INDEX idx_seedlings_farm ON seedlings(farm_id);
 ```
 
 **Calcul des taux de perte** (automatique, affiché dans les vues bureau) :
@@ -457,6 +723,7 @@ Ex: 50 caissette → 45 godets (5 mortes) → 35 plantées (5 mortes + 5 donnée
 ```sql
 CREATE TABLE soil_works (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  farm_id UUID NOT NULL REFERENCES farms(id),
   uuid_client UUID UNIQUE,                 -- UUID généré par le mobile, pour idempotence sync
   row_id UUID REFERENCES rows(id),
   date DATE NOT NULL,
@@ -464,8 +731,11 @@ CREATE TABLE soil_works (
   detail TEXT,                              -- Précisions (type d'amendement, etc.)
   temps_min INTEGER,
   commentaire TEXT,
+  created_by UUID,
+  updated_by UUID,
   created_at TIMESTAMPTZ DEFAULT now()
 );
+-- CREATE INDEX idx_soil_works_farm ON soil_works(farm_id);
 ```
 
 #### `plantings` — Plan de culture / Plantation (étape 3)
@@ -474,15 +744,16 @@ Relation : `rows (1) ←── (N) plantings`
 ```sql
 CREATE TABLE plantings (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  farm_id UUID NOT NULL REFERENCES farms(id),
   uuid_client UUID UNIQUE,                 -- UUID généré par le mobile, pour idempotence sync
   row_id UUID REFERENCES rows(id),
   variety_id UUID REFERENCES varieties(id),
   seedling_id UUID REFERENCES seedlings(id),  -- Lien vers semis d'origine (NULL si plant acheté)
   fournisseur TEXT,                          -- Nom du fournisseur si plant acheté (ex: "Les Tilleuls", "Serres du Lycée")
   -- Logique : seedling_id rempli = issu de mes semis, fournisseur rempli = plant acheté
-  annee INTEGER NOT NULL,                       -- Année de culture
+  annee INTEGER NOT NULL,
   date_plantation DATE NOT NULL,
-  lune TEXT CHECK (lune IN ('montante', 'descendante')),  -- Phase lunaire au moment de la plantation (optionnel, pour analyse des rendements)
+  lune TEXT CHECK (lune IN ('montante', 'descendante')),
   nb_plants INTEGER,
   type_plant TEXT CHECK (type_plant IN ('godet', 'caissette', 'mini_motte', 'plant_achete', 'division', 'bouture', 'marcottage', 'stolon', 'rhizome', 'semis_direct')),
   espacement_cm INTEGER,
@@ -491,13 +762,15 @@ CREATE TABLE plantings (
   numero_facture TEXT,
   temps_min INTEGER,
   commentaire TEXT,
-  longueur_m DECIMAL,                        -- Longueur réelle de cette plantation en mètres — copiée depuis le rang à la création, modifiable
-  largeur_m DECIMAL,                         -- Largeur réelle de cette plantation en mètres — copiée depuis le rang à la création, modifiable
-  -- Dimensions réelles de cette plantation, copiées depuis le rang par défaut, modifiables (comme la recette copiée dans le lot)
+  longueur_m DECIMAL,                        -- Copiée depuis le rang à la création, modifiable
+  largeur_m DECIMAL,                         -- Copiée depuis le rang à la création, modifiable
   actif BOOLEAN DEFAULT true,               -- false si rang détruit/arraché
+  created_by UUID,
+  updated_by UUID,
   deleted_at TIMESTAMPTZ DEFAULT NULL,       -- Soft delete
   created_at TIMESTAMPTZ DEFAULT now()
 );
+-- CREATE INDEX idx_plantings_farm ON plantings(farm_id);
 ```
 
 > **Pré-remplissage des dimensions** : à la création d'une plantation, `longueur_m` et `largeur_m` sont copiées depuis le rang sélectionné. L'utilisateur peut les modifier (ex : ne planter que sur 6m d'un rang de 10m, ou partager un rang entre 2 variétés).
@@ -517,17 +790,20 @@ CREATE TABLE plantings (
 ```sql
 CREATE TABLE row_care (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  farm_id UUID NOT NULL REFERENCES farms(id),
   uuid_client UUID UNIQUE,                 -- UUID généré par le mobile, pour idempotence sync
   row_id UUID REFERENCES rows(id),
-  variety_id UUID REFERENCES varieties(id) NOT NULL,  -- Auto-rempli si mono-variété, choisi si multi
+  variety_id UUID REFERENCES varieties(id) NOT NULL,
   date DATE NOT NULL,
   type_soin TEXT CHECK (type_soin IN ('desherbage', 'paillage', 'arrosage', 'autre')),
   temps_min INTEGER,
   commentaire TEXT,
+  created_by UUID,
+  updated_by UUID,
   created_at TIMESTAMPTZ DEFAULT now()
 );
 -- Si un rang a 2 variétés, l'utilisateur saisit 2 lignes (une par variété)
--- pour imputer correctement le temps de travail
+-- CREATE INDEX idx_row_care_farm ON row_care(farm_id);
 ```
 
 #### `harvests` — Cueillette (étape 5) ⭐ CRÉE DU STOCK FRAIS
@@ -537,25 +813,24 @@ CREATE TABLE row_care (
 ```sql
 CREATE TABLE harvests (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  farm_id UUID NOT NULL REFERENCES farms(id),
   uuid_client UUID UNIQUE,                 -- UUID généré par le mobile, pour idempotence sync
   type_cueillette TEXT CHECK (type_cueillette IN ('parcelle', 'sauvage')) NOT NULL,
-  -- Si parcelle
   row_id UUID REFERENCES rows(id),          -- NULL si sauvage
-  -- Si sauvage
   lieu_sauvage TEXT,                         -- Texte libre : "Bord de la rivière", "Forêt du Combet"
-  -- Commun
-  variety_id UUID REFERENCES varieties(id) NOT NULL,  -- Auto-rempli si mono-variété, choisi si multi
+  variety_id UUID REFERENCES varieties(id) NOT NULL,
   partie_plante TEXT CHECK (partie_plante IN ('feuille', 'fleur', 'graine', 'racine', 'fruit', 'plante_entiere')) NOT NULL,
-  -- Logique adaptative partie_plante : si varieties.parties_utilisees a 1 seule valeur → auto-rempli.
-  -- Si plusieurs valeurs → dropdown obligatoire. La partie est choisie ici et héritée dans toute la chaîne.
   date DATE NOT NULL,
   poids_g DECIMAL NOT NULL,
   temps_min INTEGER,
   commentaire TEXT,
+  created_by UUID,
+  updated_by UUID,
   deleted_at TIMESTAMPTZ DEFAULT NULL,       -- Soft delete
   created_at TIMESTAMPTZ DEFAULT now()
 );
 -- → La route API crée le stock_movement ENTRÉE frais en logique applicative (dans une transaction SQL)
+-- CREATE INDEX idx_harvests_farm ON harvests(farm_id);
 ```
 
 #### `uprootings` — Arrachage (étape 6)
@@ -565,15 +840,19 @@ CREATE TABLE harvests (
 ```sql
 CREATE TABLE uprootings (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  farm_id UUID NOT NULL REFERENCES farms(id),
   uuid_client UUID UNIQUE,                 -- UUID généré par le mobile, pour idempotence sync
   row_id UUID REFERENCES rows(id) NOT NULL,
   variety_id UUID REFERENCES varieties(id),  -- Auto-rempli si mono, choisi si multi. NULL = tout le rang
   date DATE NOT NULL,
   temps_min INTEGER,
   commentaire TEXT,
+  created_by UUID,
+  updated_by UUID,
   created_at TIMESTAMPTZ DEFAULT now()
 );
 -- → Passe plantings.actif = false pour la variété arrachée sur ce rang
+-- CREATE INDEX idx_uprootings_farm ON uprootings(farm_id);
 ```
 
 #### `occultations` — Occultation de rangs (étape 2b, entre arrachage et replantation)
@@ -585,26 +864,30 @@ L'occultation régénère un rang. Quatre méthodes : paille (fournisseur + atte
 ```sql
 CREATE TABLE occultations (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  farm_id UUID NOT NULL REFERENCES farms(id),
   uuid_client UUID UNIQUE,                  -- UUID généré par le mobile, pour idempotence sync
   row_id UUID REFERENCES rows(id) NOT NULL,
   date_debut DATE NOT NULL,
   date_fin DATE,                             -- NULL = en cours
   methode TEXT CHECK (methode IN ('paille', 'foin', 'bache', 'engrais_vert')) NOT NULL,
   -- Paille / Foin
-  fournisseur TEXT,                          -- Provenance (paille et foin)
+  fournisseur TEXT,
   attestation TEXT,                          -- Certification (paille uniquement)
   -- Engrais vert
-  engrais_vert_nom TEXT,                     -- "Moutarde blanche", "Seigle"
-  engrais_vert_fournisseur TEXT,             -- Provenance des graines
-  engrais_vert_facture TEXT,                 -- Numéro de facture
+  engrais_vert_nom TEXT,
+  engrais_vert_fournisseur TEXT,
+  engrais_vert_facture TEXT,
   engrais_vert_certif_ab BOOLEAN DEFAULT false,
   -- Bâche
-  temps_retrait_min INTEGER,                 -- Temps pour retirer la bâche (bâche uniquement)
+  temps_retrait_min INTEGER,
   -- Commun
-  temps_min INTEGER,                         -- Temps de mise en place
+  temps_min INTEGER,
   commentaire TEXT,
+  created_by UUID,
+  updated_by UUID,
   created_at TIMESTAMPTZ DEFAULT now()
 );
+-- CREATE INDEX idx_occultations_farm ON occultations(farm_id);
 ```
 
 > **Avertissement plantation sur rang occulté** : si un rang a une occultation active (`date_fin IS NULL`), afficher un avertissement à la plantation : « ⚠️ Ce rang est en occultation depuis le [date]. Continuer quand même ? » Pas de blocage.
@@ -624,20 +907,22 @@ Même modèle simplifié que séchage et triage : entrées et sorties individuel
 ```sql
 CREATE TABLE cuttings (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  farm_id UUID NOT NULL REFERENCES farms(id),
   uuid_client UUID UNIQUE,                 -- UUID généré par le mobile, pour idempotence sync
   variety_id UUID REFERENCES varieties(id) NOT NULL,
   partie_plante TEXT CHECK (partie_plante IN ('feuille', 'fleur', 'graine', 'racine', 'fruit', 'plante_entiere')) NOT NULL,
-  -- Hérité du stock frais en entrée — jamais re-saisi par l'utilisateur
-  type TEXT CHECK (type IN ('entree', 'sortie')) NOT NULL,  -- entrée = charge, sortie = décharge
+  type TEXT CHECK (type IN ('entree', 'sortie')) NOT NULL,
   date DATE NOT NULL,
   poids_g DECIMAL NOT NULL,
   temps_min INTEGER,
   commentaire TEXT,
+  created_by UUID,
+  updated_by UUID,
   created_at TIMESTAMPTZ DEFAULT now()
 );
--- → La route API crée les stock_movements en logique applicative (dans une transaction SQL) :
 -- → Si type = entree : stock_movement SORTIE frais
 -- → Si type = sortie : stock_movement ENTRÉE tronçonnée
+-- CREATE INDEX idx_cuttings_farm ON cuttings(farm_id);
 ```
 
 #### `dryings` — Séchage (étape 8) ⭐ GÉNÈRE DU STOCK
@@ -645,25 +930,25 @@ Même modèle simplifié : entrées et sorties individuelles. L'utilisateur choi
 ```sql
 CREATE TABLE dryings (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  farm_id UUID NOT NULL REFERENCES farms(id),
   uuid_client UUID UNIQUE,                 -- UUID généré par le mobile, pour idempotence sync
   variety_id UUID REFERENCES varieties(id) NOT NULL,
   partie_plante TEXT CHECK (partie_plante IN ('feuille', 'fleur', 'graine', 'racine', 'fruit', 'plante_entiere')) NOT NULL,
-  -- Hérité du stock en entrée — jamais re-saisi par l'utilisateur
   type TEXT CHECK (type IN ('entree', 'sortie')) NOT NULL,
   etat_plante TEXT NOT NULL,
   -- Si type = 'entree' : sélecteur → 'frais' | 'tronconnee'
   -- Si type = 'sortie' : sélecteur → 'sechee' | 'tronconnee_sechee'
   date DATE NOT NULL,
   poids_g DECIMAL NOT NULL,
-  temps_min INTEGER,                        -- Temps de travail (chargement ou déchargement)
+  temps_min INTEGER,
   commentaire TEXT,
+  created_by UUID,
+  updated_by UUID,
   created_at TIMESTAMPTZ DEFAULT now()
 );
--- → La route API crée les stock_movements en logique applicative (dans une transaction SQL) :
 -- → Si type = entree : stock_movement SORTIE de etat_plante (frais ou tronconnee)
 -- → Si type = sortie : stock_movement ENTRÉE dans etat_plante (sechee ou tronconnee_sechee)
--- → Validation : entree ne peut être que 'frais' ou 'tronconnee'
--- → Validation : sortie ne peut être que 'sechee' ou 'tronconnee_sechee'
+-- CREATE INDEX idx_dryings_farm ON dryings(farm_id);
 ```
 
 #### `sortings` — Triage (étape 9) ⭐ GÉNÈRE DU STOCK
@@ -671,10 +956,10 @@ Même modèle simplifié. L'utilisateur choisit l'état de la plante via un sél
 ```sql
 CREATE TABLE sortings (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  farm_id UUID NOT NULL REFERENCES farms(id),
   uuid_client UUID UNIQUE,                 -- UUID généré par le mobile, pour idempotence sync
   variety_id UUID REFERENCES varieties(id) NOT NULL,
   partie_plante TEXT CHECK (partie_plante IN ('feuille', 'fleur', 'graine', 'racine', 'fruit', 'plante_entiere')) NOT NULL,
-  -- Hérité du stock en entrée — jamais re-saisi par l'utilisateur
   type TEXT CHECK (type IN ('entree', 'sortie')) NOT NULL,
   etat_plante TEXT NOT NULL,
   -- Si type = 'entree' : sélecteur → 'sechee' | 'tronconnee_sechee'
@@ -683,13 +968,13 @@ CREATE TABLE sortings (
   poids_g DECIMAL NOT NULL,
   temps_min INTEGER,
   commentaire TEXT,
+  created_by UUID,
+  updated_by UUID,
   created_at TIMESTAMPTZ DEFAULT now()
 );
--- → La route API crée les stock_movements en logique applicative (dans une transaction SQL) :
 -- → Si type = entree : stock_movement SORTIE de etat_plante (sechee ou tronconnee_sechee)
 -- → Si type = sortie : stock_movement ENTRÉE dans etat_plante (sechee_triee ou tronconnee_sechee_triee)
--- → Validation : entree ne peut être que 'sechee' ou 'tronconnee_sechee'
--- → Validation : sortie ne peut être que 'sechee_triee' ou 'tronconnee_sechee_triee'
+-- CREATE INDEX idx_sortings_farm ON sortings(farm_id);
 ```
 
 ### 5.5 Module Stock (étape 10) — EVENT-SOURCED
@@ -700,20 +985,22 @@ Le stock n'est JAMAIS stocké directement. Il est **calculé** à partir de tous
 ```sql
 CREATE TABLE stock_movements (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  farm_id UUID NOT NULL REFERENCES farms(id),
   variety_id UUID REFERENCES varieties(id) NOT NULL,
   partie_plante TEXT CHECK (partie_plante IN ('feuille', 'fleur', 'graine', 'racine', 'fruit', 'plante_entiere')) NOT NULL,
-  -- Dimension du stock : variété × partie × état. Hérité de la cueillette, jamais modifié.
   date DATE NOT NULL,
   type_mouvement TEXT CHECK (type_mouvement IN ('entree', 'sortie')) NOT NULL,
   etat_plante TEXT CHECK (etat_plante IN ('frais', 'tronconnee', 'sechee', 'tronconnee_sechee', 'sechee_triee', 'tronconnee_sechee_triee')) NOT NULL,
   poids_g DECIMAL NOT NULL,
-  -- Traçabilité : d'où vient ce mouvement ?
-  source_type TEXT NOT NULL,                -- 'cueillette', 'tronconnage_entree', 'tronconnage_sortie', 'sechage_entree', 'sechage_sortie', 'triage_entree', 'triage_sortie', 'production', 'achat', 'vente_directe', 'ajustement'
-  source_id UUID,                           -- ID de l'enregistrement source (NULL pour achat/vente/ajustement)
+  source_type TEXT NOT NULL,                -- 'cueillette', 'tronconnage_entree', ..., 'production', 'achat', 'vente_directe', 'ajustement'
+  source_id UUID,                           -- ID de l'enregistrement source
   commentaire TEXT,
+  created_by UUID,
   deleted_at TIMESTAMPTZ DEFAULT NULL,       -- Soft delete
   created_at TIMESTAMPTZ DEFAULT now()
 );
+-- CREATE INDEX idx_stock_movements_farm ON stock_movements(farm_id);
+-- CREATE INDEX idx_stock_movements_partie ON stock_movements(partie_plante);
 ```
 
 **Règles de flux automatique — ÉTATS CUMULATIFS** :
@@ -776,21 +1063,24 @@ Pour tracer les achats de plantes fraîches ou séchées auprès d'autres produc
 ```sql
 CREATE TABLE stock_purchases (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  farm_id UUID NOT NULL REFERENCES farms(id),
   uuid_client UUID UNIQUE,                 -- UUID généré par le mobile, pour idempotence sync
   variety_id UUID REFERENCES varieties(id) NOT NULL,
   partie_plante TEXT CHECK (partie_plante IN ('feuille', 'fleur', 'graine', 'racine', 'fruit', 'plante_entiere')) NOT NULL,
-  -- Saisi obligatoirement à l'achat : quelle partie de la plante est achetée
   date DATE NOT NULL,
   etat_plante TEXT CHECK (etat_plante IN ('frais', 'tronconnee', 'sechee', 'tronconnee_sechee', 'sechee_triee', 'tronconnee_sechee_triee')) NOT NULL,
   poids_g DECIMAL NOT NULL,
-  fournisseur TEXT,                         -- Nom du producteur / fournisseur
+  fournisseur TEXT,
   numero_lot_fournisseur TEXT,
   certif_ab BOOLEAN DEFAULT false,
-  prix DECIMAL,                             -- Prix d'achat (optionnel, pour suivi coûts)
+  prix DECIMAL,
   commentaire TEXT,
+  created_by UUID,
+  updated_by UUID,
   created_at TIMESTAMPTZ DEFAULT now()
 );
 -- → La route API génère le stock_movement de type 'achat' en ENTRÉE (dans une transaction SQL)
+-- CREATE INDEX idx_stock_purchases_farm ON stock_purchases(farm_id);
 ```
 
 #### `stock_direct_sales` — Ventes directes de plantes (sans recette)
@@ -798,19 +1088,22 @@ Pour vendre du vrac ou des plantes en l'état, sans passer par la production d'u
 ```sql
 CREATE TABLE stock_direct_sales (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  farm_id UUID NOT NULL REFERENCES farms(id),
   uuid_client UUID UNIQUE,                 -- UUID généré par le mobile, pour idempotence sync
   variety_id UUID REFERENCES varieties(id) NOT NULL,
   partie_plante TEXT CHECK (partie_plante IN ('feuille', 'fleur', 'graine', 'racine', 'fruit', 'plante_entiere')) NOT NULL,
-  -- Saisi obligatoirement à la vente : quelle partie de la plante est vendue
   date DATE NOT NULL,
   etat_plante TEXT CHECK (etat_plante IN ('frais', 'tronconnee', 'sechee', 'tronconnee_sechee', 'sechee_triee', 'tronconnee_sechee_triee')) NOT NULL,
   poids_g DECIMAL NOT NULL,
-  destinataire TEXT,                        -- Qui achète (optionnel)
+  destinataire TEXT,
   commentaire TEXT,
+  created_by UUID,
+  updated_by UUID,
   created_at TIMESTAMPTZ DEFAULT now()
 );
 -- → La route API génère le stock_movement de type 'vente_directe' en SORTIE (dans une transaction SQL)
 -- → Vérifier que le stock est suffisant AVANT validation
+-- CREATE INDEX idx_stock_direct_sales_farm ON stock_direct_sales(farm_id);
 ```
 
 #### `stock_adjustments` — Ajustements manuels de stock
@@ -818,59 +1111,73 @@ Pour corriger les écarts d'inventaire. Le motif est obligatoire pour traçabili
 ```sql
 CREATE TABLE stock_adjustments (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  farm_id UUID NOT NULL REFERENCES farms(id),
   uuid_client UUID UNIQUE,                   -- UUID généré par le mobile, pour idempotence sync
   variety_id UUID REFERENCES varieties(id) NOT NULL,
   partie_plante TEXT CHECK (partie_plante IN ('feuille', 'fleur', 'graine', 'racine', 'fruit', 'plante_entiere')) NOT NULL,
-  -- Saisi obligatoirement : quelle partie de la plante est ajustée
   date DATE NOT NULL,
   type_mouvement TEXT CHECK (type_mouvement IN ('entree', 'sortie')) NOT NULL,
   etat_plante TEXT CHECK (etat_plante IN ('frais', 'tronconnee', 'sechee', 'tronconnee_sechee', 'sechee_triee', 'tronconnee_sechee_triee')) NOT NULL,
   poids_g DECIMAL NOT NULL,
   motif TEXT NOT NULL,                        -- Obligatoire : pourquoi cet ajustement
+  created_by UUID,
+  updated_by UUID,
   created_at TIMESTAMPTZ DEFAULT now()
 );
 -- → Génère automatiquement un stock_movement avec source_type = 'ajustement'
+-- CREATE INDEX idx_stock_adjustments_farm ON stock_adjustments(farm_id);
 ```
 
-**Vue stock SQL de base** (le stock est toujours calculé, jamais stocké directement) :
+**Vue stock SQL de base** `v_stock` (le stock est toujours calculé, jamais stocké directement) :
 ```sql
--- Stock par variété, partie et état — 3 dimensions
+CREATE VIEW v_stock WITH (security_invoker = true) AS
 SELECT
+  farm_id,
   variety_id,
   partie_plante,
   etat_plante,
   SUM(CASE WHEN type_mouvement = 'entree' THEN poids_g ELSE -poids_g END) as stock_g
 FROM stock_movements
 WHERE deleted_at IS NULL
-GROUP BY variety_id, partie_plante, etat_plante;
+GROUP BY farm_id, variety_id, partie_plante, etat_plante;
 ```
 Voir section 5.9 pour la page Vue Stock complète.
 
 ### 5.6 Module Produits (étape 11)
 
-#### `product_categories` — Catégories de produits
+#### `product_categories` — Catégories de produits (catalogue partagé plateforme)
+Même règles que `varieties` : catalogue partagé, visible par tous.
 ```sql
 CREATE TABLE product_categories (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   nom TEXT NOT NULL UNIQUE,                  -- "Tisane", "Mélange aromate", "Sel", "Sucre", "Vinaigre", "Sirop"
+  created_by_farm_id UUID REFERENCES farms(id),
+  created_by UUID,
+  updated_by UUID,
   created_at TIMESTAMPTZ DEFAULT now()
 );
 ```
 
-#### `recipes` — Recettes de base
+#### `recipes` — Recettes de base (privées par ferme)
+Les recettes sont privées : chaque ferme a ses propres recettes.
 ```sql
 CREATE TABLE recipes (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  farm_id UUID NOT NULL REFERENCES farms(id),
   category_id UUID REFERENCES product_categories(id),
-  nom TEXT NOT NULL UNIQUE,                  -- "La Balade Digestive", "Nuit Étoilée"
-  numero_tisane TEXT,                       -- "Tisane 1", "Tisane 2"... si applicable
-  poids_sachet_g DECIMAL NOT NULL,         -- 20g, 25g, 30g — fixe pour la recette ; pour les vinaigres, valeur en grammes (250g ≈ 250mL, affiché en mL dans l'UI)
+  nom TEXT NOT NULL,                        -- "La Balade Digestive", "Nuit Étoilée"
+  numero_tisane TEXT,
+  poids_sachet_g DECIMAL NOT NULL,         -- fixe pour la recette
   description TEXT,
   actif BOOLEAN DEFAULT true,
+  created_by UUID,
+  updated_by UUID,
   deleted_at TIMESTAMPTZ DEFAULT NULL,       -- Soft delete
   created_at TIMESTAMPTZ DEFAULT now(),
-  updated_at TIMESTAMPTZ DEFAULT now()
+  updated_at TIMESTAMPTZ DEFAULT now(),
+  UNIQUE(farm_id, nom)                     -- Nom unique par ferme
 );
+-- CREATE INDEX idx_recipes_farm ON recipes(farm_id);
 ```
 
 #### `recipe_ingredients` — Composition de base de la recette
@@ -898,21 +1205,24 @@ CREATE TABLE recipe_ingredients (
 ```sql
 CREATE TABLE production_lots (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  farm_id UUID NOT NULL REFERENCES farms(id),
   uuid_client UUID UNIQUE,                 -- UUID généré par le mobile, pour idempotence sync
   recipe_id UUID REFERENCES recipes(id),
-  numero_lot TEXT NOT NULL UNIQUE,         -- "BD 20250604", généré : [CODE_RECETTE][DATE]
+  numero_lot TEXT NOT NULL,                -- "BD 20250604", généré : [CODE_RECETTE][DATE]
   mode TEXT CHECK (mode IN ('produit', 'melange')) NOT NULL DEFAULT 'produit',
-  -- Mode "produit" : partir du nb de sachets → poids calculés depuis les %
-  -- Mode "mélange" : partir des poids réels → conditionnement (nb_unites) saisi plus tard
   date_production DATE NOT NULL,
-  ddm DATE NOT NULL,                        -- Date de Durabilité Minimale
-  nb_unites INTEGER,                       -- NULL en mode mélange, renseigné au conditionnement
-  poids_total_g DECIMAL,                   -- En mode produit : nb_unites × poids_sachet. En mode mélange : somme des poids des ingrédients
+  ddm DATE NOT NULL,
+  nb_unites INTEGER,
+  poids_total_g DECIMAL,
   temps_min INTEGER,
   commentaire TEXT,
+  created_by UUID,
+  updated_by UUID,
   deleted_at TIMESTAMPTZ DEFAULT NULL,       -- Soft delete
-  created_at TIMESTAMPTZ DEFAULT now()
+  created_at TIMESTAMPTZ DEFAULT now(),
+  UNIQUE(farm_id, numero_lot)              -- Numérotation unique par ferme
 );
+-- CREATE INDEX idx_production_lots_farm ON production_lots(farm_id);
 ```
 
 #### `production_lot_ingredients` — Composition RÉELLE du lot
@@ -975,13 +1285,17 @@ Agastache anisée  20%  état: triée  → SORTIE stock triée 250g
 ```sql
 CREATE TABLE product_stock_movements (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  farm_id UUID NOT NULL REFERENCES farms(id),
   production_lot_id UUID REFERENCES production_lots(id),
   date DATE NOT NULL,
   type_mouvement TEXT CHECK (type_mouvement IN ('entree', 'sortie')),
   quantite INTEGER NOT NULL,               -- Nombre de sachets/pots
-  commentaire TEXT,                         -- "Vente marché", "Livraison Aintimiste"
+  commentaire TEXT,
+  created_by UUID,
+  updated_by UUID,
   created_at TIMESTAMPTZ DEFAULT now()
 );
+-- CREATE INDEX idx_product_stock_movements_farm ON product_stock_movements(farm_id);
 ```
 
 ### 5.7 Module Prévisionnel
@@ -990,16 +1304,19 @@ CREATE TABLE product_stock_movements (
 ```sql
 CREATE TABLE forecasts (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  farm_id UUID NOT NULL REFERENCES farms(id),
   annee INTEGER NOT NULL,
   variety_id UUID REFERENCES varieties(id) NOT NULL,
   etat_plante TEXT CHECK (etat_plante IN ('frais', 'tronconnee', 'sechee', 'tronconnee_sechee', 'sechee_triee', 'tronconnee_sechee_triee')),
   partie_plante TEXT CHECK (partie_plante IN ('feuille', 'fleur', 'graine', 'racine', 'fruit', 'plante_entiere')),  -- NULL = toutes parties confondues
-  -- Le prévisionnel doit être cohérent avec les 3 dimensions du stock : variété × partie × état
   quantite_prevue_g DECIMAL,
   commentaire TEXT,
+  created_by UUID,
+  updated_by UUID,
   created_at TIMESTAMPTZ DEFAULT now(),
-  UNIQUE(annee, variety_id, etat_plante, partie_plante)
+  UNIQUE(farm_id, annee, variety_id, etat_plante, partie_plante)
 );
+-- CREATE INDEX idx_forecasts_farm ON forecasts(farm_id);
 ```
 
 ### 5.8 Table `production_summary` — Cumuls d'activité
@@ -1011,6 +1328,7 @@ Table matérialisée, mise à jour automatiquement par trigger à chaque opérat
 ```sql
 CREATE TABLE production_summary (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  farm_id UUID NOT NULL REFERENCES farms(id),
   variety_id UUID REFERENCES varieties(id) NOT NULL,
   annee INTEGER NOT NULL,
   mois INTEGER,                              -- NULL = cumul annuel, 1-12 = cumul mensuel
@@ -1030,8 +1348,9 @@ CREATE TABLE production_summary (
   temps_production_min INTEGER DEFAULT 0,
   -- Metadata
   updated_at TIMESTAMPTZ DEFAULT now(),
-  UNIQUE(variety_id, annee, mois)
+  UNIQUE(farm_id, variety_id, annee, mois)
 );
+-- CREATE INDEX idx_production_summary_farm ON production_summary(farm_id);
 ```
 
 **Mise à jour** : chaque trigger d'opération met à jour à la fois la ligne mensuelle (mois = M) et la ligne annuelle (mois = NULL) pour la variété concernée. Ex : une cueillette de 800g de Menthe en juin 2025 incrémente `total_cueilli_g` sur les lignes (Menthe, 2025, 6) ET (Menthe, 2025, NULL).
@@ -1055,12 +1374,7 @@ Lavande vraie   | fleur   | —      | —      | —      | 0.2 kg      | —  
 - Filtres : variété, état, année
 - Export CSV / XLSX du tableau
 - Graphique barres par variété (empilées par état, colorées)
-- Alertes stock bas : seuil configurable par variété (champ `seuil_alerte_g` dans `varieties`). Notification visuelle quand le stock total passe sous le seuil.
-
-**Alerte stock bas** — ajouter dans `varieties` :
-```sql
-ALTER TABLE varieties ADD COLUMN seuil_alerte_g DECIMAL;  -- NULL = pas d'alerte
-```
+- Alertes stock bas : seuil configurable par ferme via `farm_variety_settings.seuil_alerte_g`. Notification visuelle quand le stock total passe sous le seuil (stockée dans `notifications`).
 
 ### 5.10 Page Vue Production totale — Cumuls d'activité + Prévisionnel
 
@@ -1235,18 +1549,44 @@ Le dashboard est la page d'accueil bureau. Il montre un résumé avec des liens 
 - Tous les tableaux de données doivent pouvoir être exportés en CSV et/ou XLSX
 - Filtres par année, parcelle, variété, période
 
+### 8.5 Sélecteur de ferme (multi-tenant)
+
+**Emplacement** : en haut du layout bureau, au-dessus de la sidebar. Visible uniquement si l'utilisateur a accès à plusieurs fermes.
+
+**Comportement** :
+- La ferme active est stockée dans un cookie `active_farm_id`
+- Toutes les données affichées et saisies concernent la ferme active
+- Au switch de ferme, le cookie est mis à jour et la page rechargée
+- Le helper `getContext()` (`src/lib/context.ts`) retourne `{ userId, farmId, organizationId }` pour toutes les Server Actions
+
+**Catalogue variétés partagé** : dans les sélecteurs de variétés, toutes les variétés du catalogue sont proposées (pas seulement celles de la ferme active). Les variétés masquées via `farm_variety_settings.hidden = true` n'apparaissent pas.
+
+**Déduplication variétés** :
+- À la création d'une variété : recherche fuzzy en temps réel sur `nom_vernaculaire` + `nom_latin` + `aliases`. Affiche les variétés proches et propose de sélectionner l'existante.
+- Si le nom existe déjà (contrainte UNIQUE insensible casse/accents) : message « Cette variété existe déjà » + proposition de sélection directe.
+- Outil de merge super admin (Phase B6) : fusionner un doublon vers une cible (UPDATE toutes les FK + soft delete + log audit).
+
+### 8.6 Notifications
+
+Les alertes sont stockées dans la table `notifications` et affichées dans l'UI :
+- **Stock bas** : quand `stock_g < farm_variety_settings.seuil_alerte_g` pour une variété de la ferme active
+- **Erreurs de sync** : échecs persistants dans la file d'attente mobile
+- **Backup échoué** : erreur lors du cron de backup
+- Accessible depuis une cloche de notification dans le header du bureau et depuis la barre de sync sur mobile
+
 ---
 
 ## 9. PLAN DE DÉVELOPPEMENT — DÉCOUPAGE A/B
 
 Voir `plan-action.md` pour le détail complet. Résumé ci-dessous.
 
-### PHASE A — Socle de données (~25-35 jours)
+### PHASE A — Socle de données (~24-35 jours)
 Toute la saisie fonctionne, le stock est juste, l'appli est utilisable au quotidien.
 
 | Phase | Ensemble | Durée |
 |-------|----------|-------|
 | A0 | Fondations + Référentiel | 2-3j |
+| **A0.9** | **Migration multi-tenant (⚠️ à faire MAINTENANT)** | **2j** |
 | A1 | 🌱 Semis (sachets + suivi + pertes) | 2-3j |
 | A2 | 🌿 Suivi parcelle (sol, plantation, suivi rang, cueillette, arrachage) | 5-7j |
 | A3 | 🔄 Transformation (tronçonnage, séchage, triage + triggers stock) | 4-5j |
@@ -1257,7 +1597,7 @@ Toute la saisie fonctionne, le stock est juste, l'appli est utilisable au quotid
 
 **✅ Fin Phase A** : utilisable au quotidien sur le terrain.
 
-### PHASE B — Vues & Analyse (~10-15 jours)
+### PHASE B — Vues & Analyse (~12-18 jours)
 Exposition des données collectées. Phases indépendantes, ordre flexible.
 
 | Phase | Contenu | Durée |
@@ -1267,11 +1607,12 @@ Exposition des données collectées. Phases indépendantes, ordre flexible.
 | B3 | 🏠 Dashboard (widgets résumé, vue parcellaire) | 2-3j |
 | B4 | 🔍 Traçabilité + Prévisionnel (remontée lot→graine, objectifs annuels) | 2-3j |
 | B5 | Export & Polish final | 1-2j |
+| B6 | 🔧 Interface super admin (impersonation, merge variétés, super data, logs) | 2-3j |
 
-**Estimation totale : ~30-45 jours de développement**
+**Estimation totale : ~35-50 jours de développement**
 
 ### PHASE C — Module Miel (temps 3, après stabilisation A+B)
-Le miel sera un **module autonome** intégré dans le même projet, avec des **tables entièrement séparées** des tables PAM. Aucune réutilisation de `varieties`, `recipes`, `stock_movements`, etc.
+Le miel sera un **module autonome** intégré dans le même projet, **activable par ferme** via `farm_modules (module = 'apiculture')`. Tables entièrement séparées des tables PAM, nativement multi-tenant avec `farm_id` dès leur création.
 
 **Ce qui est partagé** : l'environnement technique (Next.js, Supabase, auth, PWA, sync offline) et l'interface (sidebar, charte graphique).
 
@@ -1309,14 +1650,58 @@ Le miel sera un **module autonome** intégré dans le même projet, avec des **t
 - **Estimation stockage** : ~5 Mo/an pour une activité soutenue (70 variétés, ~3000 mouvements de stock/an). Les 500 Mo du plan gratuit couvrent largement >50 ans d'utilisation.
 - **Estimation bandwidth Vercel** : bundle PWA ~2-3 Mo, cache Service Worker après premier chargement. 2-3 users = <1% des 100 Go gratuits.
 
-### 10.3 Sécurité Supabase
-- Activer RLS (Row Level Security) sur toutes les tables
-- Politique simple : tous les utilisateurs authentifiés ont accès à tout (petite équipe de confiance)
+### 10.3 Sécurité Supabase — RLS multi-tenant
+- Activer RLS (Row Level Security) sur toutes les tables.
+- **La politique `authenticated_full_access` est remplacée par des politiques différenciées** selon le type de table.
+
+**Pour le catalogue partagé** (`varieties`, `external_materials`, `product_categories`) :
 ```sql
-CREATE POLICY "Authenticated users can do everything"
-ON [table_name]
-FOR ALL
-USING (auth.role() = 'authenticated');
+-- Lecture : tous les authentifiés
+CREATE POLICY catalog_select ON varieties FOR SELECT USING (auth.role() = 'authenticated');
+-- Création : tous les authentifiés (enrichissement collectif du catalogue)
+CREATE POLICY catalog_insert ON varieties FOR INSERT WITH CHECK (auth.role() = 'authenticated');
+-- Modification : ferme créatrice ou super admin
+CREATE POLICY catalog_update ON varieties FOR UPDATE USING (
+  created_by_farm_id IN (SELECT user_farm_ids())
+  OR auth.uid() IN (SELECT user_id FROM platform_admins)
+);
+-- Suppression (soft delete) : ferme créatrice ou super admin
+CREATE POLICY catalog_delete ON varieties FOR DELETE USING (
+  created_by_farm_id IN (SELECT user_farm_ids())
+  OR auth.uid() IN (SELECT user_id FROM platform_admins)
+);
+```
+
+**Pour les tables métier** (toutes les tables avec `farm_id`) :
+```sql
+CREATE POLICY tenant_isolation ON [table_name] FOR ALL
+  USING (farm_id IN (SELECT user_farm_ids()));
+```
+
+**Pour les tables plateforme** (`organizations`, `memberships`, `farms`, `farm_access`) :
+```sql
+-- Organisations : visible si membre
+CREATE POLICY org_isolation ON organizations FOR ALL
+  USING (id IN (SELECT organization_id FROM memberships WHERE user_id = auth.uid()));
+-- Fermes : visible si accès (via user_farm_ids)
+CREATE POLICY farm_isolation ON farms FOR ALL
+  USING (id IN (SELECT user_farm_ids()));
+-- Memberships : visible si même organisation
+CREATE POLICY membership_isolation ON memberships FOR ALL
+  USING (organization_id IN (SELECT organization_id FROM memberships WHERE user_id = auth.uid()));
+```
+
+**Pour `app_logs`** : super admin uniquement.
+```sql
+CREATE POLICY logs_super_admin ON app_logs FOR ALL
+  USING (auth.uid() IN (SELECT user_id FROM platform_admins));
+```
+
+**Index RLS critiques** (pour les performances de `user_farm_ids()`) :
+```sql
+CREATE INDEX idx_farm_access_user ON farm_access(user_id);
+CREATE INDEX idx_memberships_user ON memberships(user_id);
+CREATE INDEX idx_farms_org ON farms(organization_id);
 ```
 
 ### 10.4 Offline — OBJECTIF ZÉRO PERTE DE DONNÉES
@@ -1337,11 +1722,12 @@ USING (auth.role() = 'authenticated');
 Supabase gratuit ne fournit pas de backup automatique. Solution : **cron Vercel quotidien** qui exporte les données.
 
 **Implémentation** :
-- Route API `/api/backup` qui exporte toutes les tables en JSON
+- Route API `/api/backup` qui exporte les données par organisation (un fichier JSON par organisation, isolé)
 - Cron Vercel quotidien (ex: `0 3 * * *` = 3h du matin)
-- Le backup est poussé vers un **repo GitHub privé dédié** (ex: `ljs-backup`) via l'API GitHub
+- Le backup est poussé vers un **repo GitHub privé dédié** (ex: `ljs-backup`) via l'API GitHub, dans un sous-dossier par organisation : `/orgs/{org_slug}/backup.json`
 - Le fichier JSON est écrasé à chaque exécution, mais l'**historique Git conserve toutes les versions** (rétention naturelle)
 - Cela décorrèle le backup de l'infrastructure Supabase (si Supabase tombe, le backup est sur GitHub)
+- Le super admin a accès à tous les backups ; chaque organisation ne voit que le sien (si export manuel mis en place)
 
 ```json
 {
@@ -1416,69 +1802,78 @@ app-ljs/
 │   └── icons/                   # Icônes PWA
 ├── src/
 │   ├── app/                     # Next.js App Router
-│   │   ├── layout.tsx
-│   │   ├── page.tsx             # Dashboard bureau
-│   │   ├── (auth)/
-│   │   │   ├── login/
-│   │   │   └── ...
-│   │   ├── (desktop)/           # Routes bureau — EXPÉRIENCE COMPLÈTE
-│   │   │   │
-│   │   │   │── # ═══ PHASE A — Saisie ═══
-│   │   │   ├── semis/          # 🌱 Sachets graines + suivi semis
-│   │   │   ├── parcelle/       # 🌿 Travail sol, plantation, suivi rang, cueillette, arrachage
-│   │   │   ├── transformation/ # 🔄 Tronçonnage + séchage + triage
-│   │   │   ├── produits/       # 🧪 Recettes + production lots + stock produits finis
-│   │   │   ├── affinage-stock/ # 📦 Achats + ventes directes + ajustements
-│   │   │   │
-│   │   │   │── # ═══ PHASE B — Vues ═══
-│   │   │   ├── stock/          # 📊 Vue Stock (temps réel + alertes)
-│   │   │   ├── production-totale/ # 📈 Vue Production totale (cumuls + prévisionnel)
-│   │   │   ├── dashboard/      # 🏠 Dashboard (widgets résumé)
-│   │   │   ├── tracabilite/    # 🔍 Recherche lot → remontée complète
-│   │   │   ├── previsionnel/   # Objectifs + avancement
-│   │   │   │
-│   │   │   │── # ═══ Référentiel ═══
-│   │   │   ├── varietes/       # ⚙️ CRUD variétés
-│   │   │   ├── parcelles/      # ⚙️ CRUD sites/parcelles/rangs
-│   │   │   └── materiaux/      # ⚙️ CRUD matériaux externes
-│   │   │   └── dashboard/      # Dashboard complet avec widgets résumé
+│   │   ├── layout.tsx           # Layout racine (html, body, polices)
+│   │   ├── page.tsx             # Redirect → /[orgSlug]/dashboard
+│   │   ├── login/               # Page login générique (branding plateforme)
+│   │   │   ├── page.tsx
+│   │   │   └── actions.ts
+│   │   ├── [orgSlug]/           # Segment dynamique — résout l'organisation
+│   │   │   ├── layout.tsx       # Charge l'orga par slug, injecte branding CSS variables
+│   │   │   ├── (dashboard)/     # Routes métier (bureau + saisie)
+│   │   │   │   ├── layout.tsx   # Sidebar + MobileHeader + sélecteur ferme
+│   │   │   │   ├── dashboard/
+│   │   │   │   │   └── page.tsx
+│   │   │   │   ├── semis/       # 🌱 Sachets graines + suivi semis
+│   │   │   │   │   ├── sachets/
+│   │   │   │   │   └── suivi/
+│   │   │   │   ├── parcelles/   # 🌿 Travail sol, plantation, suivi rang, cueillette, arrachage, occultation
+│   │   │   │   │   ├── travail-sol/
+│   │   │   │   │   ├── plantations/
+│   │   │   │   │   ├── suivi-rang/
+│   │   │   │   │   ├── cueillette/
+│   │   │   │   │   ├── arrachage/
+│   │   │   │   │   └── occultation/
+│   │   │   │   ├── transformation/ # 🔄 Tronçonnage + séchage + triage
+│   │   │   │   ├── produits/    # 🧪 Recettes + production lots + stock produits finis
+│   │   │   │   ├── affinage-stock/ # 📦 Achats + ventes directes + ajustements
+│   │   │   │   ├── stock/       # 📊 Vue Stock (Phase B)
+│   │   │   │   ├── production-totale/ # 📈 Vue Production totale (Phase B)
+│   │   │   │   ├── tracabilite/ # 🔍 Traçabilité (Phase B)
+│   │   │   │   ├── previsionnel/ # Objectifs + avancement (Phase B)
+│   │   │   │   └── referentiel/ # ⚙️ Variétés, Sites/Parcelles/Rangs, Matériaux
+│   │   │   │       ├── varietes/
+│   │   │   │       ├── sites/
+│   │   │   │       └── materiaux/
+│   │   │   └── admin/           # 🔧 Super admin (Phase B6, accès platform_admins)
 │   │   ├── (mobile)/            # Routes mobile — ULTRA-MINIMAL
 │   │   │   ├── layout.tsx       # Layout mobile : barre sync + pas de navigation
 │   │   │   └── saisie/
-│   │   │       ├── page.tsx     # Grille de tuiles d'actions (SEUL écran de navigation)
-│   │   │       └── [action]/    # Route dynamique : formulaire de saisie
-│   │   │           └── page.tsx # 1 formulaire par action, retour auto après enregistrement
+│   │   │       ├── page.tsx     # Grille de tuiles d'actions
+│   │   │       └── [action]/
+│   │   │           └── page.tsx
 │   │   └── api/
 │   │       ├── keep-alive/
-│   │       ├── backup/              # Backup quotidien → GitHub
-│   │       └── sync/                # Endpoint de synchronisation + audit
+│   │       ├── backup/          # Backup quotidien → GitHub (par organisation)
+│   │       └── sync/            # Endpoint de synchronisation + audit
 │   ├── components/
 │   │   ├── ui/                  # Composants de base (Button, Input, Card, etc.)
 │   │   ├── forms/               # Formulaires réutilisables
 │   │   ├── dashboard/           # Widgets dashboard
-│   │   └── layout/              # Navigation, Header, etc.
+│   │   └── layout/              # Navigation, Header, FarmSelector, etc.
 │   ├── lib/
 │   │   ├── supabase/
 │   │   │   ├── client.ts
 │   │   │   ├── server.ts
 │   │   │   └── types.ts         # Types générés depuis Supabase
+│   │   ├── context.ts           # getContext() → { userId, farmId, organizationId, orgSlug }
 │   │   ├── offline/
 │   │   │   ├── db.ts            # IndexedDB setup (Dexie.js)
-│   │   │   ├── sync.ts          # Logique de synchronisation
+│   │   │   ├── sync.ts          # Logique de synchronisation (scopée farm_id)
 │   │   │   └── queue.ts         # File d'attente des saisies
 │   │   └── utils/
 │   │       ├── dates.ts
-│   │       ├── lots.ts          # Génération numéros de lot
+│   │       ├── lots.ts          # Génération numéros de lot (scopée farm_id)
+│   │       ├── path.ts          # buildPath(orgSlug, path) pour revalidatePath
 │   │       └── validation.ts
 │   ├── hooks/
 │   │   ├── useOnlineStatus.ts
 │   │   ├── useSyncQueue.ts
 │   │   └── useStock.ts
+│   ├── middleware.ts             # Auth + résolution org slug + vérification membership
 │   └── types/
 │       └── index.ts
-├── scripts/                     # Scripts utilitaires éventuels
 ├── supabase/
-│   └── migrations/              # Migrations SQL
+│   └── migrations/              # Migrations SQL (001 à 011+)
 ├── vercel.json
 ├── next.config.js
 ├── tailwind.config.ts
@@ -1568,3 +1963,29 @@ app-ljs/
 | **Associations polymorphiques** | **`stock_movements.source_type` + `source_id` sans FK. Traçabilité en code applicatif (B4).** |
 | **Fournisseur matériaux externes** | **Saisi au moment de la production du lot (dans `production_lot_ingredients`), pas dans le référentiel. Obligatoire pour les matériaux externes.** |
 | **Mode production** | **Deux modes coexistent : "produit" (partir du nombre de sachets, poids calculés depuis les %) et "melange" (partir des poids réels, conditionnement nb_unites saisi plus tard). Choix au début du wizard. La recette reste le point de départ dans les deux cas. Colonne `mode` sur `production_lots`, `nb_unites` et `poids_total_g` deviennent nullable.** |
+| **Multi-tenant** | **Base unique Supabase, cloisonnement logique par `farm_id` + RLS PostgreSQL. Pas de base séparée par tenant.** |
+| **Hiérarchie** | **organization → farm → user. Une organisation peut avoir plusieurs fermes. Un user peut appartenir à plusieurs organisations/fermes.** |
+| **Catalogue variétés** | **Partagé sur toute la plateforme. Créable par tous les authentifiés. Modifiable uniquement par la ferme créatrice ou un super admin. Masquable par ferme via `farm_variety_settings`.** |
+| **Recettes** | **Privées par ferme (`farm_id` sur `recipes`). Chaque ferme a ses propres recettes.** |
+| **Variétés — déduplication** | **Contrainte UNIQUE insensible casse/accents sur `nom_vernaculaire` + `nom_latin`. Recherche fuzzy à la création. Outil de merge super admin (Phase B6).** |
+| **Modules métier** | **Activables par ferme via `farm_modules` : 'pam', 'apiculture', 'maraichage'. La sidebar s'adapte aux modules actifs.** |
+| **Navigation** | **Sélecteur de ferme en haut du layout bureau (visible si ≥ 2 fermes). Ferme active dans cookie `active_farm_id`. `getContext()` retourne `{ userId, farmId, organizationId }`.** |
+| **Facturation** | **Par organisation : `max_farms`, `max_users`, `plan`. Onboarding manuel (super admin crée les comptes).** |
+| **Export RGPD** | **Par organisation. Accessible depuis les settings de l'organisation.** |
+| **Backup multi-tenant** | **Un fichier JSON par organisation, dans `/orgs/{slug}/backup.json` sur le repo GitHub privé.** |
+| **Offline multi-tenant** | **Cache IndexedDB scopé par ferme active. Au switch de ferme, rechargement complet du cache. `farm_id` dans le payload sync.** |
+| **Logs** | **`app_logs` global, accessible au super admin uniquement (RLS). Pas de `farm_id` sur `app_logs`.** |
+| **Notifications** | **Table `notifications` avec scope ferme + user. Alertes : stock bas, erreurs sync, backup échoué.** |
+| **Audit trail** | **Table `audit_log` + `created_by`/`updated_by` sur toutes les tables métier. Rempli par les Server Actions (logique applicative, pas de trigger).** |
+| **Rétention données** | **On garde tout — l'historique est la valeur du produit. Pas de purge des données métier.** |
+| **Multi-langue** | **Français uniquement pour l'instant.** |
+| **API externe** | **Pas maintenant. Architecture REST standard Next.js, extensible si besoin.** |
+| **Super admin** | **Interface `/admin` séparée. Impersonation (`impersonate_farm_id` + bandeau rouge). Merge variétés. Super data cross-tenant via `service_role`. Consultation `app_logs`.** |
+| **Super data** | **Agrégation à la volée via `service_role` (bypass RLS). Pas de table d'agrégation dédiée pour le cross-tenant.** |
+| **Numérotation lots** | **Scopée par `farm_id` : `UNIQUE(farm_id, lot_interne)`, `UNIQUE(farm_id, numero_lot)`. Chaque ferme a sa propre séquence.** |
+| **Phase A0.9** | **Migration multi-tenant à exécuter AVANT de continuer A2.4. 2 jours : SQL + refactoring Server Actions existantes + bootstrap orga LJS.** |
+| **Branding par organisation** | **Couleur primaire + secondaire + logo + nom affiché. Stocké sur la table `organizations`. Palette LJS par défaut si non personnalisé.** |
+| **Stockage logos** | **Supabase Storage, bucket `org-logos`, accès public en lecture. Chemin : `{org_id}/logo.png`. Upload par le super admin lors de l'onboarding.** |
+| **URL personnalisée** | **Par path (`/[orgSlug]/dashboard`), pas de sous-domaine. Résolution via `SELECT * FROM organizations WHERE slug = :slug` dans le layout.** |
+| **Thème dynamique** | **CSS variables `--color-primary` et `--color-primary-light` injectées par `[orgSlug]/layout.tsx` depuis les couleurs de l'organisation. Composants utilisent `var(--color-primary)` au lieu de hex hardcodés.** |
+| **revalidatePath multi-tenant** | **Chaque Server Action met à jour `revalidatePath('/[orgSlug]/...')` via un helper `buildPath(slug, path)`. Le slug est résolu depuis `getContext()`.** |

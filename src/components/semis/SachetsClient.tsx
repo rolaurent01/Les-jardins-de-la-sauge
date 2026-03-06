@@ -3,7 +3,7 @@
 import { useState, useEffect, useTransition } from 'react'
 import { useRouter } from 'next/navigation'
 import type { SeedLotWithVariety, Variety } from '@/lib/types'
-import { archiveSeedLot, restoreSeedLot, createSeedLot, updateSeedLot } from '@/app/(dashboard)/semis/sachets/actions'
+import { archiveSeedLot, restoreSeedLot, createSeedLot, updateSeedLot } from '@/app/[orgSlug]/(dashboard)/semis/sachets/actions'
 import SachetSlideOver from './SachetSlideOver'
 
 /* Normalise une chaîne pour la recherche insensible casse + accents */
@@ -124,7 +124,7 @@ export default function SachetsClient({ initialSeedLots, varieties }: Props) {
         <button
           onClick={openCreate}
           className="flex items-center gap-1.5 px-4 py-2 rounded-lg text-sm font-medium transition-opacity"
-          style={{ backgroundColor: '#3A5A40', color: '#F9F8F6' }}
+          style={{ backgroundColor: 'var(--color-primary)', color: '#F9F8F6' }}
         >
           <span className="text-base leading-none">＋</span>
           Nouveau sachet
@@ -151,7 +151,7 @@ export default function SachetsClient({ initialSeedLots, varieties }: Props) {
               borderColor: '#D8E0D9',
               color: '#2C3E2D',
             }}
-            onFocus={e  => (e.target.style.borderColor = '#3A5A40')}
+            onFocus={e  => (e.target.style.borderColor = 'var(--color-primary)')}
             onBlur={e   => (e.target.style.borderColor = '#D8E0D9')}
           />
         </div>
@@ -161,9 +161,9 @@ export default function SachetsClient({ initialSeedLots, varieties }: Props) {
             onClick={() => setShowArchived(s => !s)}
             className="flex items-center gap-1.5 px-3 py-2 rounded-lg text-sm border transition-colors"
             style={{
-              borderColor:     showArchived ? '#3A5A40' : '#D8E0D9',
-              backgroundColor: showArchived ? '#3A5A4012' : 'transparent',
-              color:           showArchived ? '#3A5A40' : '#9CA89D',
+              borderColor:     showArchived ? 'var(--color-primary)' : '#D8E0D9',
+              backgroundColor: showArchived ? 'color-mix(in srgb, var(--color-primary) 7%, transparent)' : 'transparent',
+              color:           showArchived ? 'var(--color-primary)' : '#9CA89D',
             }}
           >
             {showArchived ? '← Actifs' : `Archivés (${archived.length})`}
@@ -263,7 +263,7 @@ export default function SachetsClient({ initialSeedLots, varieties }: Props) {
                             onClick={() => handleRestore(s.id)}
                             disabled={isPending}
                             className="px-2.5 py-1 rounded-lg text-xs border transition-colors"
-                            style={{ borderColor: '#3A5A40', color: '#3A5A40' }}
+                            style={{ borderColor: 'var(--color-primary)', color: 'var(--color-primary)' }}
                           >
                             Restaurer
                           </button>
@@ -291,7 +291,7 @@ export default function SachetsClient({ initialSeedLots, varieties }: Props) {
                               className="p-1.5 rounded-lg transition-colors"
                               title="Modifier"
                               style={{ color: '#9CA89D' }}
-                              onMouseEnter={e => ((e.currentTarget as HTMLElement).style.color = '#3A5A40')}
+                              onMouseEnter={e => ((e.currentTarget as HTMLElement).style.color = 'var(--color-primary)')}
                               onMouseLeave={e => ((e.currentTarget as HTMLElement).style.color = '#9CA89D')}
                             >
                               ✏️

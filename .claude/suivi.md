@@ -2,6 +2,558 @@
 
 ---
 
+## [2026-03-06] — refactor(ui): Remplacement couleurs branding hardcodées par CSS variables
+
+**Type :** `refactor`
+**Fichiers concernés :**
+- `src/components/referentiel/SiteSlideOver.tsx`
+- `src/components/referentiel/RangSlideOver.tsx`
+- `src/components/referentiel/ParcelleSlideOver.tsx`
+- `src/components/referentiel/MaterielSlideOver.tsx`
+- `src/components/referentiel/VarieteSlideOver.tsx`
+- `src/components/referentiel/VarietesClient.tsx`
+- `src/components/referentiel/MateriauxClient.tsx`
+- `src/components/referentiel/SitesParcelsClient.tsx`
+- `src/components/parcelles/TravailSolClient.tsx`
+- `src/components/parcelles/TravailSolSlideOver.tsx`
+- `src/components/semis/SachetsClient.tsx`
+- `src/components/semis/SachetSlideOver.tsx`
+- `src/components/semis/SemisClient.tsx`
+- `src/components/semis/SemisSlideOver.tsx`
+- `src/components/varieties/QuickAddVariety.tsx`
+- `src/app/[orgSlug]/(dashboard)/dashboard/page.tsx`
+
+### Description
+Remplacement de toutes les couleurs de branding hardcodées (`#3A5A40`, `#588157`, et leurs variantes alpha) par des CSS variables (`var(--color-primary)`, `var(--color-primary-light)`) dans les composants de contenu. Les CSS variables sont injectées par le layout `[orgSlug]/layout.tsx` à partir des couleurs de l'organisation.
+
+### Détails techniques
+- **`#3A5A40`** → `var(--color-primary)` — ~80 occurrences dans 16 fichiers (boutons submit, focus borders, textes actifs, hover, badges, onglets)
+- **`#588157`** → `var(--color-primary-light)` — 3 occurrences (QuickAddVariety hover, dashboard badges)
+- **`#3A5A40XX`** (variantes hex+alpha) → `color-mix(in srgb, var(--color-primary) N%, transparent)` :
+  - `#3A5A4012` (7%) : toggle archivés (MateriauxClient, SachetsClient, VarietesClient, SitesParcelsClient, SemisClient)
+  - `#3A5A4014` (8%) : checkbox pills (QuickAddVariety, VarieteSlideOver)
+  - `#3A5A4015` (8%) : badge dashboard
+  - `#3A5A4018` (10%) : badge onglet actif (SitesParcelsClient)
+  - `#3A5A4030` (19%) : bordure banner dashboard
+- **Non modifiés** (intentionnel) :
+  - `src/app/login/page.tsx` — hors layout `[orgSlug]`, CSS variables non disponibles
+  - `src/app/layout.tsx` — `themeColor` meta tag, CSS variables inapplicables
+  - `src/app/[orgSlug]/layout.tsx` — valeurs fallback par défaut (`|| '#3A5A40'`)
+  - Couleurs non-branding (ocre, crème, texte, vert indicateur)
+
+### Résultats
+- **Build** : ✅ compilé avec succès, 0 erreur
+- **Tests** : 147/147 ✅
+
+---
+
+## [2026-03-06] — fix(multitenant): P1 + P4 — Scope farm_id sur sites/page + alignement farm_access types
+
+**Type :** `fix`
+**Fichiers concernés :**
+- `src/app/[orgSlug]/(dashboard)/referentiel/sites/page.tsx` *(modifié)*
+- `src/lib/supabase/types.ts` *(modifié)*
+- `src/lib/types.ts` *(modifié)*
+
+### Description
+Corrections post-revue multi-tenant : scope des requêtes par `farm_id` dans la page Sites et alignement du type TypeScript `farm_access` sur la migration SQL.
+
+### Détails techniques
+
+#### P1 — sites/page.tsx : requêtes non scopées par farm_id
+- **Problème** : les 3 requêtes Supabase (sites, parcels, rows) dans le Server Component ne filtraient pas par `farm_id`, affichant potentiellement les données de toutes les fermes accessibles via RLS
+- **Fix** : import de `getContext()`, extraction de `farmId`, ajout de `.eq('farm_id', farmId)` sur les 3 requêtes
+
+#### P4 — farm_access : type TS désaligné avec SQL
+- **Problème** : la migration SQL définit `permission CHECK ('full', 'read', 'write')` mais les types TS utilisaient `role: 'manager' | 'operator' | 'viewer'`
+- **Fix supabase/types.ts** : `role` → `permission`, valeurs `'manager' | 'operator' | 'viewer'` → `'full' | 'read' | 'write'` (Row, Insert, Update)
+- **Fix types.ts** : `FarmAccessRole` → `FarmAccessPermission = 'full' | 'read' | 'write'`, champ `role` → `permission` dans `FarmAccess`
+
+### Résultats
+- **Build** : ✅ compilé avec succès, 0 erreur
+- **Tests** : 147/147 ✅
+
+---
+
+## [2026-03-06] — review(multitenant): A0.9 review complète
+
+**Type :** `review(multitenant)`
+**Fichiers analysés :** migration SQL, types, proxy, context, layouts, 8 fichiers d'actions, 4 composants, backup, login
+
+### Statut global : ⚠️ Problèmes mineurs
+
+Aucun bug critique bloquant. Build ✅ (0 erreur TS). Tests 147/147 ✅. Pas de `console.log`, pas de `@ts-expect-error`, pas de `revalidatePath('/...')` hardcodé.
+
+---
+
+### 1. Migration SQL (`011_multitenant.sql`) — ✅ Solide
+
+| Check | Statut |
+|-------|--------|
+| 10 tables plateforme créées dans le bon ordre (FK respectées) | ✅ |
+| `organizations` : nom_affiche, logo_url, couleur_primaire/secondaire, max_farms, max_users, plan | ✅ |
+| `farms` : `UNIQUE(organization_id, slug)` | ✅ |
+| `memberships` : `UNIQUE(organization_id, user_id)` + role CHECK | ✅ |
+| `farm_access` : `UNIQUE(farm_id, user_id)` + permission CHECK | ✅ |
+| `farm_modules` : `UNIQUE(farm_id, module)` + CHECK incluant 'pam', 'apiculture', 'maraichage' | ✅ |
+| `farm_variety_settings` : hidden + seuil_alerte_g | ✅ |
+| `seuil_alerte_g` supprimé de `varieties` | ✅ |
+| `varieties` : 6 nouvelles colonnes (created_by_farm_id, created_by, updated_by, verified, aliases, merged_into_id) | ✅ |
+| Index UNIQUE sur nom_latin (lower + immutable_unaccent, WHERE NOT NULL AND NOT deleted) | ✅ |
+| `external_materials` : created_by_farm_id, created_by, updated_by | ✅ (`deleted_at` existait déjà via migration 002) |
+| `product_categories` : created_by_farm_id, created_by, updated_by | ✅ |
+| Bootstrap : orga LJS, ferme LJS, module PAM | ✅ |
+| `farm_id NOT NULL REFERENCES farms(id)` sur 23 tables métier | ✅ (phase 1 DEFAULT + phase 2 SET NOT NULL + DROP DEFAULT) |
+| `created_by UUID` + `updated_by UUID` sur les tables métier | ✅ (stock_movements sans updated_by, production_summary sans created_by/updated_by — justifié) |
+| `recipe_ingredients` et `production_lot_ingredients` sans farm_id | ✅ (isolées via RLS parent FK) |
+| Index `idx_[table]_farm` sur 23 tables | ✅ |
+| Contraintes UNIQUE migrées avec farm_id (sites, parcels, seed_lots, recipes, production_lots, forecasts, production_summary) | ✅ |
+| `user_farm_ids()` SECURITY DEFINER STABLE SET search_path | ✅ (UNION : farm_access direct + membership owner/admin → toutes fermes de l'orga) |
+| Anciennes politiques `authenticated_full_access` supprimées (29 tables incluant occultations et app_logs) | ✅ |
+| Nouvelles politiques RLS : catalogue (4 × 3 tables), tenant_isolation (23 tables), enfants (2 tables), plateforme, notifications, audit_log, app_logs | ✅ |
+| Vue `v_stock` recréée avec `farm_id` + `security_invoker = true` | ✅ |
+| `_ps_upsert` 16 params avec `p_farm_id` + `ON CONFLICT production_summary_farm_unique` | ✅ |
+| 8 triggers `fn_ps_*` passent `NEW.farm_id` (ou via jointure pour `fn_ps_production_lot_ingredients`) | ✅ |
+| `recalculate_production_summary()` avec farm_id dans GROUP BY et INSERT | ✅ |
+| Index RLS : farm_access(user_id), memberships(user_id), farms(organization_id) | ✅ |
+| RLS activé sur toutes les nouvelles tables | ✅ |
+
+---
+
+### 2. Types TypeScript — ✅
+
+| Check | Statut |
+|-------|--------|
+| `supabase/types.ts` : 10 nouvelles tables avec Row/Insert/Update/Relationships | ✅ |
+| Toutes les tables métier ont `farm_id: string` dans Row et Insert | ✅ |
+| `created_by` et `updated_by` présents dans les types métier | ✅ |
+| `varieties` n'a plus `seuil_alerte_g` dans Row/Insert/Update | ✅ |
+| `varieties` a les 6 nouvelles colonnes | ✅ |
+| Vue `v_stock` inclut `farm_id` | ✅ |
+| `types.ts` : AppContext, Organization, Farm, Membership exportés | ✅ |
+| Types métier (SeedLot, Seedling, Planting, etc.) incluent farm_id, created_by, updated_by | ✅ |
+
+---
+
+### 3. Proxy (`src/proxy.ts`) — ✅
+
+| Check | Statut |
+|-------|--------|
+| /login public | ✅ |
+| Vérification auth sur toutes les autres routes | ✅ |
+| `/` → résolution orgSlug → redirect `/{orgSlug}/dashboard` | ✅ |
+| `/{slug}/...` → vérif que le slug existe + user est membre | ✅ |
+| Redirect si slug invalide ou pas membre | ✅ |
+
+---
+
+### 4. Context (`src/lib/context.ts`) — ✅
+
+| Check | Statut |
+|-------|--------|
+| `getContext()` retourne `{ userId, farmId, organizationId, orgSlug }` | ✅ |
+| Lit le cookie `active_farm_id` | ✅ |
+| Vérifie que l'utilisateur a accès (membership check) | ✅ |
+| Fallback vers la première ferme accessible si pas de cookie | ✅ |
+| Met à jour le cookie si fallback | ✅ |
+
+---
+
+### 5. Routing — ✅
+
+| Check | Statut |
+|-------|--------|
+| `src/app/[orgSlug]/(dashboard)/` contient toutes les routes métier | ✅ (7 routes) |
+| `src/app/[orgSlug]/layout.tsx` injecte CSS variables | ✅ |
+| `src/app/[orgSlug]/(dashboard)/layout.tsx` passe org, farms, activeFarmId aux composants | ✅ |
+| Ancien chemin `src/app/(dashboard)/` entièrement supprimé | ✅ |
+
+---
+
+### 6. Server Actions — ⚠️ Problèmes mineurs
+
+**Tous les fichiers d'actions utilisent correctement :**
+- `getContext()` pour obtenir userId, farmId, orgSlug
+- `buildPath(orgSlug, ...)` pour revalidatePath
+- `farm_id: farmId` + `created_by: userId` dans les INSERT métier
+- `updated_by: userId` dans les UPDATE
+- `created_by_farm_id: farmId` (pas farm_id) pour les INSERT catalogue (varieties, external_materials)
+- `.eq('farm_id', farmId)` pour les fetch métier
+- Numérotation seed_lots scopée par farm_id
+
+**Vérification par fichier :**
+| Fichier | getContext | farm_id fetch | farm_id insert | created_by | updated_by | buildPath |
+|---------|-----------|---------------|----------------|------------|------------|-----------|
+| varietes/actions.ts | ✅ | N/A (catalogue) | N/A (created_by_farm_id) | ✅ | ✅ | ✅ |
+| sites/actions.ts | ✅ | N/A (via page) | ✅ | ✅ | ✅ | ✅ |
+| materiaux/actions.ts | ✅ | N/A (catalogue) | N/A (created_by_farm_id) | ✅ | ✅ | ✅ |
+| semis/sachets/actions.ts | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
+| semis/suivi/actions.ts | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
+| parcelles/travail-sol/actions.ts | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
+| parcelles/plantations/actions.ts | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
+| parcelles/shared-actions.ts | ✅ | ✅ | N/A | N/A | N/A | N/A |
+
+**Vérification transversale :**
+- Aucun `revalidatePath('/` hardcodé : ✅ (0 occurrence trouvée)
+- Aucun `console.log` : ✅
+- Aucun `@ts-expect-error` : ✅
+
+---
+
+### 7. Composants — ✅
+
+| Check | Statut |
+|-------|--------|
+| `Sidebar.tsx` utilise `var(--color-primary)` pour le fond | ✅ |
+| `MobileHeader.tsx` utilise les CSS variables | ✅ |
+| Logo dynamique (logo_url ou placeholder initiale) | ✅ |
+| `FarmSelector` : cookie + router.refresh(), hidden si 1 ferme | ✅ |
+| `VarietesClient.tsx` n'a plus de référence à `seuil_alerte_g` | ✅ |
+| `VarieteSlideOver.tsx` : TODO commentaire pour seuil_alerte_g (farm_variety_settings) | ✅ (documenté) |
+
+---
+
+### 8. Login — ✅
+
+| Check | Statut |
+|-------|--------|
+| Login → redirect `/{orgSlug}/dashboard` | ✅ |
+| Logout → redirect `/login` | ✅ |
+| Cas "aucune organisation" → message d'erreur explicite | ✅ |
+
+---
+
+### 9. Backup — ✅
+
+| Check | Statut |
+|-------|--------|
+| Export par organisation | ✅ (`/orgs/{slug}/backup-YYYY-MM-DD.json`) |
+| Catalogue partagé exporté séparément | ✅ (`/shared/catalog-YYYY-MM-DD.json`) |
+| Utilise `createAdminClient()` (service_role, pas de RLS) | ✅ |
+| Filtrage explicite par farm_id `.in('farm_id', farmIds)` | ✅ |
+| Tables plateforme (memberships, farm_access, farm_modules, etc.) incluses | ✅ |
+
+---
+
+### Problèmes mineurs (pas de correction appliquée)
+
+#### P1. `sites/page.tsx` : pas de filtrage applicatif par farm_id
+- **Fichier :** `src/app/[orgSlug]/(dashboard)/referentiel/sites/page.tsx:10-18`
+- **Description :** Les requêtes `supabase.from('sites').select('*')`, `parcels`, `rows` ne filtrent PAS par `farm_id`. Elles s'appuient uniquement sur RLS (`tenant_isolation`), qui retourne les données de TOUTES les fermes accessibles à l'utilisateur. Si un owner/admin a 2 fermes, il verra les sites des deux fermes mélangés au lieu de la ferme active uniquement.
+- **Impact :** Pas de fuite de données (l'utilisateur a légitimement accès), mais expérience fonctionnelle dégradée en multi-fermes.
+- **Correction suggérée :** Utiliser `getContext()` et ajouter `.eq('farm_id', farmId)` aux 3 requêtes.
+
+#### P2. `#3A5A40` hardcodé dans ~25 composants
+- **Fichiers :** SachetsClient, SemisClient, SachetSlideOver, SemisSlideOver, MateriauxClient, MaterielSlideOver, SitesParcelsClient, SiteSlideOver, ParcelleSlideOver, RangSlideOver, VarietesClient, VarieteSlideOver, TravailSolClient, TravailSolSlideOver, QuickAddVariety
+- **Description :** La couleur primaire `#3A5A40` est hardcodée dans les styles inline de boutons, borders, focus rings, badges, etc. La Sidebar utilise correctement `var(--color-primary)`, mais les composants de contenu n'ont pas été migrés.
+- **Impact :** Si une autre organisation utilise une couleur primaire différente, seuls la sidebar et le header seront rebrandés. Le contenu restera vert sauge.
+- **Correction suggérée :** Remplacer les occurrences de `#3A5A40` dans les composants par `var(--color-primary)` et `#3A5A4012`/`#3A5A4014`/`#3A5A4018` par des variantes avec opacité de la CSS variable.
+
+#### P3. `materiaux/page.tsx` et `varietes/page.tsx` : pas de filtrage hidden/merged
+- **Fichier :** `src/app/[orgSlug]/(dashboard)/referentiel/materiaux/page.tsx:10-13`
+- **Description :** `materiaux/page.tsx` fait `.select('*').order('nom')` sans filtre `deleted_at IS NULL`. Les matériaux archivés sont chargés sans filtrage — correct si le toggle "afficher archivés" existe dans le composant client, mais pourrait charger des données inutiles.
+- **Impact :** Mineur, cohérent avec le pattern existant (toggle archivés côté client).
+
+#### P4. `farm_access.permission` CHECK vs specs
+- **Fichier :** `supabase/migrations/011_multitenant.sql:69`
+- **Description :** La colonne `permission` de `farm_access` utilise les valeurs `'full', 'read', 'write'` alors que les specs `types.ts` définissent `FarmAccessRole = 'manager' | 'operator' | 'viewer'`. Il y a un désalignement entre le schéma SQL et les types TypeScript.
+- **Impact :** Mineur tant que `farm_access` n'est pas utilisé dans l'UI (aucun CRUD pour le moment). À aligner quand le module d'administration sera implémenté (B6).
+
+#### P5. `seuil_alerte_g` toujours dans `supabase/types.ts` pour `farm_variety_settings`
+- **Fichier :** `src/lib/supabase/types.ts:247,257,267`
+- **Description :** `seuil_alerte_g` est correctement présent dans `farm_variety_settings` (c'est sa nouvelle table), et correctement absent de `varieties`. Le TODO dans `VarieteSlideOver.tsx:267` documente la migration UI restante. Pas de bug — juste un point de suivi.
+
+---
+
+### Points positifs
+
+1. **Migration SQL exemplaire** : approche en 3 phases (ADD nullable DEFAULT → SET NOT NULL → DROP DEFAULT) évite les erreurs sur données existantes. Commentaires clairs.
+2. **getContext() centralisé** : toutes les actions passent par un point unique pour résoudre userId/farmId/orgSlug. Très propre.
+3. **buildPath() systématique** : aucun revalidatePath hardcodé trouvé. Discipline parfaite.
+4. **Backup multi-tenant complet** : séparation catalogue/orgs, filtrage explicite par farm_id (pas de dépendance à RLS en service_role).
+5. **user_farm_ids() bien pensée** : la distinction owner/admin (accès toutes fermes) vs member (farm_access explicite) est correcte et documentée.
+6. **RLS différenciée** : 4 jeux de politiques adaptés (catalogue partagé, tenant isolation, enfants sans farm_id, plateforme).
+7. **Triggers production_summary** : tous les 8 triggers mis à jour avec `NEW.farm_id` ou jointure (fn_ps_production_lot_ingredients), recalculate inclut farm_id dans GROUP BY.
+
+### Recommandations
+
+1. **[Priorité haute]** Ajouter `.eq('farm_id', farmId)` dans `sites/page.tsx` (P1) — essentiel si un utilisateur a accès à plusieurs fermes.
+2. **[Priorité moyenne]** Migrer `#3A5A40` vers `var(--color-primary)` dans les composants (P2) — nécessaire pour le branding multi-org.
+3. **[Priorité basse]** Aligner `farm_access.permission` avec `FarmAccessRole` (P4) — avant l'implémentation de B6.
+4. **[Améliorations futures]** Ajouter un membership bootstrap automatique lors du login (actuellement instruction manuelle SQL dans les commentaires de la migration).
+
+### Résultats
+
+- **Build** : ✅ compilé avec succès, 0 erreur
+- **Tests** : 147/147 ✅
+
+---
+
+## [2026-03-06] — feat(multitenant): A0.9 Day 3 — Refactoring Server Actions + backup par organisation
+
+**Type :** `feature`
+**Fichiers concernés :**
+- `src/app/[orgSlug]/(dashboard)/referentiel/varietes/actions.ts` *(ajout fetchVarieties, getContext, buildPath, created_by_farm_id, created_by, updated_by)*
+- `src/app/[orgSlug]/(dashboard)/referentiel/varietes/page.tsx` *(utilise fetchVarieties, filtre merged_into_id)*
+- `src/app/[orgSlug]/(dashboard)/referentiel/sites/actions.ts` *(getContext, farm_id, created_by, updated_by sur 12 actions)*
+- `src/app/[orgSlug]/(dashboard)/referentiel/materiaux/actions.ts` *(getContext, created_by_farm_id, created_by, updated_by)*
+- `src/app/[orgSlug]/(dashboard)/semis/sachets/actions.ts` *(getContext, farm_id, filtrage hidden variétés, comptage scopé par ferme)*
+- `src/app/[orgSlug]/(dashboard)/semis/suivi/actions.ts` *(getContext, farm_id, created_by, updated_by)*
+- `src/app/[orgSlug]/(dashboard)/parcelles/travail-sol/actions.ts` *(getContext, farm_id, created_by, updated_by)*
+- `src/app/[orgSlug]/(dashboard)/parcelles/plantations/actions.ts` *(getContext, farm_id, created_by, updated_by + défense en profondeur fetchRowWarnings)*
+- `src/app/[orgSlug]/(dashboard)/parcelles/shared-actions.ts` *(getContext, farm_id sur rows, filtrage hidden variétés)*
+- `src/app/api/backup/route.ts` *(refactorisation complète — backup par organisation + catalogue partagé)*
+
+### Description
+Refactoring de toutes les Server Actions pour intégrer le contexte multi-tenant : chaque opération est désormais scopée par `farm_id` (isolation données), enrichie avec `created_by` / `updated_by` (traçabilité), et utilise `buildPath(orgSlug, ...)` pour les `revalidatePath` (routing `[orgSlug]`).
+
+La route de backup a été entièrement refactée pour exporter par organisation : un fichier catalogue partagé + un fichier par organisation.
+
+### Détails techniques
+
+#### Pattern appliqué (8 fichiers d'actions)
+- **`getContext()`** importé depuis `@/lib/context` — récupère `{ userId, farmId, orgSlug }` à chaque action
+- **`buildPath(orgSlug, path)`** importé depuis `@/lib/utils/path` — remplace tous les `revalidatePath('/...')` hardcodés
+- **SELECT tables métier** : `.eq('farm_id', farmId)` ajouté sur toutes les requêtes fetch
+- **SELECT catalogue partagé** (varieties, external_materials) : pas de `farm_id`, mais filtrage `farm_variety_settings.hidden = true` dans les dropdowns
+- **INSERT** : `farm_id: farmId, created_by: userId` (tables métier) ou `created_by_farm_id: farmId, created_by: userId` (catalogue)
+- **UPDATE** : `updated_by: userId` ajouté systématiquement
+- **archive/restore** : `updated_by: userId` + `deleted_at`
+
+#### Spécificités par fichier
+- **varietes/page.tsx** : utilise désormais `fetchVarieties()` (filtrage `merged_into_id IS NULL` pour exclure les fusionnées)
+- **sachets/actions.ts** : comptage des lots pour numérotation `SL-YYYY-NNN` scopé par `farm_id` — chaque ferme a sa propre séquence
+- **sachets/actions.ts + shared-actions.ts** : `fetchVarieties` / `fetchVarietiesForSelect` filtrent les variétés masquées via `farm_variety_settings`
+- **plantations/actions.ts** : `fetchRowWarnings` ajoute `.eq('farm_id', farmId)` sur `plantings` et `occultations` (défense en profondeur)
+
+#### Backup route (route.ts)
+**Avant** : export global de toutes les tables en un seul fichier `backup-YYYY-MM-DD.json`
+
+**Après** :
+- `shared/catalog-YYYY-MM-DD.json` : varieties, external_materials, product_categories (catalogue partagé)
+- `orgs/{slug}/backup-YYYY-MM-DD.json` : données métier scopées par `farm_id` + tables plateforme (farms, memberships, farm_access, farm_modules, farm_variety_settings, farm_material_settings, notifications, audit_log)
+- Utilise `createAdminClient()` (bypass RLS) avec filtres `farm_id` explicites
+- `TABLES_WITH_FARM_ID` : 23 tables métier
+- `CATALOG_TABLES` : 3 tables catalogue
+
+#### login/actions.ts
+Déjà correctement implémenté (redirect `/${orgSlug}/dashboard`) — aucune modification nécessaire.
+
+#### QuickAddVariety.tsx
+Appelle `createVariety` qui gère `getContext()` côté serveur — aucune modification nécessaire.
+
+#### Hooks useRowVarieties / useVarietyParts
+Clients browser — RLS filtre automatiquement par `user_farm_ids()` — aucune modification nécessaire.
+
+### Résultats
+- **Build** : ✅ compilé sans erreur, 9 routes dynamiques sous `[orgSlug]`
+- **Tests** : ✅ 147/147 passants (aucune régression)
+
+### Vérifications manuelles à effectuer
+- `/ljs/referentiel/varietes` : tableau catalogue complet
+- `/ljs/referentiel/sites` : créer un site → vérifier `farm_id` + `created_by` en base
+- `/ljs/semis/sachets` : créer un sachet → `lot_interne` commence par `SL-`, `farm_id` présent
+- `/ljs/parcelles/travail-sol` : créer un travail → `farm_id` + `created_by`
+- `/ljs/parcelles/plantations` : fonctionne
+- Backup `/api/backup` : vérifie les fichiers `shared/` + `orgs/ljs/` sur GitHub
+
+---
+
+## [2026-03-06] — feat(multitenant): A0.9 Day 2 — Routage [orgSlug] + proxy + layout + composants
+
+**Type :** `feature`
+**Fichiers concernés :**
+- `src/proxy.ts` *(réécrit — auth + org slug + membership check)*
+- `src/lib/context.ts` *(nouveau — getContext())*
+- `src/lib/utils/path.ts` *(nouveau — buildPath())*
+- `src/app/[orgSlug]/layout.tsx` *(nouveau — CSS vars branding)*
+- `src/app/[orgSlug]/(dashboard)/layout.tsx` *(modifié — org + farms props)*
+- `src/components/layout/FarmSelector.tsx` *(nouveau)*
+- `src/components/Sidebar.tsx` *(réécrit — CSS vars + dynamic logo + orgSlug links)*
+- `src/components/MobileHeader.tsx` *(réécrit — CSS vars + dynamic logo + orgSlug links)*
+- `src/app/login/actions.ts` *(modifié — redirect vers /{orgSlug}/dashboard)*
+- `src/app/page.tsx` *(modifié — redirect vers /login)*
+- `src/lib/types.ts` *(mis à jour — Organization, Farm, AppContext)*
+- `src/lib/supabase/types.ts` *(mis à jour — organizations, farms)*
+- `src/components/referentiel/VarietesClient.tsx` *(fix — suppression seuil_alerte_g)*
+- `src/components/referentiel/VarieteSlideOver.tsx` *(fix — suppression seuil_alerte_g)*
+- `src/app/[orgSlug]/(dashboard)/referentiel/varietes/actions.ts` *(fix — suppression seuil_alerte_g)*
+- 9 fichiers composants/pages *(fix — imports @/app/(dashboard)/ → @/app/[orgSlug]/(dashboard)/)*
+- `src/components/semis/SemisSlideOver.tsx` *(fix — previewSeedling farm_id/created_by/updated_by)*
+
+### Description
+Implémentation complète du routage multi-tenant avec `[orgSlug]` dans l'URL. Déplacement de `src/app/(dashboard)/` → `src/app/[orgSlug]/(dashboard)/`, création du middleware proxy (auth + vérification membership org), helpers de contexte et de chemin, layouts avec injection des variables CSS de branding, sélecteur de ferme, et réécriture de Sidebar/MobileHeader pour liens dynamiques. Correction des imports cassés après le déplacement de dossier et fix du type `Seedling`.
+
+### Détails techniques
+
+#### Routing avant/après
+- Avant : `/dashboard`, `/semis/sachets`, etc.
+- Après : `/[orgSlug]/dashboard`, `/[orgSlug]/semis/sachets`, etc.
+- Build résultant : 7 routes sous `[orgSlug]` + `/login` + `ƒ Proxy (Middleware)`
+
+#### proxy.ts (Next.js 16 remplace middleware.ts)
+- Le projet utilisait déjà `proxy.ts` (spécificité Next.js 16) — middleware.ts créé puis supprimé après erreur de build
+- Logique : `/login` public → vérif auth → `/` redirige vers `/{orgSlug}/dashboard` → `/{slug}/...` vérifie membership
+- `resolveFirstOrgSlug()` : query `memberships` avec join `organizations(slug)`
+
+#### Nouveaux helpers
+- `src/lib/context.ts` : `getContext()` lit cookie `active_farm_id`, fallback sur premier farm depuis memberships, retourne `{ userId, farmId, organizationId, orgSlug }`
+- `src/lib/utils/path.ts` : `buildPath(orgSlug, path)` → `/${orgSlug}/path` pour `revalidatePath` dans les Server Actions
+
+#### Layout [orgSlug]/layout.tsx
+- Résout l'org par slug, `notFound()` si absent
+- Injecte `--color-primary` et `--color-primary-light` comme CSS variables via `style` attribute
+
+#### Sidebar + MobileHeader
+- Props : `{ userEmail, organization, farms, activeFarmId, orgSlug }`
+- Background : `var(--color-primary)` au lieu de `#3A5A40` hardcodé
+- Logo dynamique : `img` si `logo_url` sinon initiale sur fond `var(--color-primary-light)`
+- Helper `h(path)` pour préfixer tous les liens avec `/${orgSlug}`
+- `FarmSelector` : client component, cookie `active_farm_id` + `router.refresh()`, visible seulement si `farms.length > 1`
+
+#### Fix imports (9 fichiers)
+`@/app/(dashboard)/...` → `@/app/[orgSlug]/(dashboard)/...` dans :
+SachetsClient, SemisClient, MateriauxClient, SitesParcelsClient, TravailSolClient, QuickAddVariety, semis/suivi/page.tsx, parcelles/travail-sol/page.tsx
+
+#### Fix TypeScript SemisSlideOver
+Ajout `farm_id: ''`, `created_by: null`, `updated_by: null` dans `previewSeedling` pour satisfaire le type `Seedling` mis à jour en 011
+
+### Résultats
+- **Build** : ✅ compilé avec succès, 0 erreur
+- **Tests** : 147/147 ✅
+
+---
+
+## [2026-03-06] — feat(infra): A0.9 — Migration multi-tenant + types TypeScript
+
+**Type :** `feature`
+**Fichiers concernés :**
+- `supabase/migrations/011_multitenant.sql` *(nouveau)*
+- `src/lib/supabase/types.ts` *(mis à jour)*
+- `src/lib/types.ts` *(mis à jour)*
+
+### Description
+Implémentation de la couche multi-tenant : migration SQL complète, types Supabase et types métier. Périmètre strict : SQL + types uniquement, sans toucher aux Server Actions, composants, layouts ni hooks.
+
+### Détails techniques
+
+#### Migration `011_multitenant.sql`
+- **10 tables plateforme** : `organizations`, `farms`, `memberships`, `farm_access`, `farm_modules`, `platform_admins`, `farm_variety_settings`, `farm_material_settings`, `notifications`, `audit_log`
+- **Catalogue partagé** : `varieties`, `external_materials`, `product_categories` — ajout `created_by_farm_id`, `created_by`, `updated_by` + champs variété (`verified`, `aliases`, `merged_into_id`) + suppression `seuil_alerte_g` (déplacé vers `farm_variety_settings`)
+- **23 tables métier** : `farm_id NOT NULL` + `created_by` + `updated_by` sur toutes (sauf `stock_movements` sans `updated_by` — immutable, et `production_summary` sans created_by/updated_by — agrégat)
+- **Bootstrap LJS** : INSERT org `00000000-…-0001` + farm `00000000-…-0002` + module `pam`
+- **Contraintes UNIQUE composites** : sites(farm_id, nom), parcels(farm_id, code), seed_lots(farm_id, lot_interne), recipes(farm_id, nom), production_lots(farm_id, numero_lot), forecasts(farm_id, variety_id, annee, etat_plante, partie_plante), production_summary(farm_id, variety_id, annee, mois)
+- **Fonction RLS** : `user_farm_ids() SECURITY DEFINER STABLE` — retourne les UUIDs des fermes accessibles
+- **Politiques RLS** : suppression de `authenticated_full_access` (toutes tables) + création de 4 jeux de politiques différenciées (catalogue, isolation tenant, tables enfants, plateforme)
+- **Vue `v_stock`** : recréée avec `farm_id` dans SELECT et GROUP BY, `security_invoker = true`
+- **Fonction `_ps_upsert`** : nouvel overload 16-param (p_farm_id en tête) + `ON CONFLICT ON CONSTRAINT production_summary_farm_unique`
+- **Triggers `fn_ps_*`** : 8 fonctions mises à jour pour appeler le nouvel overload avec `NEW.farm_id`
+- **Index** : `idx_*_farm` sur toutes les tables métier + `idx_farm_access_user`, `idx_memberships_user`, `idx_farms_org`
+
+#### `src/lib/supabase/types.ts`
+- 10 nouvelles interfaces de tables plateforme avec Relationships FK
+- `varieties` : suppression `seuil_alerte_g`, ajout `created_by_farm_id`, `created_by`, `updated_by`, `verified`, `aliases`, `merged_into_id`
+- `external_materials` + `product_categories` : ajout `created_by_farm_id`, `created_by`, `updated_by`
+- Toutes les tables métier : ajout `farm_id`, `created_by`, `updated_by` dans Row/Insert/Update
+- `v_stock` : ajout `farm_id: string` dans la vue
+
+#### `src/lib/types.ts`
+- `Variety` : suppression `seuil_alerte_g`, ajout champs catalogue multi-tenant
+- `ExternalMaterial` : ajout champs catalogue multi-tenant
+- `Site`, `Parcel`, `Row`, `SeedLot`, `Seedling`, `SoilWork`, `Planting`, `RowCare`, `Harvest`, `Uprooting`, `Occultation` : ajout `farm_id`, `created_by`, `updated_by`
+- Nouveaux types : `Organization`, `Farm`, `MembershipRole`, `FarmAccessRole`, `Membership`, `FarmAccess`, `AppContext`
+
+### Résultats
+- **Tests** : 147/147 ✅
+- **Build** : 1 erreur TS attendue dans les composants (`seuil_alerte_g` supprimé de `Variety` — à corriger en A0.9 suite)
+  - `VarietesClient.tsx:302` + `VarieteSlideOver.tsx:275` — à migrer vers `farm_variety_settings`
+
+---
+
+## [2026-03-06] — docs(arch): Corrections post-revue (deleted_at, arborescence, middleware, triggers)
+
+**Type :** `documentation`
+**Fichiers concernés :**
+- `.claude/context.md` *(mis à jour)*
+- `.claude/plan-action.md` *(mis à jour)*
+
+### Description
+Corrections ciblées suite à une revue des specs.
+
+### Modifications context.md
+- **`deleted_at`** : ajouté sur `external_materials`, `sites`, `parcels`, `rows` (alignement avec migration 002)
+- **Section 5.1 `external_materials`** : note — pas de déduplication avancée, risque faible, correction manuelle par super admin
+- **Section 11 arborescence** : remplacée par la structure reflétant le routing `/[orgSlug]/`, avec `middleware.ts`, `path.ts`, `orgSlug` dans `context.ts`
+
+### Modifications plan-action.md
+- **A0.9 Jour 1** : note triggers `production_summary` — fonctions `fn_ps_*` et `recalculate_production_summary()` à mettre à jour avec `farm_id`
+- **A0.9 Jour 2** : ajout création `src/middleware.ts` (auth + résolution slug + vérification membership)
+
+---
+
+## [2026-03-06] — docs(arch): Branding multi-tenant + routing par path
+
+**Type :** `documentation`
+**Fichiers concernés :**
+- `.claude/context.md` *(mis à jour)*
+- `.claude/plan-action.md` *(mis à jour)*
+
+### Description
+Intégration du branding par organisation et du routing `/[orgSlug]/` dans les specs.
+
+### Modifications context.md
+- **Table `organizations`** : ajout colonnes `nom_affiche`, `logo_url`, `couleur_primaire`, `couleur_secondaire`
+- **Section 2** : ajout note "Stockage des logos (Supabase Storage, bucket `org-logos`, accès public)"
+- **Section 3.5 (nouvelle)** : routing multi-tenant par path — structure `src/app/[orgSlug]/`, résolution slug, migration `revalidatePath`, middleware
+- **Section 4.1b (nouvelle)** : thème dynamique — CSS variables injectées par le layout, logo dynamique avec fallback initiales
+- **Section 13** : 5 nouvelles décisions (branding, logos, URL par path, thème dynamique, revalidatePath)
+
+### Modifications plan-action.md
+- **A0.9 Jour 2** : ajout routing + migration revalidatePath + couleurs CSS variables + logo dynamique (+ ~0.5j → durée 2-3j)
+- **getContext()** : retourne maintenant `orgSlug` en plus de `{ userId, farmId, organizationId }`
+- **B6** : ajout livrable branding client (upload logo, config couleurs, prévisualisation)
+
+---
+
+## [2026-03-06] — docs(arch): A0.9 — Décisions architecture multi-tenant
+
+**Type :** `documentation`
+**Fichiers concernés :**
+- `.claude/context.md` *(mis à jour)*
+- `.claude/plan-action.md` *(mis à jour)*
+
+### Description
+Mise à jour complète des specs pour intégrer toutes les décisions d'architecture multi-tenant prises lors d'un audit architectural. L'application est désormais conçue pour accueillir plusieurs fermes sur la même plateforme.
+
+### Modifications context.md
+- **Section 3.2** : ajout note "cache IndexedDB scopé par ferme active, farm_id dans le payload sync"
+- **Section 3.4 (nouvelle)** : architecture multi-tenant complète — hiérarchie org→farm→user, catalogue partagé, principes RLS
+- **Section 5.1b (nouvelle)** : CREATE TABLE complets pour les tables plateforme : `organizations`, `farms`, `memberships`, `farm_access`, `farm_modules`, `platform_admins`, `farm_variety_settings`, `farm_material_settings`, `notifications`, `audit_log` + fonction helper RLS `user_farm_ids()`
+- **Table `varieties`** : ajout `created_by_farm_id`, `created_by`, `updated_by`, `verified`, `aliases`, `merged_into_id` — suppression `seuil_alerte_g` (déplacé vers `farm_variety_settings`)
+- **Table `external_materials`** : ajout `created_by_farm_id`, `created_by`, `updated_by`
+- **Tables `sites`, `parcels`, `rows`** : ajout `farm_id NOT NULL`, `created_by`, `updated_by`, contraintes UNIQUE composites
+- **Toutes les tables métier** (seed_lots, seedlings, soil_works, plantings, row_care, harvests, uprootings, occultations, cuttings, dryings, sortings, stock_movements, stock_purchases, stock_direct_sales, stock_adjustments, recipes, production_lots, product_stock_movements, forecasts, production_summary) : ajout `farm_id NOT NULL`, `created_by`, `updated_by`
+- **Contraintes UNIQUE composites** : seed_lots(farm_id, lot_interne), production_lots(farm_id, numero_lot), recipes(farm_id, nom), parcels(farm_id, code), forecasts/production_summary avec farm_id
+- **Vue `v_stock`** : farm_id ajouté dans SELECT et GROUP BY
+- **Section 8.5 (nouvelle)** : sélecteur de ferme, catalogue partagé, déduplication variétés
+- **Section 8.6 (nouvelle)** : notifications (table + cas d'usage)
+- **Section 9** : A0.9 ajouté dans le tableau des phases + B6 + mise à jour estimations
+- **Section 10.3** : remplacement de la politique `authenticated_full_access` par 4 politiques différenciées (catalogue, tables métier, tables plateforme, logs) + index RLS
+- **Section 10.6** : backup par organisation (un fichier JSON par org dans /orgs/{slug}/)
+- **Section 11** : ajout `src/lib/context.ts` + route `(admin)/admin/`
+- **Section 13** : 18 nouvelles décisions ajoutées (multi-tenant, hiérarchie, catalogue, recettes, déduplication, modules, navigation, facturation, export RGPD, backup, offline, logs, notifications, audit, rétention, multi-langue, API, super admin, super data, numérotation, A0.9)
+
+### Modifications plan-action.md
+- **Risques** : ajout risques 8 (isolation RLS), 9 (déduplication catalogue), 10 (migration A0.9)
+- **Phase A0.9 (nouvelle)** : migration multi-tenant, 2 jours, à exécuter MAINTENANT — SQL + code applicatif + bootstrap
+- **Phases A2-A7** : note "Server Actions incluent farm_id, created_by, updated_by nativement"
+- **Phase A6** : note "cache IndexedDB scopé par ferme, farm_id dans payload sync"
+- **Phase B6 (nouvelle)** : interface super admin (impersonation, merge variétés, super data, logs)
+- **Phase C** : module Miel activable par ferme via farm_modules, tables nativement multi-tenant
+- **Résumé visuel** : A0.9 ajouté, B6 ajouté, estimations mises à jour (35-50j)
+
+---
+
 ## [2026-03-04 22:30] — feat(parcelles): A2.3 — Plantation Server Actions (backend)
 
 **Type :** `feature`

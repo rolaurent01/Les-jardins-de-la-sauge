@@ -1,5 +1,5 @@
 import { fetchSoilWorks } from './actions'
-import { fetchRowsForSelect } from '@/app/(dashboard)/parcelles/shared-actions'
+import { fetchRowsForSelect } from '@/app/[orgSlug]/(dashboard)/parcelles/shared-actions'
 import TravailSolClient from '@/components/parcelles/TravailSolClient'
 
 export const metadata = { title: 'Travail de sol — LJS' }

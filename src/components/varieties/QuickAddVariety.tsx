@@ -20,7 +20,7 @@
 import { useState, useTransition, useRef, useEffect } from 'react'
 import type { Variety, PartiePlante } from '@/lib/types'
 import { PARTIES_PLANTE, PARTIE_PLANTE_LABELS } from '@/lib/types'
-import { createVariety } from '@/app/(dashboard)/referentiel/varietes/actions'
+import { createVariety } from '@/app/[orgSlug]/(dashboard)/referentiel/varietes/actions'
 
 function normalize(str: string): string {
   return str.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase()
@@ -131,9 +131,9 @@ export default function QuickAddVariety({ existingVarieties, onCreated }: Props)
         type="button"
         onClick={() => { setOpen(o => !o); setError(null); setDuplicate(null); setSelectedParties(['plante_entiere']) }}
         className="flex items-center gap-1 text-sm transition-colors"
-        style={{ color: '#588157' }}
-        onMouseEnter={e => ((e.currentTarget as HTMLElement).style.color = '#3A5A40')}
-        onMouseLeave={e => ((e.currentTarget as HTMLElement).style.color = '#588157')}
+        style={{ color: 'var(--color-primary-light)' }}
+        onMouseEnter={e => ((e.currentTarget as HTMLElement).style.color = 'var(--color-primary)')}
+        onMouseLeave={e => ((e.currentTarget as HTMLElement).style.color = 'var(--color-primary-light)')}
       >
         <span className="text-base leading-none">＋</span>
         <span>Nouvelle variété</span>
@@ -181,7 +181,7 @@ export default function QuickAddVariety({ existingVarieties, onCreated }: Props)
                   type="button"
                   onClick={selectDuplicate}
                   className="mt-1.5 text-sm underline"
-                  style={{ color: '#3A5A40' }}
+                  style={{ color: 'var(--color-primary)' }}
                 >
                   Sélectionner cette variété →
                 </button>
@@ -202,7 +202,7 @@ export default function QuickAddVariety({ existingVarieties, onCreated }: Props)
                   disabled={isPending}
                   placeholder="ex : Lavande vraie"
                   style={miniInputStyle}
-                  onFocus={e => ((e.target as HTMLInputElement).style.borderColor = '#3A5A40')}
+                  onFocus={e => ((e.target as HTMLInputElement).style.borderColor = 'var(--color-primary)')}
                   onBlur={e  => ((e.target as HTMLInputElement).style.borderColor = '#D8E0D9')}
                 />
               </div>
@@ -218,7 +218,7 @@ export default function QuickAddVariety({ existingVarieties, onCreated }: Props)
                   disabled={isPending}
                   placeholder="ex : Lavandula angustifolia"
                   style={{ ...miniInputStyle, fontStyle: 'italic' }}
-                  onFocus={e => ((e.target as HTMLInputElement).style.borderColor = '#3A5A40')}
+                  onFocus={e => ((e.target as HTMLInputElement).style.borderColor = 'var(--color-primary)')}
                   onBlur={e  => ((e.target as HTMLInputElement).style.borderColor = '#D8E0D9')}
                 />
               </div>
@@ -235,7 +235,7 @@ export default function QuickAddVariety({ existingVarieties, onCreated }: Props)
                   disabled={isPending}
                   placeholder="ex : Lamiacées"
                   style={miniInputStyle}
-                  onFocus={e => ((e.target as HTMLInputElement).style.borderColor = '#3A5A40')}
+                  onFocus={e => ((e.target as HTMLInputElement).style.borderColor = 'var(--color-primary)')}
                   onBlur={e  => ((e.target as HTMLInputElement).style.borderColor = '#D8E0D9')}
                 />
                 <datalist id="qa-familles-list">
@@ -260,8 +260,8 @@ export default function QuickAddVariety({ existingVarieties, onCreated }: Props)
                           gap: '5px',
                           padding: '3px 8px',
                           borderRadius: '20px',
-                          border: `1px solid ${checked ? '#3A5A40' : '#D8E0D9'}`,
-                          backgroundColor: checked ? '#3A5A4014' : '#F9F8F6',
+                          border: `1px solid ${checked ? 'var(--color-primary)' : '#D8E0D9'}`,
+                          backgroundColor: checked ? 'color-mix(in srgb, var(--color-primary) 8%, transparent)' : '#F9F8F6',
                           cursor: isPending ? 'not-allowed' : 'pointer',
                           fontSize: '12px',
                           color: checked ? '#2C3E2D' : '#6B7B6C',
@@ -275,7 +275,7 @@ export default function QuickAddVariety({ existingVarieties, onCreated }: Props)
                           checked={checked}
                           disabled={isPending}
                           onChange={() => togglePartie(partie)}
-                          style={{ accentColor: '#3A5A40' }}
+                          style={{ accentColor: 'var(--color-primary)' }}
                         />
                         {PARTIE_PLANTE_LABELS[partie]}
                       </label>
@@ -305,7 +305,7 @@ export default function QuickAddVariety({ existingVarieties, onCreated }: Props)
                   disabled={isPending}
                   className="px-3 py-1.5 text-xs font-medium rounded-lg transition-opacity"
                   style={{
-                    backgroundColor: '#3A5A40',
+                    backgroundColor: 'var(--color-primary)',
                     color: '#F9F8F6',
                     opacity: isPending ? 0.6 : 1,
                   }}

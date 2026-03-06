@@ -124,7 +124,7 @@ export default function SemisSlideOver({
   /* Objet Seedling virtuel pour le calcul de perte en temps réel */
   const previewSeedling: Seedling = {
     id: '',               uuid_client: null,    seed_lot_id: null,
-    variety_id: null,     processus,
+    farm_id: '',          variety_id: null,     processus,
     numero_caisse: null,
     nb_mottes: nbMottes,              nb_mortes_mottes: nbMortesMottes,
     nb_caissettes: null,
@@ -134,7 +134,8 @@ export default function SemisSlideOver({
     date_semis: '',       poids_graines_utilise_g: null,
     date_levee: null,     date_repiquage: null,
     temps_semis_min: null, temps_repiquage_min: null,
-    commentaire: null,    deleted_at: null,     created_at: '',
+    commentaire: null,    deleted_at: null,
+    created_by: null,     updated_by: null,     created_at: '',
   }
 
   /* Récapitulatif visible uniquement si nb_plants_obtenus est renseigné */
@@ -577,7 +578,7 @@ export default function SemisSlideOver({
               disabled={isPending}
               className="px-5 py-2 rounded-lg text-sm font-medium transition-opacity"
               style={{
-                backgroundColor: '#3A5A40',
+                backgroundColor: 'var(--color-primary)',
                 color:           '#F9F8F6',
                 opacity:         isPending ? 0.6 : 1,
               }}
@@ -674,7 +675,7 @@ function ProcessBtn({
       disabled={disabled}
       className="flex-1 px-4 py-2.5 text-sm font-medium transition-colors"
       style={{
-        backgroundColor: active ? '#3A5A40' : 'transparent',
+        backgroundColor: active ? 'var(--color-primary)' : 'transparent',
         color:           active ? '#F9F8F6' : '#9CA89D',
       }}
     >
@@ -708,7 +709,7 @@ const inputStyle: React.CSSProperties = {
 }
 
 function focusStyle(e: React.FocusEvent<HTMLElement>) {
-  ;(e.target as HTMLElement).style.borderColor = '#3A5A40'
+  ;(e.target as HTMLElement).style.borderColor = 'var(--color-primary)'
 }
 function blurStyle(e: React.FocusEvent<HTMLElement>) {
   ;(e.target as HTMLElement).style.borderColor = '#D8E0D9'

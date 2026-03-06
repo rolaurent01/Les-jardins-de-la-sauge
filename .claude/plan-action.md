@@ -36,6 +36,12 @@
 
 7. **Soft delete** : Les tables critiques utilisent un soft delete (`deleted_at`). Toutes les requêtes doivent filtrer `WHERE deleted_at IS NULL`. Risque d'oubli → centraliser dans des vues SQL ou helpers.
 
+8. **Isolation RLS multi-tenant** : La fonction `user_farm_ids()` est exécutée à chaque requête RLS. Risque de dégradation des performances si mal indexée. Mitigation : index sur `farm_access(user_id)`, `memberships(user_id)`, `farms(organization_id)` + `SECURITY DEFINER STABLE` sur la fonction pour permettre le cache de plan.
+
+9. **Déduplication du catalogue variétés** : Le catalogue est partagé entre toutes les fermes. Risque de doublons si deux fermes créent "Menthe marocaine" et "menthe marocaine". Mitigation : contrainte UNIQUE insensible casse/accents sur `nom_vernaculaire` + recherche fuzzy à la création + outil de merge super admin.
+
+10. **Migration SQL A0.9** : L'ajout de `farm_id NOT NULL` sur des tables existantes avec des données en base nécessite de bootstrapper l'organisation et la ferme LJS AVANT d'appliquer la contrainte NOT NULL. Mitigation : migration en 2 étapes (ajouter nullable → boostrap → passer NOT NULL).
+
 ---
 
 # ═══════════════════════════════════════
@@ -82,6 +88,47 @@ A7. Polish Phase A
 **Point de validation** : Vérifier que toutes les variétés sont bien nommées, les rangs bien numérotés, l'auth fonctionne, le déploiement Vercel est OK.
 
 **Claude Code — Instruction** : Commencer par setup le projet avec toute l'infra. Ne pas coder de features tant que la base, l'auth, le backup et le déploiement ne marchent pas en production. Inclure le soft delete (`deleted_at`) sur les tables critiques dès le schéma initial.
+
+---
+
+### A0.9 — Migration multi-tenant
+**Durée** : 2 jours
+> ⚠️ **À exécuter MAINTENANT** (avant de continuer A2.4). Cette phase pose les fondations multi-tenant sur lesquelles tous les modules suivants seront développés nativement.
+
+**Jour 1 — Migration SQL (`011_multitenant.sql`)** :
+- Tables plateforme : `organizations`, `farms`, `memberships`, `farm_access`, `farm_modules`, `platform_admins`
+- Tables catalogue partagé : `farm_variety_settings`, `farm_material_settings`
+- Tables transversales : `notifications`, `audit_log`
+- Colonnes `farm_id UUID REFERENCES farms(id)`, `created_by UUID`, `updated_by UUID` sur toutes les tables métier (ajout nullable d'abord, NOT NULL après bootstrap)
+- Modifications `varieties` : ajout `created_by_farm_id`, `created_by`, `updated_by`, `verified`, `aliases`, `merged_into_id` — suppression `seuil_alerte_g` (déplacé vers `farm_variety_settings`)
+- Contraintes UNIQUE composites avec `farm_id` : `seed_lots(farm_id, lot_interne)`, `production_lots(farm_id, numero_lot)`, `recipes(farm_id, nom)`, `parcels(farm_id, code)`, `forecasts(farm_id, ...)`, `production_summary(farm_id, ...)`
+- Index `CREATE INDEX idx_[table]_farm ON [table](farm_id)` sur chaque table métier
+- Fonction helper RLS : `user_farm_ids() RETURNS SETOF UUID` (SECURITY DEFINER STABLE)
+- Nouvelles politiques RLS : catalogue partagé (SELECT/INSERT tous, UPDATE/DELETE créateur ou super admin), tables métier (`farm_id IN (SELECT user_farm_ids())`), tables plateforme, logs (super admin uniquement)
+- Vue `v_stock` mise à jour avec `farm_id` dans SELECT et GROUP BY
+- **Mise à jour des triggers `production_summary`** : les fonctions `_ps_upsert`, `fn_ps_harvests`, `fn_ps_cuttings`, `fn_ps_dryings`, `fn_ps_sortings`, `fn_ps_production_lot_ingredients`, `fn_ps_production_lots_time`, `fn_ps_direct_sales`, `fn_ps_purchases` doivent inclure `farm_id` dans la clause UPSERT (puisque la contrainte UNIQUE de `production_summary` inclut maintenant `farm_id`). La fonction `recalculate_production_summary()` doit aussi inclure `farm_id` dans le GROUP BY.
+- **Bootstrap** : créer l'organisation "Les Jardins de la Sauge" + ferme "LJS" + membership pour les utilisateurs existants + passer `farm_id NOT NULL`
+- Mettre à jour `supabase/types.ts` (regénérer les types TypeScript)
+
+**Jour 2 — Code applicatif** :
+- Helper `getContext()` dans `src/lib/context.ts` → retourne `{ userId, farmId, organizationId, orgSlug }` depuis le cookie `active_farm_id`
+- Sélecteur de ferme dans le layout bureau (au-dessus de la sidebar, visible uniquement si ≥ 2 fermes accessibles)
+- Refactoring des Server Actions existantes (A0, A1, A2.1, A2.2, A2.3) :
+  - Ajout `.eq('farm_id', farmId)` sur tous les SELECT
+  - Ajout `farm_id`, `created_by` sur tous les INSERT
+  - Ajout `updated_by` sur tous les UPDATE
+- Vérification que toutes les pages existantes fonctionnent avec la ferme LJS active
+- **Restructuration du routing** : déplacer les routes `/(dashboard)/` sous `/[orgSlug]/(dashboard)/`. Créer le layout `[orgSlug]/layout.tsx` qui résout l'organisation par slug et injecte le branding (CSS variables `--color-primary`, `--color-primary-light`).
+- **Migration des `revalidatePath`** : créer un helper `buildPath(slug, path)` et remplacer tous les `revalidatePath('/semis/sachets')` → `revalidatePath('/[orgSlug]/semis/sachets')` dans les Server Actions existantes.
+- **Remplacement des couleurs hardcodées** : extraire les hex (#3A5A40, #588157) de la Sidebar, du MobileHeader et des composants existants vers les CSS variables (`var(--color-primary)`, `var(--color-primary-light)`).
+- **Logo dynamique** : remplacer le SVG LJS hardcodé dans Sidebar.tsx et MobileHeader.tsx par un composant qui lit `organizations.logo_url` (avec fallback sur la première lettre de `nom_affiche`).
+- **Création de `src/middleware.ts`** : middleware Next.js qui centralise l'authentification (`supabase.auth.getUser()`), vérifie l'existence de l'organisation (slug via `organizations WHERE slug = :slug`), vérifie l'appartenance de l'utilisateur à l'organisation, et redirige les non-authentifiés vers `/login`. Remplace les vérifications auth actuellement dispersées dans les layouts.
+
+> Note : les étapes routing + branding ajoutent une demi-journée. Le total de A0.9 passe de 2 à 2-3 jours.
+
+**Point de validation** : Toutes les pages existantes fonctionnent identiquement sous `/ljs/dashboard`. Le sélecteur de ferme est visible dans le layout. Les nouvelles saisies incluent `farm_id`. Les politiques RLS isolent correctement les données. Le branding LJS est affiché via CSS variables.
+
+**Note pour la suite** : À partir de A2.4, tous les modules sont développés nativement multi-tenant. Le `farm_id`, `created_by`, `updated_by` sont inclus dans chaque nouvelle Server Action sans effort supplémentaire.
 
 ---
 
@@ -135,7 +182,7 @@ A7. Polish Phase A
 - Cueillette : slide-over adaptatif (parcelle vs sauvage — champs différents)
 - Suivi rang multi-variétés : message "⚠️ Ce rang a 2 variétés actives" + bouton raccourci "+ Ajouter l'autre variété"
 
-**Claude Code — Instruction** : La logique adaptative variété doit être un hook réutilisable partagé entre les 3 modules. Validation stricte côté client ET serveur. Toujours logguer le temps en minutes.
+**Claude Code — Instruction** : La logique adaptative variété doit être un hook réutilisable partagé entre les 3 modules. Validation stricte côté client ET serveur. Toujours logguer le temps en minutes. Toutes les Server Actions incluent `farm_id`, `created_by`, `updated_by` nativement (via `getContext()`).
 
 ---
 
@@ -197,7 +244,7 @@ A7. Polish Phase A
 - Étape 3 du wizard : indicateurs ✅/⚠️ par ingrédient (stock suffisant ou pas)
 - Lots en mode "mélange" sans `nb_unites` : badge "À conditionner" + bouton dédié
 
-**Claude Code — Instruction** : Le workflow de production est LE moment critique pour le stock. Utiliser une transaction SQL. Le lot ne peut être validé que si le stock est suffisant pour CHAQUE ingrédient dans SA variété, SA partie ET SON état (les 3 dimensions). Vérifier `mode` pour adapter les calculs (`nb_unites × poids_sachet` en mode produit, somme des poids saisis en mode mélange).
+**Claude Code — Instruction** : Le workflow de production est LE moment critique pour le stock. Utiliser une transaction SQL. Le lot ne peut être validé que si le stock est suffisant pour CHAQUE ingrédient dans SA variété, SA partie ET SON état (les 3 dimensions). Vérifier `mode` pour adapter les calculs (`nb_unites × poids_sachet` en mode produit, somme des poids saisis en mode mélange). Toutes les Server Actions incluent `farm_id`, `created_by`, `updated_by` nativement (via `getContext()`). La numérotation des lots est scopée par `farm_id`.
 
 ---
 
@@ -252,7 +299,7 @@ Le mobile est UN TERMINAL DE SAISIE TERRAIN. Pas de consultation, pas de dashboa
 - Logs client IndexedDB pour diagnostic terrain
 - Tests CRITIQUES (~20% du temps) : mode avion, coupure pendant envoi, audit, idempotence, perte serveur simulée
 
-**Claude Code — Instruction** : Mobile le plus LÉGER possible. Validations Zod partagées. L'objectif est ZÉRO PERTE DE DONNÉES.
+**Claude Code — Instruction** : Mobile le plus LÉGER possible. Validations Zod partagées. L'objectif est ZÉRO PERTE DE DONNÉES. Cache IndexedDB scopé par ferme active — au switch de ferme, le cache est rechargé entièrement. Le payload de sync inclut `farm_id` dans chaque enregistrement, validé côté serveur. Toutes les Server Actions de sync incluent `farm_id`, `created_by`, `updated_by` nativement.
 
 ---
 
@@ -328,19 +375,33 @@ Le mobile est UN TERMINAL DE SAISIE TERRAIN. Pas de consultation, pas de dashboa
 
 ---
 
+### B6 — Interface super admin
+**Durée** : 2-3 jours
+- Route `/admin` séparée du dashboard classique (accès `platform_admins` uniquement)
+- **Gestion plateforme** : liste des organisations, fermes, utilisateurs, memberships
+- **Outil de merge de variétés** : fusionner un doublon vers une variété cible (UPDATE toutes les FK + soft delete + log audit)
+- **Consultation logs** : lecture de `app_logs` avec filtres (niveau, source, date)
+- **Super data cross-tenant** : requêtes d'agrégation via `service_role` (stock total plateforme, activité par organisation, variétés les plus utilisées) — pas de table dédiée, requêtes à la volée
+- **Impersonation** : se connecter "en tant que" une ferme (cookie `impersonate_farm_id`) avec bandeau rouge visible dans tout l'UI. Permet de voir exactement ce que le client voit pour le support.
+- **Gestion `farm_modules`** : activer/désactiver les modules par ferme
+- **Branding client** : upload du logo (Supabase Storage bucket `org-logos`), configuration `couleur_primaire` / `couleur_secondaire` / `nom_affiche`, prévisualisation du rendu en temps réel
+
+---
+
 ## Résumé visuel
 
 ```
 ═══ PHASE A — SOCLE DE DONNÉES ═══════════════════════════════════════
 
-A0  ████████                      Fondations + Référentiel
-A1  ████████                      🌱 Semis
-A2  ██████████████████            🌿 Suivi parcelle
-A3  ████████████████              🔄 Transformation
-A4  ████████████████              🧪 Création de produit
-A5  ████████                      📦 Affinage du stock
-A6  ██████████████████            📱 Mobile offline + Sync
-A7  ████████                      Polish + Tests + Clôture saison
+A0    ████████                    Fondations + Référentiel
+A0.9  ████████  ← MAINTENANT     Migration multi-tenant (2j)
+A1    ████████                    🌱 Semis
+A2    ██████████████████          🌿 Suivi parcelle (A2.4 → A2.8)
+A3    ████████████████            🔄 Transformation
+A4    ████████████████            🧪 Création de produit
+A5    ████████                    📦 Affinage du stock
+A6    ██████████████████          📱 Mobile offline + Sync
+A7    ████████                    Polish + Tests + Clôture saison
 
 → L'APPLI EST UTILISABLE AU QUOTIDIEN ✅
 
@@ -351,13 +412,14 @@ B2  ██████████████                📈 Vue Productio
 B3  ████████                      🏠 Dashboard
 B4  ████████                      🔍 Traçabilité + Prévisionnel
 B5  ████                          Export + Polish final
+B6  ████████                      🔧 Interface super admin
 ```
 
 **Durée estimée** :
-- Phase A : ~22-33 jours
-- Phase B : ~10-15 jours
+- Phase A : ~24-35 jours (A0.9 ajoutée)
+- Phase B : ~12-18 jours (B6 ajoutée)
 - **Phase C (Miel) : à définir après stabilisation A+B**
-- Total A+B : ~30-45 jours
+- Total A+B : ~35-50 jours
 
 ---
 
@@ -366,6 +428,8 @@ B5  ████                          Export + Polish final
 **Prérequis** : Phases A et B stables, application utilisée au quotidien.
 
 Module autonome dans le même projet, avec des tables entièrement séparées des tables PAM. Partagé : auth, PWA, sync offline, charte graphique, sidebar. Séparé : tout le reste (schéma, workflow, vues). Le schéma Miel sera conçu intégralement en Phase C.
+
+Le module Miel est **activable par ferme** via `farm_modules (module = 'apiculture')`. La sidebar n'affiche les sections apiculture que si le module est actif pour la ferme courante. Toutes les tables miel auront `farm_id`, `created_by`, `updated_by` dès leur création (nativement multi-tenant depuis A0.9).
 
 ---
 

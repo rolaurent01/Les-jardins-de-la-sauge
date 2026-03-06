@@ -3,7 +3,7 @@
 import { useState, useEffect, useTransition } from 'react'
 import { useRouter } from 'next/navigation'
 import type { SoilWorkWithRelations, RowWithParcel } from '@/lib/types'
-import { createSoilWork, updateSoilWork, deleteSoilWork } from '@/app/(dashboard)/parcelles/travail-sol/actions'
+import { createSoilWork, updateSoilWork, deleteSoilWork } from '@/app/[orgSlug]/(dashboard)/parcelles/travail-sol/actions'
 import TravailSolSlideOver from './TravailSolSlideOver'
 import { formatDate, formatDuration } from '@/lib/utils/format'
 
@@ -133,7 +133,7 @@ export default function TravailSolClient({ initialSoilWorks, rows }: Props) {
         <button
           onClick={openCreate}
           className="flex items-center gap-1.5 px-4 py-2 rounded-lg text-sm font-medium transition-opacity"
-          style={{ backgroundColor: '#3A5A40', color: '#F9F8F6' }}
+          style={{ backgroundColor: 'var(--color-primary)', color: '#F9F8F6' }}
         >
           <span className="text-base leading-none">＋</span>
           Nouveau travail
@@ -156,7 +156,7 @@ export default function TravailSolClient({ initialSoilWorks, rows }: Props) {
             onChange={e => setSearch(e.target.value)}
             className="w-full pl-9 pr-3 py-2 text-sm rounded-lg border outline-none"
             style={{ backgroundColor: '#FAF5E9', borderColor: '#D8E0D9', color: '#2C3E2D' }}
-            onFocus={e => (e.target.style.borderColor = '#3A5A40')}
+            onFocus={e => (e.target.style.borderColor = 'var(--color-primary)')}
             onBlur={e => (e.target.style.borderColor = '#D8E0D9')}
           />
         </div>
@@ -254,7 +254,7 @@ export default function TravailSolClient({ initialSoilWorks, rows }: Props) {
                               className="p-1.5 rounded-lg transition-colors"
                               title="Modifier"
                               style={{ color: '#9CA89D' }}
-                              onMouseEnter={e => ((e.currentTarget as HTMLElement).style.color = '#3A5A40')}
+                              onMouseEnter={e => ((e.currentTarget as HTMLElement).style.color = 'var(--color-primary)')}
                               onMouseLeave={e => ((e.currentTarget as HTMLElement).style.color = '#9CA89D')}
                             >
                               ✏️

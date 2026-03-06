@@ -20,6 +20,7 @@ type NavSection = {
   phaseLabel?: string
 }
 
+/** Chemins relatifs — préfixés avec /{orgSlug} au rendu via h() */
 const NAV: NavSection[] = [
   {
     id: 'referentiel',
@@ -93,10 +94,27 @@ const NAV: NavSection[] = [
   },
 ]
 
-export default function MobileHeader({ userEmail }: { userEmail?: string }) {
+type MobileHeaderProps = {
+  userEmail?: string
+  organization: { nom_affiche: string | null; logo_url: string | null }
+  farms: { id: string; nom: string }[]
+  activeFarmId: string
+  orgSlug: string
+}
+
+export default function MobileHeader({ userEmail, organization, orgSlug }: MobileHeaderProps) {
   const pathname = usePathname()
   const [drawerOpen, setDrawerOpen] = useState(false)
   const [openSections, setOpenSections] = useState<string[]>(['referentiel'])
+
+  const displayName = organization.nom_affiche ?? 'Mon Jardin'
+
+  /** Construit le chemin absolu avec le préfixe orgSlug */
+  function h(path: string) {
+    return `/${orgSlug}${path}`
+  }
+
+  const dashboardHref = h('/dashboard')
 
   function toggleSection(id: string) {
     setOpenSections(prev =>
@@ -109,48 +127,43 @@ export default function MobileHeader({ userEmail }: { userEmail?: string }) {
       {/* ---- Barre top ---- */}
       <header
         className="sticky top-0 z-30 flex items-center justify-between h-14 px-4 border-b"
-        style={{ backgroundColor: '#3A5A40', borderColor: 'rgba(255,255,255,0.1)' }}
+        style={{ backgroundColor: 'var(--color-primary)', borderColor: 'rgba(255,255,255,0.1)' }}
       >
         {/* Brand */}
-        <Link href="/dashboard" className="flex items-center gap-2.5" onClick={() => setDrawerOpen(false)}>
-          <div className="w-8 h-8 rounded-full bg-white/5 ring-1 ring-white/10 flex items-center justify-center flex-shrink-0">
-            <svg viewBox="0 0 24 24" className="w-5 h-5" fill="none" aria-hidden="true">
-              <path
-                d="M12.5 12.2c2.2-4.3 6.2-6 8.5-6.2-.2 2.3-1.9 6.3-6.2 8.5-1.1.6-2.4.9-3.7.9.4-1.1.8-2.2 1.4-3.2Z"
-                fill="rgba(157,186,138,0.95)"
-              />
-              <path
-                d="M11.5 12.2C9.3 7.9 5.3 6.2 3 6c.2 2.3 1.9 6.3 6.2 8.5 1.1.6 2.4.9 3.7.9-.4-1.1-.8-2.2-1.4-3.2Z"
-                fill="rgba(157,186,138,0.75)"
-              />
-              <path
-                d="M12 21c0-3.5 0-6.2 1.2-8.6"
-                stroke="rgba(157,186,138,0.9)"
-                strokeWidth="1.6"
-                strokeLinecap="round"
-              />
-            </svg>
-          </div>
-          <span className="text-white text-[14px] font-semibold tracking-tight leading-tight">
-            Les Jardins de la Sauge
+        <Link href={dashboardHref} className="flex items-center gap-2.5" onClick={() => setDrawerOpen(false)}>
+          {organization.logo_url ? (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img
+              src={organization.logo_url}
+              alt={displayName}
+              className="w-8 h-8 rounded-full object-contain"
+            />
+          ) : (
+            <div
+              className="w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0 text-white font-semibold"
+              style={{ backgroundColor: 'var(--color-primary-light)', fontSize: '14px' }}
+            >
+              {displayName.charAt(0).toUpperCase()}
+            </div>
+          )}
+          <span className="text-white text-[14px] font-semibold tracking-tight leading-tight truncate max-w-[160px]">
+            {displayName}
           </span>
         </Link>
 
         {/* Bouton hamburger */}
         <button
           onClick={() => setDrawerOpen(prev => !prev)}
-          className="w-9 h-9 flex items-center justify-center rounded-lg transition-colors"
+          className="w-9 h-9 flex items-center justify-center rounded-lg transition-colors flex-shrink-0"
           style={{ color: '#C4D4C5' }}
           aria-label={drawerOpen ? 'Fermer le menu' : 'Ouvrir le menu'}
         >
           {drawerOpen ? (
-            /* Icône × */
             <svg viewBox="0 0 24 24" className="w-5 h-5" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
               <line x1="18" y1="6" x2="6" y2="18" />
               <line x1="6" y1="6" x2="18" y2="18" />
             </svg>
           ) : (
-            /* Icône hamburger */
             <svg viewBox="0 0 24 24" className="w-5 h-5" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
               <line x1="3" y1="6" x2="21" y2="6" />
               <line x1="3" y1="12" x2="21" y2="12" />
@@ -173,20 +186,20 @@ export default function MobileHeader({ userEmail }: { userEmail?: string }) {
       <div
         className="fixed top-14 right-0 bottom-0 z-30 w-72 overflow-y-auto flex flex-col transition-transform duration-300"
         style={{
-          backgroundColor: '#3A5A40',
+          backgroundColor: 'var(--color-primary)',
           transform: drawerOpen ? 'translateX(0)' : 'translateX(100%)',
         }}
       >
         {/* Lien Dashboard */}
         <div className="px-3 pt-3">
           <Link
-            href="/dashboard"
+            href={dashboardHref}
             onClick={() => setDrawerOpen(false)}
             className="flex items-center gap-2 px-3 py-2.5 rounded-lg text-sm"
             style={{
-              color: pathname === '/dashboard' ? '#F9F8F6' : '#C4D4C5',
-              backgroundColor: pathname === '/dashboard' ? 'rgba(255,255,255,0.12)' : 'transparent',
-              fontWeight: pathname === '/dashboard' ? 600 : 400,
+              color: pathname === dashboardHref ? '#F9F8F6' : '#C4D4C5',
+              backgroundColor: pathname === dashboardHref ? 'rgba(255,255,255,0.12)' : 'transparent',
+              fontWeight: pathname === dashboardHref ? 600 : 400,
             }}
           >
             <span>☀️</span>
@@ -200,7 +213,7 @@ export default function MobileHeader({ userEmail }: { userEmail?: string }) {
         <nav className="flex-1 px-3 pb-2 space-y-0.5">
           {NAV.map(section => {
             const isOpen = openSections.includes(section.id)
-            const hasActiveChild = section.children.some(c => pathname.startsWith(c.href))
+            const hasActiveChild = section.children.some(c => pathname.startsWith(h(c.href)))
 
             return (
               <div key={section.id}>
@@ -248,11 +261,12 @@ export default function MobileHeader({ userEmail }: { userEmail?: string }) {
                     style={{ borderLeft: '1px solid rgba(255,255,255,0.1)' }}
                   >
                     {section.children.map(child => {
-                      const isActive = pathname.startsWith(child.href)
+                      const childHref = h(child.href)
+                      const isActive = pathname.startsWith(childHref)
                       return (
                         <Link
                           key={child.href}
-                          href={child.href}
+                          href={childHref}
                           onClick={() => setDrawerOpen(false)}
                           className="flex items-center px-2 py-2 rounded-lg text-sm"
                           style={{

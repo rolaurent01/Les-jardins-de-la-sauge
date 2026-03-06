@@ -2,6 +2,8 @@
 
 import { createClient } from '@/lib/supabase/server'
 import { revalidatePath } from 'next/cache'
+import { getContext } from '@/lib/context'
+import { buildPath } from '@/lib/utils/path'
 import type { ActionResult, Variety, TypeCycle, PartiePlante } from '@/lib/types'
 import { PARTIES_PLANTE } from '@/lib/types'
 
@@ -29,9 +31,6 @@ function _buildFields(formData: FormData, rawCycle: string, parties: PartiePlant
     type_cycle: (VALID_TYPE_CYCLES.includes(rawCycle as TypeCycle) ? rawCycle as TypeCycle : null),
     duree_peremption_mois: parseInt(formData.get('duree_peremption_mois') as string) || 24,
     parties_utilisees: parties,
-    seuil_alerte_g:   formData.get('seuil_alerte_g')
-                        ? parseFloat(formData.get('seuil_alerte_g') as string)
-                        : null,
     notes:            (formData.get('notes') as string)?.trim()      || null,
   }
 }
@@ -39,6 +38,21 @@ function _buildFields(formData: FormData, rawCycle: string, parties: PartiePlant
 function mapSupabaseError(code: string | undefined, fallback: string): string {
   if (code === '23505') return 'Cette variété existe déjà (nom en doublon).'
   return fallback
+}
+
+/** Récupère tout le catalogue actif (inclut archivées pour le toggle UI, exclut les fusionnées) */
+export async function fetchVarieties(): Promise<Variety[]> {
+  const supabase = await createClient()
+
+  const { data, error } = await supabase
+    .from('varieties')
+    .select('*')
+    .is('merged_into_id', null)
+    .order('nom_vernaculaire')
+
+  if (error) throw new Error(`Erreur lors du chargement des variétés : ${error.message}`)
+
+  return (data ?? []) as Variety[]
 }
 
 export async function createVariety(
@@ -52,15 +66,21 @@ export async function createVariety(
   }
 
   const supabase = await createClient()
+  const { userId, farmId, orgSlug } = await getContext()
+
   const { data, error } = await supabase
     .from('varieties')
-    .insert(parsed)
+    .insert({
+      ...parsed,
+      created_by_farm_id: farmId,
+      created_by: userId,
+    })
     .select()
     .single()
 
   if (error) return { error: mapSupabaseError(error.code, `Erreur : ${error.message}`) }
 
-  revalidatePath('/referentiel/varietes')
+  revalidatePath(buildPath(orgSlug, '/referentiel/varietes'))
   return { success: true, data: data as Variety }
 }
 
@@ -76,41 +96,45 @@ export async function updateVariety(
   }
 
   const supabase = await createClient()
+  const { userId, orgSlug } = await getContext()
+
   const { error } = await supabase
     .from('varieties')
-    .update(parsed)
+    .update({ ...parsed, updated_by: userId })
     .eq('id', id)
 
   if (error) return { error: mapSupabaseError(error.code, `Erreur : ${error.message}`) }
 
-  revalidatePath('/referentiel/varietes')
+  revalidatePath(buildPath(orgSlug, '/referentiel/varietes'))
   return { success: true }
 }
 
 export async function archiveVariety(id: string): Promise<ActionResult> {
   const supabase = await createClient()
+  const { userId, orgSlug } = await getContext()
 
   const { error } = await supabase
     .from('varieties')
-    .update({ deleted_at: new Date().toISOString() })
+    .update({ deleted_at: new Date().toISOString(), updated_by: userId })
     .eq('id', id)
 
   if (error) return { error: `Erreur lors de l'archivage : ${error.message}` }
 
-  revalidatePath('/referentiel/varietes')
+  revalidatePath(buildPath(orgSlug, '/referentiel/varietes'))
   return { success: true }
 }
 
 export async function restoreVariety(id: string): Promise<ActionResult> {
   const supabase = await createClient()
+  const { userId, orgSlug } = await getContext()
 
   const { error } = await supabase
     .from('varieties')
-    .update({ deleted_at: null })
+    .update({ deleted_at: null, updated_by: userId })
     .eq('id', id)
 
   if (error) return { error: `Erreur lors de la restauration : ${error.message}` }
 
-  revalidatePath('/referentiel/varietes')
+  revalidatePath(buildPath(orgSlug, '/referentiel/varietes'))
   return { success: true }
 }

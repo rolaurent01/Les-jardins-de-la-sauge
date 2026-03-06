@@ -250,7 +250,7 @@ export default function RangSlideOver({ open, row, parcels, onClose, onSubmit, o
               disabled={isPending}
               className="px-5 py-2 rounded-lg text-sm font-medium"
               style={{
-                backgroundColor: '#3A5A40',
+                backgroundColor: 'var(--color-primary)',
                 color: '#F9F8F6',
                 opacity: isPending ? 0.6 : 1,
               }}
@@ -279,7 +279,7 @@ const inputStyle: React.CSSProperties = {
 }
 
 function focusStyle(e: React.FocusEvent<HTMLElement>) {
-  ;(e.target as HTMLElement).style.borderColor = '#3A5A40'
+  ;(e.target as HTMLElement).style.borderColor = 'var(--color-primary)'
 }
 function blurStyle(e: React.FocusEvent<HTMLElement>) {
   ;(e.target as HTMLElement).style.borderColor = '#D8E0D9'

@@ -32,8 +32,8 @@ export default async function DashboardPage() {
               <span
                 className="text-xs px-2 py-0.5 rounded-full"
                 style={{
-                  backgroundColor: '#3A5A4015',
-                  color: '#588157',
+                  backgroundColor: 'color-mix(in srgb, var(--color-primary) 8%, transparent)',
+                  color: 'var(--color-primary-light)',
                 }}
               >
                 Phase B
@@ -57,7 +57,7 @@ export default async function DashboardPage() {
         className="rounded-xl p-4 md:p-5 border"
         style={{
           backgroundColor: '#F5F9F5',
-          borderColor: '#3A5A4030',
+          borderColor: 'color-mix(in srgb, var(--color-primary) 19%, transparent)',
         }}
       >
         <div className="flex items-start gap-3">

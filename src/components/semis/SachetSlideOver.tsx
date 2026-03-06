@@ -125,7 +125,7 @@ export default function SachetSlideOver({ open, seedLot, varieties: initialVarie
             {isEdit && (
               <span
                 className="mt-0.5 inline-block text-xs px-2 py-0.5 rounded-full font-medium"
-                style={{ backgroundColor: '#E8F0E9', color: '#3A5A40' }}
+                style={{ backgroundColor: '#E8F0E9', color: 'var(--color-primary)' }}
               >
                 {seedLot.lot_interne}
               </span>
@@ -288,7 +288,7 @@ export default function SachetSlideOver({ open, seedLot, varieties: initialVarie
                     name="certif_ab"
                     defaultChecked={seedLot?.certif_ab ?? false}
                     disabled={isPending}
-                    style={{ accentColor: '#3A5A40', width: '16px', height: '16px' }}
+                    style={{ accentColor: 'var(--color-primary)', width: '16px', height: '16px' }}
                   />
                   <span>
                     Agriculture biologique{' '}
@@ -351,7 +351,7 @@ export default function SachetSlideOver({ open, seedLot, varieties: initialVarie
               disabled={isPending}
               className="px-5 py-2 rounded-lg text-sm font-medium transition-opacity"
               style={{
-                backgroundColor: '#3A5A40',
+                backgroundColor: 'var(--color-primary)',
                 color:           '#F9F8F6',
                 opacity:         isPending ? 0.6 : 1,
               }}
@@ -380,7 +380,7 @@ const inputStyle: React.CSSProperties = {
 }
 
 function focusStyle(e: React.FocusEvent<HTMLElement>) {
-  ;(e.target as HTMLElement).style.borderColor = '#3A5A40'
+  ;(e.target as HTMLElement).style.borderColor = 'var(--color-primary)'
 }
 function blurStyle(e: React.FocusEvent<HTMLElement>) {
   ;(e.target as HTMLElement).style.borderColor = '#D8E0D9'

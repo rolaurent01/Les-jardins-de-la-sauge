@@ -5,10 +5,14 @@
  * Pour régénérer depuis Supabase CLI (recommandé si le schéma évolue) :
  *   npx supabase gen types typescript --project-id <project-id> > src/lib/supabase/types.ts
  *
- * Inclut les colonnes ajoutées par la migration 002 (deleted_at sur
- * sites, parcels, rows, external_materials) et la migration 004
- * (partie_plante sur toutes les tables de stock et transformation,
- * parties_utilisees sur varieties).
+ * Inclut les colonnes ajoutées par :
+ *   - migration 002 (deleted_at sur sites, parcels, rows, external_materials)
+ *   - migration 004 (partie_plante sur toutes les tables de stock et transformation,
+ *     parties_utilisees sur varieties)
+ *   - migration 007 (occultations)
+ *   - migration 008 (dates NOT NULL, lune sur plantings)
+ *   - migration 011 (multi-tenant : farm_id, created_by, updated_by sur toutes les tables
+ *     métier ; tables plateforme organisations/fermes/membres)
  *
  * Note : chaque table requiert Relationships: [] pour que le SDK v2.x
  * puisse inférer correctement les types Insert/Update.
@@ -35,7 +39,385 @@ export type Database = {
     Tables: {
 
       // ──────────────────────────────────────────────────────────────
-      // 1. RÉFÉRENTIEL
+      // 0. PLATEFORME MULTI-TENANT (migration 011)
+      // ──────────────────────────────────────────────────────────────
+
+      organizations: {
+        Row: {
+          id: string
+          nom: string
+          slug: string
+          nom_affiche: string | null
+          logo_url: string | null
+          couleur_primaire: string
+          couleur_secondaire: string
+          max_farms: number
+          max_users: number
+          plan: 'starter' | 'pro' | 'enterprise'
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          nom: string
+          slug: string
+          nom_affiche?: string | null
+          logo_url?: string | null
+          couleur_primaire?: string
+          couleur_secondaire?: string
+          max_farms?: number
+          max_users?: number
+          plan?: 'starter' | 'pro' | 'enterprise'
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          nom?: string
+          slug?: string
+          nom_affiche?: string | null
+          logo_url?: string | null
+          couleur_primaire?: string
+          couleur_secondaire?: string
+          max_farms?: number
+          max_users?: number
+          plan?: 'starter' | 'pro' | 'enterprise'
+          created_at?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+
+      farms: {
+        Row: {
+          id: string
+          organization_id: string
+          nom: string
+          slug: string
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          organization_id: string
+          nom: string
+          slug: string
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          organization_id?: string
+          nom?: string
+          slug?: string
+          created_at?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: 'farms_organization_id_fkey'
+            columns: ['organization_id']
+            isOneToOne: false
+            referencedRelation: 'organizations'
+            referencedColumns: ['id']
+          }
+        ]
+      }
+
+      memberships: {
+        Row: {
+          id: string
+          organization_id: string
+          user_id: string
+          role: 'owner' | 'admin' | 'member'
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          organization_id: string
+          user_id: string
+          role?: 'owner' | 'admin' | 'member'
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          organization_id?: string
+          user_id?: string
+          role?: 'owner' | 'admin' | 'member'
+          created_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: 'memberships_organization_id_fkey'
+            columns: ['organization_id']
+            isOneToOne: false
+            referencedRelation: 'organizations'
+            referencedColumns: ['id']
+          }
+        ]
+      }
+
+      farm_access: {
+        Row: {
+          id: string
+          farm_id: string
+          user_id: string
+          permission: 'full' | 'read' | 'write'
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          farm_id: string
+          user_id: string
+          permission?: 'full' | 'read' | 'write'
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          farm_id?: string
+          user_id?: string
+          permission?: 'full' | 'read' | 'write'
+          created_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: 'farm_access_farm_id_fkey'
+            columns: ['farm_id']
+            isOneToOne: false
+            referencedRelation: 'farms'
+            referencedColumns: ['id']
+          }
+        ]
+      }
+
+      farm_modules: {
+        Row: {
+          id: string
+          farm_id: string
+          module: string
+          actif: boolean
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          farm_id: string
+          module: string
+          actif?: boolean
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          farm_id?: string
+          module?: string
+          actif?: boolean
+          created_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: 'farm_modules_farm_id_fkey'
+            columns: ['farm_id']
+            isOneToOne: false
+            referencedRelation: 'farms'
+            referencedColumns: ['id']
+          }
+        ]
+      }
+
+      platform_admins: {
+        Row: {
+          user_id: string
+          created_at: string
+        }
+        Insert: {
+          user_id: string
+          created_at?: string
+        }
+        Update: {
+          user_id?: string
+          created_at?: string
+        }
+        Relationships: []
+      }
+
+      farm_variety_settings: {
+        Row: {
+          id: string
+          farm_id: string
+          variety_id: string
+          seuil_alerte_g: number | null
+          actif: boolean
+          notes: string | null
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          farm_id: string
+          variety_id: string
+          seuil_alerte_g?: number | null
+          actif?: boolean
+          notes?: string | null
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          farm_id?: string
+          variety_id?: string
+          seuil_alerte_g?: number | null
+          actif?: boolean
+          notes?: string | null
+          created_at?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: 'farm_variety_settings_farm_id_fkey'
+            columns: ['farm_id']
+            isOneToOne: false
+            referencedRelation: 'farms'
+            referencedColumns: ['id']
+          },
+          {
+            foreignKeyName: 'farm_variety_settings_variety_id_fkey'
+            columns: ['variety_id']
+            isOneToOne: false
+            referencedRelation: 'varieties'
+            referencedColumns: ['id']
+          }
+        ]
+      }
+
+      farm_material_settings: {
+        Row: {
+          id: string
+          farm_id: string
+          external_material_id: string
+          actif: boolean
+          notes: string | null
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          farm_id: string
+          external_material_id: string
+          actif?: boolean
+          notes?: string | null
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          farm_id?: string
+          external_material_id?: string
+          actif?: boolean
+          notes?: string | null
+          created_at?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: 'farm_material_settings_farm_id_fkey'
+            columns: ['farm_id']
+            isOneToOne: false
+            referencedRelation: 'farms'
+            referencedColumns: ['id']
+          },
+          {
+            foreignKeyName: 'farm_material_settings_external_material_id_fkey'
+            columns: ['external_material_id']
+            isOneToOne: false
+            referencedRelation: 'external_materials'
+            referencedColumns: ['id']
+          }
+        ]
+      }
+
+      notifications: {
+        Row: {
+          id: string
+          farm_id: string
+          user_id: string | null
+          type: string
+          titre: string
+          message: string | null
+          lu: boolean
+          metadata: Record<string, unknown> | null
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          farm_id: string
+          user_id?: string | null
+          type: string
+          titre: string
+          message?: string | null
+          lu?: boolean
+          metadata?: Record<string, unknown> | null
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          farm_id?: string
+          user_id?: string | null
+          type?: string
+          titre?: string
+          message?: string | null
+          lu?: boolean
+          metadata?: Record<string, unknown> | null
+          created_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: 'notifications_farm_id_fkey'
+            columns: ['farm_id']
+            isOneToOne: false
+            referencedRelation: 'farms'
+            referencedColumns: ['id']
+          }
+        ]
+      }
+
+      audit_log: {
+        Row: {
+          id: string
+          farm_id: string | null
+          user_id: string | null
+          action: string
+          table_name: string
+          record_id: string | null
+          old_data: Record<string, unknown> | null
+          new_data: Record<string, unknown> | null
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          farm_id?: string | null
+          user_id?: string | null
+          action: string
+          table_name: string
+          record_id?: string | null
+          old_data?: Record<string, unknown> | null
+          new_data?: Record<string, unknown> | null
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          farm_id?: string | null
+          user_id?: string | null
+          action?: string
+          table_name?: string
+          record_id?: string | null
+          old_data?: Record<string, unknown> | null
+          new_data?: Record<string, unknown> | null
+          created_at?: string
+        }
+        Relationships: []
+      }
+
+      // ──────────────────────────────────────────────────────────────
+      // 1. RÉFÉRENTIEL (catalogue partagé)
       // ──────────────────────────────────────────────────────────────
 
       varieties: {
@@ -47,9 +429,15 @@ export type Database = {
           type_cycle: 'annuelle' | 'bisannuelle' | 'perenne' | 'vivace' | null
           duree_peremption_mois: number
           parties_utilisees: PartiePlante[]
-          seuil_alerte_g: number | null
           notes: string | null
           deleted_at: string | null
+          // champs catalogue multi-tenant (migration 011)
+          created_by_farm_id: string | null
+          created_by: string | null
+          updated_by: string | null
+          verified: boolean
+          aliases: string[] | null
+          merged_into_id: string | null
           created_at: string
           updated_at: string
         }
@@ -61,9 +449,14 @@ export type Database = {
           type_cycle?: 'annuelle' | 'bisannuelle' | 'perenne' | 'vivace' | null
           duree_peremption_mois?: number
           parties_utilisees?: PartiePlante[]
-          seuil_alerte_g?: number | null
           notes?: string | null
           deleted_at?: string | null
+          created_by_farm_id?: string | null
+          created_by?: string | null
+          updated_by?: string | null
+          verified?: boolean
+          aliases?: string[] | null
+          merged_into_id?: string | null
           created_at?: string
           updated_at?: string
         }
@@ -75,9 +468,14 @@ export type Database = {
           type_cycle?: 'annuelle' | 'bisannuelle' | 'perenne' | 'vivace' | null
           duree_peremption_mois?: number
           parties_utilisees?: PartiePlante[]
-          seuil_alerte_g?: number | null
           notes?: string | null
           deleted_at?: string | null
+          created_by_farm_id?: string | null
+          created_by?: string | null
+          updated_by?: string | null
+          verified?: boolean
+          aliases?: string[] | null
+          merged_into_id?: string | null
           created_at?: string
           updated_at?: string
         }
@@ -91,6 +489,10 @@ export type Database = {
           unite: string
           notes: string | null
           deleted_at: string | null
+          // champs catalogue multi-tenant (migration 011)
+          created_by_farm_id: string | null
+          created_by: string | null
+          updated_by: string | null
           created_at: string
         }
         Insert: {
@@ -99,6 +501,9 @@ export type Database = {
           unite?: string
           notes?: string | null
           deleted_at?: string | null
+          created_by_farm_id?: string | null
+          created_by?: string | null
+          updated_by?: string | null
           created_at?: string
         }
         Update: {
@@ -107,6 +512,9 @@ export type Database = {
           unite?: string
           notes?: string | null
           deleted_at?: string | null
+          created_by_farm_id?: string | null
+          created_by?: string | null
+          updated_by?: string | null
           created_at?: string
         }
         Relationships: []
@@ -115,23 +523,32 @@ export type Database = {
       sites: {
         Row: {
           id: string
+          farm_id: string
           nom: string
           description: string | null
           deleted_at: string | null
+          created_by: string | null
+          updated_by: string | null
           created_at: string
         }
         Insert: {
           id?: string
+          farm_id?: string
           nom: string
           description?: string | null
           deleted_at?: string | null
+          created_by?: string | null
+          updated_by?: string | null
           created_at?: string
         }
         Update: {
           id?: string
+          farm_id?: string
           nom?: string
           description?: string | null
           deleted_at?: string | null
+          created_by?: string | null
+          updated_by?: string | null
           created_at?: string
         }
         Relationships: []
@@ -140,32 +557,41 @@ export type Database = {
       parcels: {
         Row: {
           id: string
+          farm_id: string
           site_id: string | null
           nom: string
           code: string
           orientation: string | null
           description: string | null
           deleted_at: string | null
+          created_by: string | null
+          updated_by: string | null
           created_at: string
         }
         Insert: {
           id?: string
+          farm_id?: string
           site_id?: string | null
           nom: string
           code: string
           orientation?: string | null
           description?: string | null
           deleted_at?: string | null
+          created_by?: string | null
+          updated_by?: string | null
           created_at?: string
         }
         Update: {
           id?: string
+          farm_id?: string
           site_id?: string | null
           nom?: string
           code?: string
           orientation?: string | null
           description?: string | null
           deleted_at?: string | null
+          created_by?: string | null
+          updated_by?: string | null
           created_at?: string
         }
         Relationships: [
@@ -182,6 +608,7 @@ export type Database = {
       rows: {
         Row: {
           id: string
+          farm_id: string
           parcel_id: string | null
           numero: string
           ancien_numero: string | null
@@ -190,10 +617,13 @@ export type Database = {
           position_ordre: number | null
           notes: string | null
           deleted_at: string | null
+          created_by: string | null
+          updated_by: string | null
           created_at: string
         }
         Insert: {
           id?: string
+          farm_id?: string
           parcel_id?: string | null
           numero: string
           ancien_numero?: string | null
@@ -202,10 +632,13 @@ export type Database = {
           position_ordre?: number | null
           notes?: string | null
           deleted_at?: string | null
+          created_by?: string | null
+          updated_by?: string | null
           created_at?: string
         }
         Update: {
           id?: string
+          farm_id?: string
           parcel_id?: string | null
           numero?: string
           ancien_numero?: string | null
@@ -214,6 +647,8 @@ export type Database = {
           position_ordre?: number | null
           notes?: string | null
           deleted_at?: string | null
+          created_by?: string | null
+          updated_by?: string | null
           created_at?: string
         }
         Relationships: [
@@ -234,6 +669,7 @@ export type Database = {
       seed_lots: {
         Row: {
           id: string
+          farm_id: string
           uuid_client: string | null
           lot_interne: string
           variety_id: string | null
@@ -246,10 +682,13 @@ export type Database = {
           certif_ab: boolean
           commentaire: string | null
           deleted_at: string | null
+          created_by: string | null
+          updated_by: string | null
           created_at: string
         }
         Insert: {
           id?: string
+          farm_id?: string
           uuid_client?: string | null
           lot_interne: string
           variety_id?: string | null
@@ -262,10 +701,13 @@ export type Database = {
           certif_ab?: boolean
           commentaire?: string | null
           deleted_at?: string | null
+          created_by?: string | null
+          updated_by?: string | null
           created_at?: string
         }
         Update: {
           id?: string
+          farm_id?: string
           uuid_client?: string | null
           lot_interne?: string
           variety_id?: string | null
@@ -278,6 +720,8 @@ export type Database = {
           certif_ab?: boolean
           commentaire?: string | null
           deleted_at?: string | null
+          created_by?: string | null
+          updated_by?: string | null
           created_at?: string
         }
         Relationships: [
@@ -294,6 +738,7 @@ export type Database = {
       seedlings: {
         Row: {
           id: string
+          farm_id: string
           uuid_client: string | null
           seed_lot_id: string | null
           variety_id: string | null
@@ -316,10 +761,13 @@ export type Database = {
           temps_repiquage_min: number | null
           commentaire: string | null
           deleted_at: string | null
+          created_by: string | null
+          updated_by: string | null
           created_at: string
         }
         Insert: {
           id?: string
+          farm_id?: string
           uuid_client?: string | null
           seed_lot_id?: string | null
           variety_id?: string | null
@@ -342,10 +790,13 @@ export type Database = {
           temps_repiquage_min?: number | null
           commentaire?: string | null
           deleted_at?: string | null
+          created_by?: string | null
+          updated_by?: string | null
           created_at?: string
         }
         Update: {
           id?: string
+          farm_id?: string
           uuid_client?: string | null
           seed_lot_id?: string | null
           variety_id?: string | null
@@ -368,6 +819,8 @@ export type Database = {
           temps_repiquage_min?: number | null
           commentaire?: string | null
           deleted_at?: string | null
+          created_by?: string | null
+          updated_by?: string | null
           created_at?: string
         }
         Relationships: []
@@ -380,6 +833,7 @@ export type Database = {
       soil_works: {
         Row: {
           id: string
+          farm_id: string
           uuid_client: string | null
           row_id: string | null
           date: string
@@ -387,10 +841,13 @@ export type Database = {
           detail: string | null
           temps_min: number | null
           commentaire: string | null
+          created_by: string | null
+          updated_by: string | null
           created_at: string
         }
         Insert: {
           id?: string
+          farm_id?: string
           uuid_client?: string | null
           row_id?: string | null
           date: string
@@ -398,10 +855,13 @@ export type Database = {
           detail?: string | null
           temps_min?: number | null
           commentaire?: string | null
+          created_by?: string | null
+          updated_by?: string | null
           created_at?: string
         }
         Update: {
           id?: string
+          farm_id?: string
           uuid_client?: string | null
           row_id?: string | null
           date?: string
@@ -409,6 +869,8 @@ export type Database = {
           detail?: string | null
           temps_min?: number | null
           commentaire?: string | null
+          created_by?: string | null
+          updated_by?: string | null
           created_at?: string
         }
         Relationships: []
@@ -417,6 +879,7 @@ export type Database = {
       plantings: {
         Row: {
           id: string
+          farm_id: string
           uuid_client: string | null
           row_id: string | null
           variety_id: string | null
@@ -440,10 +903,13 @@ export type Database = {
           commentaire: string | null
           actif: boolean
           deleted_at: string | null
+          created_by: string | null
+          updated_by: string | null
           created_at: string
         }
         Insert: {
           id?: string
+          farm_id?: string
           uuid_client?: string | null
           row_id?: string | null
           variety_id?: string | null
@@ -467,10 +933,13 @@ export type Database = {
           commentaire?: string | null
           actif?: boolean
           deleted_at?: string | null
+          created_by?: string | null
+          updated_by?: string | null
           created_at?: string
         }
         Update: {
           id?: string
+          farm_id?: string
           uuid_client?: string | null
           row_id?: string | null
           variety_id?: string | null
@@ -494,6 +963,8 @@ export type Database = {
           commentaire?: string | null
           actif?: boolean
           deleted_at?: string | null
+          created_by?: string | null
+          updated_by?: string | null
           created_at?: string
         }
         Relationships: []
@@ -502,6 +973,7 @@ export type Database = {
       row_care: {
         Row: {
           id: string
+          farm_id: string
           uuid_client: string | null
           row_id: string | null
           variety_id: string
@@ -509,10 +981,13 @@ export type Database = {
           type_soin: 'desherbage' | 'paillage' | 'arrosage' | 'autre' | null
           temps_min: number | null
           commentaire: string | null
+          created_by: string | null
+          updated_by: string | null
           created_at: string
         }
         Insert: {
           id?: string
+          farm_id?: string
           uuid_client?: string | null
           row_id?: string | null
           variety_id: string
@@ -520,10 +995,13 @@ export type Database = {
           type_soin?: 'desherbage' | 'paillage' | 'arrosage' | 'autre' | null
           temps_min?: number | null
           commentaire?: string | null
+          created_by?: string | null
+          updated_by?: string | null
           created_at?: string
         }
         Update: {
           id?: string
+          farm_id?: string
           uuid_client?: string | null
           row_id?: string | null
           variety_id?: string
@@ -531,6 +1009,8 @@ export type Database = {
           type_soin?: 'desherbage' | 'paillage' | 'arrosage' | 'autre' | null
           temps_min?: number | null
           commentaire?: string | null
+          created_by?: string | null
+          updated_by?: string | null
           created_at?: string
         }
         Relationships: []
@@ -539,6 +1019,7 @@ export type Database = {
       harvests: {
         Row: {
           id: string
+          farm_id: string
           uuid_client: string | null
           type_cueillette: 'parcelle' | 'sauvage'
           row_id: string | null
@@ -550,10 +1031,13 @@ export type Database = {
           temps_min: number | null
           commentaire: string | null
           deleted_at: string | null
+          created_by: string | null
+          updated_by: string | null
           created_at: string
         }
         Insert: {
           id?: string
+          farm_id?: string
           uuid_client?: string | null
           type_cueillette: 'parcelle' | 'sauvage'
           row_id?: string | null
@@ -565,10 +1049,13 @@ export type Database = {
           temps_min?: number | null
           commentaire?: string | null
           deleted_at?: string | null
+          created_by?: string | null
+          updated_by?: string | null
           created_at?: string
         }
         Update: {
           id?: string
+          farm_id?: string
           uuid_client?: string | null
           type_cueillette?: 'parcelle' | 'sauvage'
           row_id?: string | null
@@ -580,6 +1067,8 @@ export type Database = {
           temps_min?: number | null
           commentaire?: string | null
           deleted_at?: string | null
+          created_by?: string | null
+          updated_by?: string | null
           created_at?: string
         }
         Relationships: []
@@ -588,32 +1077,41 @@ export type Database = {
       uprootings: {
         Row: {
           id: string
+          farm_id: string
           uuid_client: string | null
           row_id: string
           variety_id: string | null
           date: string
           temps_min: number | null
           commentaire: string | null
+          created_by: string | null
+          updated_by: string | null
           created_at: string
         }
         Insert: {
           id?: string
+          farm_id?: string
           uuid_client?: string | null
           row_id: string
           variety_id?: string | null
           date: string
           temps_min?: number | null
           commentaire?: string | null
+          created_by?: string | null
+          updated_by?: string | null
           created_at?: string
         }
         Update: {
           id?: string
+          farm_id?: string
           uuid_client?: string | null
           row_id?: string
           variety_id?: string | null
           date?: string
           temps_min?: number | null
           commentaire?: string | null
+          created_by?: string | null
+          updated_by?: string | null
           created_at?: string
         }
         Relationships: []
@@ -622,6 +1120,7 @@ export type Database = {
       occultations: {
         Row: {
           id: string
+          farm_id: string
           uuid_client: string | null
           row_id: string
           date_debut: string
@@ -636,10 +1135,13 @@ export type Database = {
           temps_retrait_min: number | null
           temps_min: number | null
           commentaire: string | null
+          created_by: string | null
+          updated_by: string | null
           created_at: string
         }
         Insert: {
           id?: string
+          farm_id?: string
           uuid_client?: string | null
           row_id: string
           date_debut: string
@@ -654,10 +1156,13 @@ export type Database = {
           temps_retrait_min?: number | null
           temps_min?: number | null
           commentaire?: string | null
+          created_by?: string | null
+          updated_by?: string | null
           created_at?: string
         }
         Update: {
           id?: string
+          farm_id?: string
           uuid_client?: string | null
           row_id?: string
           date_debut?: string
@@ -672,6 +1177,8 @@ export type Database = {
           temps_retrait_min?: number | null
           temps_min?: number | null
           commentaire?: string | null
+          created_by?: string | null
+          updated_by?: string | null
           created_at?: string
         }
         Relationships: []
@@ -684,6 +1191,7 @@ export type Database = {
       cuttings: {
         Row: {
           id: string
+          farm_id: string
           uuid_client: string | null
           variety_id: string
           partie_plante: PartiePlante
@@ -692,10 +1200,13 @@ export type Database = {
           poids_g: number
           temps_min: number | null
           commentaire: string | null
+          created_by: string | null
+          updated_by: string | null
           created_at: string
         }
         Insert: {
           id?: string
+          farm_id?: string
           uuid_client?: string | null
           variety_id: string
           partie_plante: PartiePlante
@@ -704,10 +1215,13 @@ export type Database = {
           poids_g: number
           temps_min?: number | null
           commentaire?: string | null
+          created_by?: string | null
+          updated_by?: string | null
           created_at?: string
         }
         Update: {
           id?: string
+          farm_id?: string
           uuid_client?: string | null
           variety_id?: string
           partie_plante?: PartiePlante
@@ -716,6 +1230,8 @@ export type Database = {
           poids_g?: number
           temps_min?: number | null
           commentaire?: string | null
+          created_by?: string | null
+          updated_by?: string | null
           created_at?: string
         }
         Relationships: []
@@ -724,6 +1240,7 @@ export type Database = {
       dryings: {
         Row: {
           id: string
+          farm_id: string
           uuid_client: string | null
           variety_id: string
           partie_plante: PartiePlante
@@ -734,10 +1251,13 @@ export type Database = {
           temps_min: number | null
           commentaire: string | null
           deleted_at: string | null
+          created_by: string | null
+          updated_by: string | null
           created_at: string
         }
         Insert: {
           id?: string
+          farm_id?: string
           uuid_client?: string | null
           variety_id: string
           partie_plante: PartiePlante
@@ -748,10 +1268,13 @@ export type Database = {
           temps_min?: number | null
           commentaire?: string | null
           deleted_at?: string | null
+          created_by?: string | null
+          updated_by?: string | null
           created_at?: string
         }
         Update: {
           id?: string
+          farm_id?: string
           uuid_client?: string | null
           variety_id?: string
           partie_plante?: PartiePlante
@@ -762,6 +1285,8 @@ export type Database = {
           temps_min?: number | null
           commentaire?: string | null
           deleted_at?: string | null
+          created_by?: string | null
+          updated_by?: string | null
           created_at?: string
         }
         Relationships: []
@@ -770,6 +1295,7 @@ export type Database = {
       sortings: {
         Row: {
           id: string
+          farm_id: string
           uuid_client: string | null
           variety_id: string
           partie_plante: PartiePlante
@@ -780,10 +1306,13 @@ export type Database = {
           temps_min: number | null
           commentaire: string | null
           deleted_at: string | null
+          created_by: string | null
+          updated_by: string | null
           created_at: string
         }
         Insert: {
           id?: string
+          farm_id?: string
           uuid_client?: string | null
           variety_id: string
           partie_plante: PartiePlante
@@ -794,10 +1323,13 @@ export type Database = {
           temps_min?: number | null
           commentaire?: string | null
           deleted_at?: string | null
+          created_by?: string | null
+          updated_by?: string | null
           created_at?: string
         }
         Update: {
           id?: string
+          farm_id?: string
           uuid_client?: string | null
           variety_id?: string
           partie_plante?: PartiePlante
@@ -808,6 +1340,8 @@ export type Database = {
           temps_min?: number | null
           commentaire?: string | null
           deleted_at?: string | null
+          created_by?: string | null
+          updated_by?: string | null
           created_at?: string
         }
         Relationships: []
@@ -820,6 +1354,7 @@ export type Database = {
       stock_movements: {
         Row: {
           id: string
+          farm_id: string
           variety_id: string
           partie_plante: PartiePlante
           date: string
@@ -830,10 +1365,13 @@ export type Database = {
           source_id: string | null
           commentaire: string | null
           deleted_at: string | null
+          // pas de updated_by — les mouvements sont immuables
+          created_by: string | null
           created_at: string
         }
         Insert: {
           id?: string
+          farm_id?: string
           variety_id: string
           partie_plante: PartiePlante
           date: string
@@ -844,10 +1382,12 @@ export type Database = {
           source_id?: string | null
           commentaire?: string | null
           deleted_at?: string | null
+          created_by?: string | null
           created_at?: string
         }
         Update: {
           id?: string
+          farm_id?: string
           variety_id?: string
           partie_plante?: PartiePlante
           date?: string
@@ -858,6 +1398,7 @@ export type Database = {
           source_id?: string | null
           commentaire?: string | null
           deleted_at?: string | null
+          created_by?: string | null
           created_at?: string
         }
         Relationships: []
@@ -866,6 +1407,7 @@ export type Database = {
       stock_purchases: {
         Row: {
           id: string
+          farm_id: string
           uuid_client: string | null
           variety_id: string
           partie_plante: PartiePlante
@@ -877,10 +1419,13 @@ export type Database = {
           certif_ab: boolean
           prix: number | null
           commentaire: string | null
+          created_by: string | null
+          updated_by: string | null
           created_at: string
         }
         Insert: {
           id?: string
+          farm_id?: string
           uuid_client?: string | null
           variety_id: string
           partie_plante: PartiePlante
@@ -892,10 +1437,13 @@ export type Database = {
           certif_ab?: boolean
           prix?: number | null
           commentaire?: string | null
+          created_by?: string | null
+          updated_by?: string | null
           created_at?: string
         }
         Update: {
           id?: string
+          farm_id?: string
           uuid_client?: string | null
           variety_id?: string
           partie_plante?: PartiePlante
@@ -907,6 +1455,8 @@ export type Database = {
           certif_ab?: boolean
           prix?: number | null
           commentaire?: string | null
+          created_by?: string | null
+          updated_by?: string | null
           created_at?: string
         }
         Relationships: []
@@ -915,6 +1465,7 @@ export type Database = {
       stock_direct_sales: {
         Row: {
           id: string
+          farm_id: string
           uuid_client: string | null
           variety_id: string
           partie_plante: PartiePlante
@@ -923,10 +1474,13 @@ export type Database = {
           poids_g: number
           destinataire: string | null
           commentaire: string | null
+          created_by: string | null
+          updated_by: string | null
           created_at: string
         }
         Insert: {
           id?: string
+          farm_id?: string
           uuid_client?: string | null
           variety_id: string
           partie_plante: PartiePlante
@@ -935,10 +1489,13 @@ export type Database = {
           poids_g: number
           destinataire?: string | null
           commentaire?: string | null
+          created_by?: string | null
+          updated_by?: string | null
           created_at?: string
         }
         Update: {
           id?: string
+          farm_id?: string
           uuid_client?: string | null
           variety_id?: string
           partie_plante?: PartiePlante
@@ -947,6 +1504,8 @@ export type Database = {
           poids_g?: number
           destinataire?: string | null
           commentaire?: string | null
+          created_by?: string | null
+          updated_by?: string | null
           created_at?: string
         }
         Relationships: []
@@ -955,6 +1514,7 @@ export type Database = {
       stock_adjustments: {
         Row: {
           id: string
+          farm_id: string
           uuid_client: string | null
           variety_id: string
           partie_plante: PartiePlante
@@ -963,10 +1523,13 @@ export type Database = {
           etat_plante: string
           poids_g: number
           motif: string
+          created_by: string | null
+          updated_by: string | null
           created_at: string
         }
         Insert: {
           id?: string
+          farm_id?: string
           uuid_client?: string | null
           variety_id: string
           partie_plante: PartiePlante
@@ -975,10 +1538,13 @@ export type Database = {
           etat_plante: string
           poids_g: number
           motif: string
+          created_by?: string | null
+          updated_by?: string | null
           created_at?: string
         }
         Update: {
           id?: string
+          farm_id?: string
           uuid_client?: string | null
           variety_id?: string
           partie_plante?: PartiePlante
@@ -987,6 +1553,8 @@ export type Database = {
           etat_plante?: string
           poids_g?: number
           motif?: string
+          created_by?: string | null
+          updated_by?: string | null
           created_at?: string
         }
         Relationships: []
@@ -1000,16 +1568,26 @@ export type Database = {
         Row: {
           id: string
           nom: string
+          // champs catalogue multi-tenant (migration 011)
+          created_by_farm_id: string | null
+          created_by: string | null
+          updated_by: string | null
           created_at: string
         }
         Insert: {
           id?: string
           nom: string
+          created_by_farm_id?: string | null
+          created_by?: string | null
+          updated_by?: string | null
           created_at?: string
         }
         Update: {
           id?: string
           nom?: string
+          created_by_farm_id?: string | null
+          created_by?: string | null
+          updated_by?: string | null
           created_at?: string
         }
         Relationships: []
@@ -1018,6 +1596,7 @@ export type Database = {
       recipes: {
         Row: {
           id: string
+          farm_id: string
           category_id: string | null
           nom: string
           numero_tisane: string | null
@@ -1025,11 +1604,14 @@ export type Database = {
           description: string | null
           actif: boolean
           deleted_at: string | null
+          created_by: string | null
+          updated_by: string | null
           created_at: string
           updated_at: string
         }
         Insert: {
           id?: string
+          farm_id?: string
           category_id?: string | null
           nom: string
           numero_tisane?: string | null
@@ -1037,11 +1619,14 @@ export type Database = {
           description?: string | null
           actif?: boolean
           deleted_at?: string | null
+          created_by?: string | null
+          updated_by?: string | null
           created_at?: string
           updated_at?: string
         }
         Update: {
           id?: string
+          farm_id?: string
           category_id?: string | null
           nom?: string
           numero_tisane?: string | null
@@ -1049,6 +1634,8 @@ export type Database = {
           description?: string | null
           actif?: boolean
           deleted_at?: string | null
+          created_by?: string | null
+          updated_by?: string | null
           created_at?: string
           updated_at?: string
         }
@@ -1058,6 +1645,7 @@ export type Database = {
       recipe_ingredients: {
         Row: {
           id: string
+          farm_id: string
           recipe_id: string | null
           variety_id: string | null
           external_material_id: string | null
@@ -1069,6 +1657,7 @@ export type Database = {
         }
         Insert: {
           id?: string
+          farm_id?: string
           recipe_id?: string | null
           variety_id?: string | null
           external_material_id?: string | null
@@ -1080,6 +1669,7 @@ export type Database = {
         }
         Update: {
           id?: string
+          farm_id?: string
           recipe_id?: string | null
           variety_id?: string | null
           external_material_id?: string | null
@@ -1095,6 +1685,7 @@ export type Database = {
       production_lots: {
         Row: {
           id: string
+          farm_id: string
           uuid_client: string | null
           recipe_id: string | null
           numero_lot: string
@@ -1105,10 +1696,13 @@ export type Database = {
           temps_min: number | null
           commentaire: string | null
           deleted_at: string | null
+          created_by: string | null
+          updated_by: string | null
           created_at: string
         }
         Insert: {
           id?: string
+          farm_id?: string
           uuid_client?: string | null
           recipe_id?: string | null
           numero_lot: string
@@ -1119,10 +1713,13 @@ export type Database = {
           temps_min?: number | null
           commentaire?: string | null
           deleted_at?: string | null
+          created_by?: string | null
+          updated_by?: string | null
           created_at?: string
         }
         Update: {
           id?: string
+          farm_id?: string
           uuid_client?: string | null
           recipe_id?: string | null
           numero_lot?: string
@@ -1133,6 +1730,8 @@ export type Database = {
           temps_min?: number | null
           commentaire?: string | null
           deleted_at?: string | null
+          created_by?: string | null
+          updated_by?: string | null
           created_at?: string
         }
         Relationships: []
@@ -1141,6 +1740,7 @@ export type Database = {
       production_lot_ingredients: {
         Row: {
           id: string
+          farm_id: string
           production_lot_id: string | null
           variety_id: string | null
           external_material_id: string | null
@@ -1154,6 +1754,7 @@ export type Database = {
         }
         Insert: {
           id?: string
+          farm_id?: string
           production_lot_id?: string | null
           variety_id?: string | null
           external_material_id?: string | null
@@ -1167,6 +1768,7 @@ export type Database = {
         }
         Update: {
           id?: string
+          farm_id?: string
           production_lot_id?: string | null
           variety_id?: string | null
           external_material_id?: string | null
@@ -1184,29 +1786,38 @@ export type Database = {
       product_stock_movements: {
         Row: {
           id: string
+          farm_id: string
           production_lot_id: string | null
           date: string
           type_mouvement: 'entree' | 'sortie'
           quantite: number
           commentaire: string | null
+          created_by: string | null
+          updated_by: string | null
           created_at: string
         }
         Insert: {
           id?: string
+          farm_id?: string
           production_lot_id?: string | null
           date: string
           type_mouvement: 'entree' | 'sortie'
           quantite: number
           commentaire?: string | null
+          created_by?: string | null
+          updated_by?: string | null
           created_at?: string
         }
         Update: {
           id?: string
+          farm_id?: string
           production_lot_id?: string | null
           date?: string
           type_mouvement?: 'entree' | 'sortie'
           quantite?: number
           commentaire?: string | null
+          created_by?: string | null
+          updated_by?: string | null
           created_at?: string
         }
         Relationships: []
@@ -1219,32 +1830,41 @@ export type Database = {
       forecasts: {
         Row: {
           id: string
+          farm_id: string
           annee: number
           variety_id: string
           etat_plante: string
           partie_plante: PartiePlante | null
           quantite_prevue_g: number | null
           commentaire: string | null
+          created_by: string | null
+          updated_by: string | null
           created_at: string
         }
         Insert: {
           id?: string
+          farm_id?: string
           annee: number
           variety_id: string
           etat_plante: string
           partie_plante?: PartiePlante | null
           quantite_prevue_g?: number | null
           commentaire?: string | null
+          created_by?: string | null
+          updated_by?: string | null
           created_at?: string
         }
         Update: {
           id?: string
+          farm_id?: string
           annee?: number
           variety_id?: string
           etat_plante?: string
           partie_plante?: PartiePlante | null
           quantite_prevue_g?: number | null
           commentaire?: string | null
+          created_by?: string | null
+          updated_by?: string | null
           created_at?: string
         }
         Relationships: []
@@ -1257,6 +1877,7 @@ export type Database = {
       production_summary: {
         Row: {
           id: string
+          farm_id: string
           variety_id: string
           annee: number
           mois: number | null
@@ -1272,10 +1893,12 @@ export type Database = {
           temps_sechage_min: number
           temps_triage_min: number
           temps_production_min: number
+          // pas de created_by/updated_by — table agrégat maintenue par triggers
           updated_at: string
         }
         Insert: {
           id?: string
+          farm_id?: string
           variety_id: string
           annee: number
           mois?: number | null
@@ -1295,6 +1918,7 @@ export type Database = {
         }
         Update: {
           id?: string
+          farm_id?: string
           variety_id?: string
           annee?: number
           mois?: number | null
@@ -1322,26 +1946,32 @@ export type Database = {
       app_logs: {
         Row: {
           id: string
+          farm_id: string
           level: 'info' | 'warn' | 'error'
           source: string
           message: string
           metadata: Record<string, unknown> | null
+          created_by: string | null
           created_at: string
         }
         Insert: {
           id?: string
+          farm_id?: string
           level: 'info' | 'warn' | 'error'
           source: string
           message: string
           metadata?: Record<string, unknown> | null
+          created_by?: string | null
           created_at?: string
         }
         Update: {
           id?: string
+          farm_id?: string
           level?: 'info' | 'warn' | 'error'
           source?: string
           message?: string
           metadata?: Record<string, unknown> | null
+          created_by?: string | null
           created_at?: string
         }
         Relationships: []
@@ -1349,9 +1979,10 @@ export type Database = {
     }
 
     Views: {
-      // Vue v_stock — stock calculé en temps réel par variété × partie × état
+      // Vue v_stock — stock calculé en temps réel par ferme × variété × partie × état
       v_stock: {
         Row: {
+          farm_id: string
           variety_id: string
           nom_vernaculaire: string
           partie_plante: PartiePlante

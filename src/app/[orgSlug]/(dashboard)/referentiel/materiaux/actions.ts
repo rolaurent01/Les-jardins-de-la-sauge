@@ -2,9 +2,9 @@
 
 import { createClient } from '@/lib/supabase/server'
 import { revalidatePath } from 'next/cache'
+import { getContext } from '@/lib/context'
+import { buildPath } from '@/lib/utils/path'
 import type { ActionResult, ExternalMaterial } from '@/lib/types'
-
-const REVALIDATE = '/referentiel/materiaux'
 
 function parseMaterialForm(formData: FormData) {
   return {
@@ -16,13 +16,14 @@ function parseMaterialForm(formData: FormData) {
 
 export async function createMaterial(formData: FormData): Promise<ActionResult<ExternalMaterial>> {
   const supabase = await createClient()
+  const { userId, farmId, orgSlug } = await getContext()
   const fields = parseMaterialForm(formData)
 
   if (!fields.nom) return { error: 'Le nom du matériau est obligatoire.' }
 
   const { data, error } = await supabase
     .from('external_materials')
-    .insert(fields)
+    .insert({ ...fields, created_by_farm_id: farmId, created_by: userId })
     .select()
     .single()
 
@@ -31,19 +32,20 @@ export async function createMaterial(formData: FormData): Promise<ActionResult<E
     return { error: `Erreur : ${error.message}` }
   }
 
-  revalidatePath(REVALIDATE)
+  revalidatePath(buildPath(orgSlug, '/referentiel/materiaux'))
   return { success: true, data: data as ExternalMaterial }
 }
 
 export async function updateMaterial(id: string, formData: FormData): Promise<ActionResult> {
   const supabase = await createClient()
+  const { userId, orgSlug } = await getContext()
   const fields = parseMaterialForm(formData)
 
   if (!fields.nom) return { error: 'Le nom du matériau est obligatoire.' }
 
   const { error } = await supabase
     .from('external_materials')
-    .update(fields)
+    .update({ ...fields, updated_by: userId })
     .eq('id', id)
 
   if (error) {
@@ -51,30 +53,34 @@ export async function updateMaterial(id: string, formData: FormData): Promise<Ac
     return { error: `Erreur : ${error.message}` }
   }
 
-  revalidatePath(REVALIDATE)
+  revalidatePath(buildPath(orgSlug, '/referentiel/materiaux'))
   return { success: true }
 }
 
 export async function archiveMaterial(id: string): Promise<ActionResult> {
   const supabase = await createClient()
+  const { userId, orgSlug } = await getContext()
+
   const { error } = await supabase
     .from('external_materials')
-    .update({ deleted_at: new Date().toISOString() })
+    .update({ deleted_at: new Date().toISOString(), updated_by: userId })
     .eq('id', id)
 
   if (error) return { error: `Erreur lors de l'archivage : ${error.message}` }
-  revalidatePath(REVALIDATE)
+  revalidatePath(buildPath(orgSlug, '/referentiel/materiaux'))
   return { success: true }
 }
 
 export async function restoreMaterial(id: string): Promise<ActionResult> {
   const supabase = await createClient()
+  const { userId, orgSlug } = await getContext()
+
   const { error } = await supabase
     .from('external_materials')
-    .update({ deleted_at: null })
+    .update({ deleted_at: null, updated_by: userId })
     .eq('id', id)
 
   if (error) return { error: `Erreur lors de la restauration : ${error.message}` }
-  revalidatePath(REVALIDATE)
+  revalidatePath(buildPath(orgSlug, '/referentiel/materiaux'))
   return { success: true }
 }

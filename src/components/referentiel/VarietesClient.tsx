@@ -4,7 +4,7 @@ import { useState, useEffect, useTransition } from 'react'
 import { useRouter } from 'next/navigation'
 import type { Variety, PartiePlante } from '@/lib/types'
 import { PARTIE_PLANTE_LABELS } from '@/lib/types'
-import { archiveVariety, restoreVariety, createVariety, updateVariety } from '@/app/(dashboard)/referentiel/varietes/actions'
+import { archiveVariety, restoreVariety, createVariety, updateVariety } from '@/app/[orgSlug]/(dashboard)/referentiel/varietes/actions'
 import VarieteSlideOver from './VarieteSlideOver'
 
 /* Normalise une chaîne pour la recherche insensible casse + accents */
@@ -136,7 +136,7 @@ export default function VarietesClient({ initialVarieties }: { initialVarieties:
         <button
           onClick={openCreate}
           className="flex items-center gap-1.5 px-4 py-2 rounded-lg text-sm font-medium transition-opacity"
-          style={{ backgroundColor: '#3A5A40', color: '#F9F8F6' }}
+          style={{ backgroundColor: 'var(--color-primary)', color: '#F9F8F6' }}
         >
           <span className="text-base leading-none">＋</span>
           Nouvelle variété
@@ -163,7 +163,7 @@ export default function VarietesClient({ initialVarieties }: { initialVarieties:
               borderColor: '#D8E0D9',
               color: '#2C3E2D',
             }}
-            onFocus={e  => (e.target.style.borderColor = '#3A5A40')}
+            onFocus={e  => (e.target.style.borderColor = 'var(--color-primary)')}
             onBlur={e   => (e.target.style.borderColor = '#D8E0D9')}
           />
         </div>
@@ -173,9 +173,9 @@ export default function VarietesClient({ initialVarieties }: { initialVarieties:
             onClick={() => setShowArchived(s => !s)}
             className="flex items-center gap-1.5 px-3 py-2 rounded-lg text-sm border transition-colors"
             style={{
-              borderColor: showArchived ? '#3A5A40' : '#D8E0D9',
-              backgroundColor: showArchived ? '#3A5A4012' : 'transparent',
-              color: showArchived ? '#3A5A40' : '#9CA89D',
+              borderColor: showArchived ? 'var(--color-primary)' : '#D8E0D9',
+              backgroundColor: showArchived ? 'color-mix(in srgb, var(--color-primary) 7%, transparent)' : 'transparent',
+              color: showArchived ? 'var(--color-primary)' : '#9CA89D',
             }}
           >
             {showArchived ? '← Actives' : `Archivées (${archived.length})`}
@@ -212,7 +212,6 @@ export default function VarietesClient({ initialVarieties }: { initialVarieties:
                 <Th>Cycle</Th>
                 <Th>Parties</Th>
                 <Th align="right">Péremption</Th>
-                <Th align="right">Seuil alerte</Th>
                 <Th align="right">Actions</Th>
               </tr>
             </thead>
@@ -297,17 +296,6 @@ export default function VarietesClient({ initialVarieties }: { initialVarieties:
                       {v.duree_peremption_mois} mois
                     </td>
 
-                    {/* Seuil alerte */}
-                    <td className="px-4 py-3 text-right">
-                      {v.seuil_alerte_g != null ? (
-                        <span style={{ color: '#DDA15E' }}>
-                          🔔 {v.seuil_alerte_g} g
-                        </span>
-                      ) : (
-                        <Dash />
-                      )}
-                    </td>
-
                     {/* Actions */}
                     <td className="px-4 py-3">
                       <div className="flex items-center justify-end gap-1">
@@ -317,8 +305,8 @@ export default function VarietesClient({ initialVarieties }: { initialVarieties:
                             disabled={isPending}
                             className="px-2.5 py-1 rounded-lg text-xs border transition-colors"
                             style={{
-                              borderColor: '#3A5A40',
-                              color: '#3A5A40',
+                              borderColor: 'var(--color-primary)',
+                              color: 'var(--color-primary)',
                             }}
                           >
                             Restaurer
@@ -347,7 +335,7 @@ export default function VarietesClient({ initialVarieties }: { initialVarieties:
                               className="p-1.5 rounded-lg transition-colors"
                               title="Modifier"
                               style={{ color: '#9CA89D' }}
-                              onMouseEnter={e => ((e.currentTarget as HTMLElement).style.color = '#3A5A40')}
+                              onMouseEnter={e => ((e.currentTarget as HTMLElement).style.color = 'var(--color-primary)')}
                               onMouseLeave={e => ((e.currentTarget as HTMLElement).style.color = '#9CA89D')}
                             >
                               ✏️
