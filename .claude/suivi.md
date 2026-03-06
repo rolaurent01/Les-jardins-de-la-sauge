@@ -2,6 +2,48 @@
 
 ---
 
+## [2026-03-06] — feat(parcelles): A2.4 — Module Plantation (UI bureau)
+
+**Type :** `feature`
+**Fichiers concernés :**
+- `src/app/[orgSlug]/(dashboard)/parcelles/plantations/page.tsx` *(nouveau)*
+- `src/components/parcelles/PlantationsClient.tsx` *(nouveau)*
+- `src/components/parcelles/PlantationSlideOver.tsx` *(nouveau)*
+
+### Description
+Création de la page bureau `/[orgSlug]/parcelles/plantations` avec tableau filtrable, slide-over complet et système d'avertissements temps réel. Suit le même pattern que les modules Travail de sol et Sachets de graines. Les Server Actions (A2.3) ne sont pas modifiées.
+
+### Détails techniques
+
+**`page.tsx`** (Server Component) :
+- Appels parallèles `Promise.all([fetchPlantings(), fetchRowsForSelect(), fetchVarietiesForSelect(), fetchSeedlingsForSelect()])`
+- Gestion d'erreur avec message affiché en ocre
+
+**`PlantationsClient.tsx`** (Client Component) :
+- **Colonnes** : Variété (gras), Rang (Site — Parcelle — Rang N), Date (JJ/MM/AAAA), Plants, Type plant (badge coloré — 10 types avec couleurs distinctes), Origine (badge bleu "Semis MM/CG" ou violet "Fournisseur"), Surface (longueur × largeur en m²), État (badge vert "Actif" ou gris "Arraché"), Actions
+- Recherche insensible casse/accents sur variété, rang, fournisseur
+- Toggle archivés avec compteur
+- Archivage soft delete avec confirmation 2-clics (auto-reset 4s) + restauration
+- `router.refresh()` après chaque mutation
+
+**`PlantationSlideOver.tsx`** (Client Component) :
+- **Rang** : select groupé `<optgroup>` par site/parcelle (réutilise le pattern TravailSolSlideOver). Au changement → `fetchRowWarnings(rowId)` + pré-remplissage dimensions (création uniquement)
+- **Variété** : select + `QuickAddVariety` pour ajout rapide
+- **Origine** : toggle 2 boutons "Issu de mes semis" / "Plant acheté" — affiche conditionnellement le select semis ou le champ fournisseur
+- **3 avertissements temps réel** après sélection du rang :
+  1. Rang déjà planté (bandeau jaune avec liste des plantations actives)
+  2. Dépassement longueur (bandeau jaune, recalculé en temps réel à chaque modification de longueur_m, exclut la plantation en cours en édition)
+  3. Rang en occultation (bandeau orange avec méthode et date)
+- **Champs** : année, date plantation, lune (optionnel), nb plants, type plant (10 options), espacement cm, longueur/largeur m (pré-remplies depuis rang), certif AB, date commande, n° facture, temps min, commentaire
+- Mode édition : pas de pré-remplissage dimensions, avertissements toujours affichés
+
+### Résultats
+- **Build** : ✅ compilé avec succès, 0 erreur
+- **Tests** : 147/147 ✅
+- **Route** : `/[orgSlug]/parcelles/plantations` listée comme `ƒ (Dynamic)`
+
+---
+
 ## [2026-03-06] — refactor(ui): Remplacement couleurs branding hardcodées par CSS variables
 
 **Type :** `refactor`
