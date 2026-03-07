@@ -92,11 +92,35 @@ export async function updateUprooting(
   return { success: true, data: data as Uprooting }
 }
 
-/** Supprime definitivement un arrachage (pas de soft delete) */
+/** Supprime definitivement un arrachage et reactive les plantings desactives */
 export async function deleteUprooting(id: string): Promise<ActionResult> {
   const supabase = await createClient()
-  const { orgSlug } = await getContext()
+  const { userId, orgSlug } = await getContext()
 
+  // 1. Recuperer l'arrachage pour connaitre row_id et variety_id
+  const { data: uprooting } = await supabase
+    .from('uprootings')
+    .select('row_id, variety_id')
+    .eq('id', id)
+    .single()
+
+  if (uprooting) {
+    // 2. Reactiver les plantings correspondants
+    let query = supabase
+      .from('plantings')
+      .update({ actif: true, updated_by: userId })
+      .eq('row_id', uprooting.row_id)
+      .eq('actif', false)
+      .is('deleted_at', null)
+
+    if (uprooting.variety_id) {
+      query = query.eq('variety_id', uprooting.variety_id)
+    }
+
+    await query
+  }
+
+  // 3. Supprimer l'arrachage
   const { error } = await supabase
     .from('uprootings')
     .delete()
@@ -105,5 +129,6 @@ export async function deleteUprooting(id: string): Promise<ActionResult> {
   if (error) return { error: `Erreur lors de la suppression : ${error.message}` }
 
   revalidatePath(buildPath(orgSlug, '/parcelles/arrachage'))
+  revalidatePath(buildPath(orgSlug, '/parcelles/plantations'))
   return { success: true }
 }

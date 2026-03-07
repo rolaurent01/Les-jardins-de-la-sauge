@@ -2,6 +2,220 @@
 
 ---
 
+## [2026-03-07 08:40] — fix(review): corrections P1 + P6 + P7 + P8 + P9
+
+**Type :** `fix`
+**Fichiers concernés :** `src/lib/supabase/types.ts`, `src/app/[orgSlug]/(dashboard)/parcelles/arrachage/actions.ts`, `src/app/[orgSlug]/(dashboard)/parcelles/cueillette/actions.ts`, `supabase/migrations/014_update_harvest_rpc.sql`, `supabase/migrations/015_fix_membership_rls_v2.sql`, `supabase/migrations/016_cleanup_ps_upsert.sql`
+
+### Description
+Correction des 5 problemes identifies lors de la review A0-A2 (P1, P6, P7, P8, P9).
+
+### Details techniques
+
+- **P1 — Type v_stock incoherent** : supprime `nom_vernaculaire` du type `v_stock.Row` et aligne `partie_plante` (string) et `stock_g` (number) sur la vue SQL reelle. Fichier : `src/lib/supabase/types.ts`.
+
+- **P6 — deleteUprooting ne reactive pas les plantings** : avant suppression de l'arrachage, recupere `row_id` et `variety_id`, puis reactive les plantings correspondants (`actif = true`). Revalide aussi le path `/parcelles/plantations`. Fichier : `src/app/[orgSlug]/(dashboard)/parcelles/arrachage/actions.ts`.
+
+- **P7 — updateHarvest non transactionnel** : creation de la RPC `update_harvest_with_stock` (migration 014) qui met a jour harvest + stock_movement dans une seule transaction SQL (SECURITY DEFINER, search_path = public). Remplacement des 2 requetes separees dans `updateHarvest` par un appel RPC unique. Ajout du type `Functions.update_harvest_with_stock` dans types.ts. Suppression de l'import inutilise `PartiePlante` dans cueillette/actions.ts.
+
+- **P8 — Membership RLS trop restrictive** : migration 015 remplace la politique unique `membership_isolation` (FOR ALL, user_id = auth.uid()) par 4 politiques granulaires : `membership_select` (voir ses propres memberships + ceux de ses organisations), `membership_insert/update/delete` (reserve aux owner/admin de l'organisation). Prepare la future page gestion d'equipe (B6).
+
+- **P9 — Ancienne surcharge _ps_upsert** : migration 016 supprime l'ancienne version a 15 params (sans farm_id) de `_ps_upsert` creee par 001. Seule la version 16 params (avec farm_id) de 011 subsiste.
+
+### Resultats
+- Build : OK (Turbopack 1.7s, 0 erreur)
+- Tests : 147/147 OK
+- ⚠️ Migrations 014, 015, 016 a executer dans Supabase SQL Editor
+
+---
+
+## [2026-03-07 09:00] — review(A0-A2): Review complete avant A3
+
+**Type :** `review`
+**Statut global :** ⚠️ Problemes mineurs
+
+### Bugs critiques (corriges)
+Aucun bug critique detecte. L'application est fonctionnelle et coherente.
+
+### Problemes mineurs (non corriges)
+
+- **P1 : Type v_stock incoherent avec la vue SQL**
+  - Fichier : `src/lib/supabase/types.ts` (ligne ~1987)
+  - La vue SQL `v_stock` (migration 011) ne joint plus `varieties` et ne retourne plus `nom_vernaculaire`. Le type TypeScript inclut encore `nom_vernaculaire: string` dans `Views.v_stock.Row`.
+  - Impact : mineur — le champ sera `null` a l'execution si la vue est interrogee directement. Pas de crash car le champ n'est pas utilise seul actuellement.
+  - Priorite : basse (a corriger en B1 Vue Stock)
+
+- **P2 : Migration 011 cree une politique RLS auto-referente sur memberships (corrigee par 013)**
+  - Fichier : `supabase/migrations/011_multitenant.sql` (ligne 624-629)
+  - La politique `membership_isolation` en 011 sous-requete `memberships` elle-meme, provoquant zero resultats. Migration 013 corrige correctement avec `user_id = auth.uid()`.
+  - Impact : aucun en production (013 est appliquee apres 011). A noter pour maintenance future : la 011 seule est non fonctionnelle.
+  - Priorite : informationnel
+
+- **P3 : console.error dans arrachage actions**
+  - Fichier : `src/app/[orgSlug]/(dashboard)/parcelles/arrachage/actions.ts` (ligne 63)
+  - Un `console.error` est present pour loger l'erreur de desactivation des plantings. Acceptable en serveur-side pour le cas degrade, avec eslint-disable.
+  - Impact : aucun (serveur-side uniquement)
+  - Priorite : basse
+
+- **P4 : Couleurs hardcodees dans la page login**
+  - Fichier : `src/app/login/page.tsx` (lignes 76, 103, 128)
+  - `#3A5A40` utilise directement pour le focus des inputs et le bouton de login. Pas de CSS variable car la page login est hors contexte organisation.
+  - Impact : mineur — si une autre organisation avec un branding different se connecte, la page login aura toujours les couleurs LJS.
+  - Priorite : basse (a corriger en B6 Interface super admin)
+
+- **P5 : Pas de filtrage `deleted_at IS NULL` sur fetchUprootings**
+  - Fichier : `src/app/[orgSlug]/(dashboard)/parcelles/arrachage/actions.ts` (ligne 17-25)
+  - Le SELECT des arrachages ne filtre pas `deleted_at IS NULL`. Cependant, les arrachages n'ont pas de soft delete (suppression reelle via DELETE), donc pas d'impact.
+  - Impact : aucun (coherent avec la logique — pas de soft delete sur uprootings)
+  - Priorite : informationnel
+
+- **P6 : deleteUprooting ne reactive pas les plantings desactives**
+  - Fichier : `src/app/[orgSlug]/(dashboard)/parcelles/arrachage/actions.ts` (ligne 96-109)
+  - `deleteUprooting` fait un hard DELETE de l'arrachage mais ne remet PAS `plantings.actif = true` pour les plantings desactives lors du `createUprooting`. Si un utilisateur supprime un arrachage, les plantings restent inactifs (orphelins).
+  - Impact : moyen — les plantings inactifs ne sont plus visibles par useRowVarieties, faussant la logique adaptative variete (suivi-rang, cueillette, arrachage). Le stock n'est pas affecte directement.
+  - Priorite : moyenne (a corriger avant deploiement production, ou au minimum documenter le comportement)
+
+- **P7 : updateHarvest non transactionnel (harvest + stock_movement)**
+  - Fichier : `src/app/[orgSlug]/(dashboard)/parcelles/cueillette/actions.ts` (ligne 88-134)
+  - La mise a jour d'une cueillette fait 2 requetes separees (harvest UPDATE puis stock_movement UPDATE). Si la 2e echoue, le harvest est mis a jour mais le stock_movement est incoherent.
+  - Impact : faible — l'erreur est retournee a l'utilisateur et le cas d'echec de la 2e requete est rare. Cependant, contrairement a createHarvest (RPC atomique), l'update n'a pas de garantie transactionnelle.
+  - Priorite : basse (envisager une RPC `update_harvest_with_stock` pour A3 quand les mises a jour stock deviennent plus frequentes)
+
+- **P8 : Membership RLS (013) empeche de voir les autres membres de l'organisation**
+  - Fichier : `supabase/migrations/013_fix_membership_rls.sql`
+  - La politique `user_id = auth.uid()` corrige le bug auto-referent mais a un effet secondaire : un utilisateur ne peut voir que SES propres memberships, pas ceux des autres membres de son organisation.
+  - Impact : aucun actuellement (pas de page "equipe" implementee). Bloquera la future page de gestion des membres (B6).
+  - Priorite : basse (a corriger en B6)
+
+- **P9 : Ancienne surcharge _ps_upsert a 15 params non supprimee**
+  - Fichier : `supabase/migrations/001_initial_schema.sql` / `011_multitenant.sql`
+  - La migration 011 cree une nouvelle version de `_ps_upsert` avec 16 params (farm_id en premier) mais ne DROP pas l'ancienne version a 15 params. PostgreSQL supporte la surcharge de fonctions donc les deux coexistent.
+  - Impact : aucun (les triggers appellent la bonne version). Pollution du schema.
+  - Priorite : cosmetique
+
+### Checklist detaillee
+
+#### 1. Migrations SQL (001-013)
+- [x] Pas de conflit entre migrations
+- [x] Migration 011 coherente avec 001-010 (bootstrap correct, ajout nullable puis NOT NULL)
+- [x] Migration 012 coherente avec 011 (RPC utilise farm_id, SECURITY DEFINER, search_path)
+- [x] Migration 013 coherente avec 011 (corrige la politique auto-referente)
+- [x] Contraintes UNIQUE composites avec farm_id correctes (sites, parcels, seed_lots, recipes, production_lots, forecasts, production_summary)
+- [x] Index idx_[table]_farm sur les 23 tables metier
+- [x] user_farm_ids() : SECURITY DEFINER, STABLE, search_path = public, logique correcte (farm_access UNION membership owner/admin)
+- [x] Politiques RLS : catalogue partage (4 politiques x 3 tables), tenant_isolation (19 tables), plateforme (organizations, farms, memberships, farm_access, farm_modules, platform_admins), settings, notifications, audit_log, app_logs
+- [x] v_stock inclut farm_id dans SELECT et GROUP BY, WHERE deleted_at IS NULL, security_invoker = true
+- [x] Triggers production_summary passent tous farm_id a _ps_upsert (7 fonctions verifiees)
+- [x] recalculate_production_summary() inclut farm_id dans tous les GROUP BY et INSERT
+- [x] RPC create_harvest_with_stock : SECURITY DEFINER, search_path = public, transaction atomique (2 INSERT dans le meme BEGIN/END)
+
+#### 2. Types TypeScript
+- [x] Toutes les tables SQL ont Row/Insert/Update
+- [x] 10 tables plateforme typees (organizations, farms, memberships, farm_access, farm_modules, platform_admins, farm_variety_settings, farm_material_settings, notifications, audit_log)
+- [x] farm_id dans Row et Insert des tables metier
+- [x] created_by et updated_by dans les types
+- [x] varieties sans seuil_alerte_g (deplace vers farm_variety_settings)
+- [x] varieties avec created_by_farm_id, verified, aliases, merged_into_id
+- [x] AppContext exporte avec userId, farmId, organizationId, orgSlug
+- [x] Types metier coherents avec supabase/types.ts
+- [~] v_stock : farm_id present mais nom_vernaculaire en trop (voir P1)
+
+#### 3. Infrastructure multi-tenant
+- [x] Proxy : auth verifiee sur toutes routes sauf /login et statiques
+- [x] Proxy : slug d'organisation resolu et verifie
+- [x] Proxy : membership verifie
+- [x] Proxy : cookie active_farm_id initialise si absent (middleware ecrit, pas getContext)
+- [x] Proxy : redirect / vers /{orgSlug}/dashboard
+- [x] Proxy : redirect si slug invalide ou pas membre
+- [x] getContext() ne fait aucun cookieStore.set()
+- [x] getContext() lit le cookie active_farm_id
+- [x] getContext() verifie l'acces a la ferme
+- [x] getContext() retourne { userId, farmId, organizationId, orgSlug }
+- [x] Toutes les routes metier sous src/app/[orgSlug]/(dashboard)/
+- [x] Aucune route sous l'ancien chemin src/app/(dashboard)/
+- [x] Layout [orgSlug] injecte CSS variables branding
+- [x] Layout (dashboard) passe organization, farms, activeFarmId aux composants
+
+#### 4. Server Actions
+- [x] Toutes les actions importent getContext et buildPath
+- [x] SELECT avec .eq('farm_id', farmId) sur tables metier (pas sur catalogue)
+- [x] INSERT avec farm_id + created_by sur tables metier
+- [x] INSERT avec created_by_farm_id + created_by sur catalogue (varietes, materiaux)
+- [x] UPDATE avec updated_by
+- [x] revalidatePath utilise buildPath(orgSlug, '...') partout — zero path hardcode
+- [x] login/actions.ts : redirect vers /{orgSlug}/dashboard avec createAdminClient
+
+#### 5. Stock event-sourced
+- [x] Cueillette cree stock_movement type 'entree' avec etat_plante 'frais'
+- [x] source_type = 'cueillette' et source_id = harvest.id
+- [x] 3 dimensions : variety_id, partie_plante, etat_plante
+- [x] farm_id passe au stock_movement
+- [x] created_by passe au stock_movement
+- [x] Archivage harvest archive aussi le stock_movement (eq source_type + source_id)
+- [x] Restauration harvest restaure aussi le stock_movement
+- [x] Mise a jour harvest met a jour le stock_movement (poids, date, partie_plante, variety_id)
+- [x] v_stock : SUM correct, WHERE deleted_at IS NULL, GROUP BY complet, security_invoker = true
+
+#### 6. Hooks adaptatifs
+- [x] useRowVarieties : requete plantings actif=true + deleted_at IS NULL, deduplication par variety_id
+- [x] autoVariety non-null si exactement 1 variete
+- [x] useVarietyParts : requete varieties.parties_utilisees, autoPart si 1 partie
+
+#### 7. Composants UI
+- [x] Pas de couleurs hardcodees dans components (hors login et layout fallback)
+- [x] Sidebar : tous les liens prefixes par /{orgSlug}/ via h()
+- [x] Logo dynamique (logo_url ou placeholder lettre)
+- [x] FarmSelector integre
+- [x] Liens sidebar corrects (plantations au pluriel, tous les hrefs correspondent a des routes)
+
+#### 8. Arrachage
+- [x] createUprooting desactive plantings.actif = false
+- [x] Si variety_id specifie, seule cette variete desactivee
+- [x] Si variety_id null, tout le rang desactive
+- [x] Revalide le path plantations en plus d'arrachage
+
+#### 9. Tests
+- [x] 147/147 tests passants
+- [x] 7 fichiers de test : smoke, lots, lots-edge-cases, seedling-stats, actions-parse, validation semis, validation parcelles
+- [x] Couverture : validation Zod (semis + parcelles), parsers, stats, generation lots
+
+#### 10. Build et routes
+- [x] `npm run build` compile sans erreur (Turbopack, 1.7s)
+- [x] 14 routes dynamiques :
+  - /[orgSlug]/dashboard
+  - /[orgSlug]/referentiel/varietes, /sites, /materiaux
+  - /[orgSlug]/semis/sachets, /suivi
+  - /[orgSlug]/parcelles/travail-sol, /plantations, /suivi-rang, /cueillette, /arrachage, /occultation
+  - /api/backup, /api/keep-alive
+
+#### 11. Backup
+- [x] Export par organisation (pas global)
+- [x] Catalogue partage exporte dans shared/catalog-{date}.json
+- [x] Donnees metier par orga dans orgs/{slug}/backup-{date}.json
+- [x] Utilise createAdminClient() (service_role, bypass RLS)
+- [x] Filtrage explicite par farm_id (pas de dependance aux RLS)
+
+### Points positifs
+- Architecture multi-tenant solide : middleware + getContext + RLS a 3 niveaux (application, politique, index)
+- Stock event-sourced bien implemente : transaction atomique RPC, archivage/restauration cascade, v_stock avec security_invoker
+- Logique adaptative variete/partie bien factorisee en hooks reutilisables
+- Toutes les Server Actions suivent le meme pattern coherent (getContext, farm_id, created_by, updated_by, buildPath)
+- Formulaires adaptatifs fonctionnels (cueillette parcelle/sauvage, occultation par methode, semis par processus)
+- Backup robuste avec export par organisation + catalogue partage
+- Tests couvrant la validation Zod pour tous les modules implementes
+
+### Recommandations avant A3
+1. **Corriger P1** (optionnel) : retirer `nom_vernaculaire` du type v_stock ou ajouter un JOIN dans la vue SQL. Necessaire si B1 (Vue Stock) utilise ce champ.
+2. **Tests stock** : ajouter des tests unitaires pour les flux stock avant A3 (calcul v_stock, creation stock_movement via cueillette). A3 va multiplier les mouvements (entree/sortie par transformation).
+3. **Validation A3** : les 3 modules transformation (cuttings, dryings, sortings) auront chacun 2 stock_movements par operation. S'assurer que les triggers production_summary sont bien testes.
+
+### Resultats
+- Build : ✅ (Turbopack 1.7s, 0 erreur)
+- Tests : 147/147 ✅
+- Routes : 14 routes dynamiques + 2 API routes
+
+---
+
 ## [2026-03-07 08:20] — feat(parcelles): A2.8 — Module Occultation (backend + UI adaptive par methode)
 
 **Type :** `feature`

@@ -1984,10 +1984,9 @@ export type Database = {
         Row: {
           farm_id: string
           variety_id: string
-          nom_vernaculaire: string
-          partie_plante: PartiePlante
+          partie_plante: string
           etat_plante: string
-          stock_g: number | null
+          stock_g: number
         }
         Relationships: []
       }
@@ -2010,6 +2009,23 @@ export type Database = {
           p_created_by: string
         }
         Returns: string
+      }
+      /** Met a jour un harvest + son stock_movement dans une seule transaction */
+      update_harvest_with_stock: {
+        Args: {
+          p_harvest_id: string
+          p_type_cueillette: string
+          p_row_id: string | null
+          p_lieu_sauvage: string | null
+          p_variety_id: string
+          p_partie_plante: string
+          p_date: string
+          p_poids_g: number
+          p_temps_min: number | null
+          p_commentaire: string | null
+          p_updated_by: string
+        }
+        Returns: undefined
       }
     }
     Enums: Record<string, never>

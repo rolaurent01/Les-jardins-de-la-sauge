@@ -5,7 +5,7 @@ import { revalidatePath } from 'next/cache'
 import { getContext } from '@/lib/context'
 import { buildPath } from '@/lib/utils/path'
 import { parseHarvestForm } from '@/lib/utils/parcelles-parsers'
-import type { ActionResult, Harvest, HarvestWithRelations, PartiePlante } from '@/lib/types'
+import type { ActionResult, Harvest, HarvestWithRelations } from '@/lib/types'
 
 // ---- Requetes ----
 
@@ -95,43 +95,25 @@ export async function updateHarvest(
   const supabase = await createClient()
   const { userId, orgSlug } = await getContext()
 
-  // 1. Mettre a jour le harvest
-  const { data, error } = await supabase
-    .from('harvests')
-    .update({
-      type_cueillette: parsed.data.type_cueillette,
-      row_id: parsed.data.row_id ?? null,
-      lieu_sauvage: parsed.data.lieu_sauvage ?? null,
-      variety_id: parsed.data.variety_id,
-      partie_plante: parsed.data.partie_plante as PartiePlante,
-      date: parsed.data.date,
-      poids_g: parsed.data.poids_g,
-      temps_min: parsed.data.temps_min ?? null,
-      commentaire: parsed.data.commentaire ?? null,
-      updated_by: userId,
-    })
-    .eq('id', id)
-    .select()
-    .single()
+  // RPC transactionnelle : harvest + stock_movement dans la meme transaction
+  const { error } = await supabase.rpc('update_harvest_with_stock', {
+    p_harvest_id: id,
+    p_type_cueillette: parsed.data.type_cueillette,
+    p_row_id: parsed.data.row_id ?? null,
+    p_lieu_sauvage: parsed.data.lieu_sauvage ?? null,
+    p_variety_id: parsed.data.variety_id,
+    p_partie_plante: parsed.data.partie_plante,
+    p_date: parsed.data.date,
+    p_poids_g: parsed.data.poids_g,
+    p_temps_min: parsed.data.temps_min ?? null,
+    p_commentaire: parsed.data.commentaire ?? null,
+    p_updated_by: userId,
+  })
 
   if (error) return { error: `Erreur : ${error.message}` }
 
-  // 2. Mettre a jour le stock_movement correspondant
-  const { error: stockError } = await supabase
-    .from('stock_movements')
-    .update({
-      variety_id: parsed.data.variety_id,
-      partie_plante: parsed.data.partie_plante as PartiePlante,
-      date: parsed.data.date,
-      poids_g: parsed.data.poids_g,
-    })
-    .eq('source_type', 'cueillette')
-    .eq('source_id', id)
-
-  if (stockError) return { error: `Erreur stock : ${stockError.message}` }
-
   revalidatePath(buildPath(orgSlug, '/parcelles/cueillette'))
-  return { success: true, data: data as Harvest }
+  return { success: true, data: { id } as unknown as Harvest }
 }
 
 /** Soft delete d'une cueillette + archivage du stock_movement correspondant */
