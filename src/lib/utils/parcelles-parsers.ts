@@ -3,7 +3,7 @@
  * Fonctions pures extraites des Server Actions pour être testables sans dépendances serveur.
  */
 
-import { soilWorkSchema, plantingSchema, rowCareSchema, harvestSchema, uprootingSchema } from '@/lib/validation/parcelles'
+import { soilWorkSchema, plantingSchema, rowCareSchema, harvestSchema, uprootingSchema, occultationSchema } from '@/lib/validation/parcelles'
 
 // ---- Helpers partagés ----
 
@@ -173,6 +173,38 @@ export function parseUprootingForm(
   }
 
   const result = uprootingSchema.safeParse(raw)
+  if (!result.success) {
+    const first = result.error.issues[0]
+    const field = first.path.length > 0 ? `${String(first.path[0])} : ` : ''
+    return { error: `${field}${first.message}` }
+  }
+
+  return { data: result.data }
+}
+
+// ---- Occultation ----
+
+/** Extrait et valide les champs du formulaire occultation avec Zod */
+export function parseOccultationForm(
+  formData: FormData,
+): { data: ReturnType<typeof occultationSchema.parse> } | { error: string } {
+  const raw = {
+    row_id:                  (formData.get('row_id') as string) || '',
+    date_debut:              (formData.get('date_debut') as string) || '',
+    date_fin:                (formData.get('date_fin') as string)?.trim() || null,
+    methode:                 (formData.get('methode') as string) || '',
+    fournisseur:             (formData.get('fournisseur') as string)?.trim() || null,
+    attestation:             (formData.get('attestation') as string)?.trim() || null,
+    engrais_vert_nom:        (formData.get('engrais_vert_nom') as string)?.trim() || null,
+    engrais_vert_fournisseur:(formData.get('engrais_vert_fournisseur') as string)?.trim() || null,
+    engrais_vert_facture:    (formData.get('engrais_vert_facture') as string)?.trim() || null,
+    engrais_vert_certif_ab:  parseBool(formData, 'engrais_vert_certif_ab'),
+    temps_retrait_min:       parseOptionalInt(formData, 'temps_retrait_min'),
+    temps_min:               parseOptionalInt(formData, 'temps_min'),
+    commentaire:             (formData.get('commentaire') as string)?.trim() || null,
+  }
+
+  const result = occultationSchema.safeParse(raw)
   if (!result.success) {
     const first = result.error.issues[0]
     const field = first.path.length > 0 ? `${String(first.path[0])} : ` : ''

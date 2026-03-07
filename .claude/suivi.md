@@ -2,6 +2,26 @@
 
 ---
 
+## [2026-03-07 08:20] — feat(parcelles): A2.8 — Module Occultation (backend + UI adaptive par methode)
+
+**Type :** `feature`
+**Fichiers concernes :** `src/lib/types.ts`, `src/lib/utils/parcelles-parsers.ts`, `src/app/[orgSlug]/(dashboard)/parcelles/occultation/actions.ts`, `src/app/[orgSlug]/(dashboard)/parcelles/occultation/page.tsx`, `src/components/parcelles/OccultationClient.tsx`, `src/components/parcelles/OccultationSlideOver.tsx`
+
+### Description
+Module complet d'occultation de rangs (cycle arrachage -> occultation -> travail de sol -> replantation). Formulaire adaptatif avec 4 methodes (paille, foin, bache, engrais vert) qui affichent/masquent les champs specifiques.
+
+### Details techniques
+- Type `OccultationWithRelations` enrichi avec sites dans la jointure parcels
+- Parser `parseOccultationForm` dans parcelles-parsers.ts (validation Zod avec superRefine conditionnel)
+- 5 Server Actions : fetchOccultations, fetchEngraisVertNoms, createOccultation, updateOccultation, deleteOccultation
+- Tableau avec badges colores par methode, badge "En cours" pulsant (date_fin NULL), filtres inline par methode, recherche multi-champ
+- SlideOver adaptatif : 4 boutons methode switchent les champs specifiques (fournisseur pour paille/foin, temps retrait pour bache, nom/fournisseur/facture/certif AB pour engrais vert)
+- Autocompletion engrais_vert_nom via datalist alimente par fetchEngraisVertNoms (SELECT DISTINCT)
+- Confirmation suppression 2-clics avec auto-reset 4s
+- Build OK, 147 tests passants, route `/[orgSlug]/parcelles/occultation` listee comme Dynamic
+
+---
+
 ## [2026-03-06 21:55] — feat(parcelles): A2.7 — Module Arrachage (backend + UI + desactivation plantings)
 
 **Type :** `feature`

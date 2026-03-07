@@ -416,11 +416,15 @@ export type Occultation = {
   created_at: string
 }
 
-/** Occultation avec rang joint */
+/** Occultation avec rang joint (parcelle + site) */
 export type OccultationWithRelations = Occultation & {
   rows:
     | (Pick<Row, 'id' | 'numero'> & {
-        parcels: Pick<Parcel, 'id' | 'nom'> | null
+        parcels:
+          | (Pick<Parcel, 'id' | 'nom' | 'code'> & {
+              sites: Pick<Site, 'id' | 'nom'> | null
+            })
+          | null
       })
     | null
 }
