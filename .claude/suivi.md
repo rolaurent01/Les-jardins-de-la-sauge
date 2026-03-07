@@ -2,6 +2,261 @@
 
 ---
 
+## [2026-03-07 13:25] — fix(transformation): A3.5 — Migration 018 : triggers production_summary DELETE/UPDATE
+
+**Type :** `fix`
+**Périmètre :** `supabase/migrations/018_fix_ps_triggers_delete_update.sql`
+
+### Problème
+Les 7 triggers production_summary (sur 8) ne se déclenchaient que sur INSERT.
+Conséquence : production_summary devenait stale après suppression ou modification d'enregistrements.
+Le stock réel (stock_movements) n'était PAS affecté (géré par les RPCs transactionnelles).
+
+### Correction
+Migration `018_fix_ps_triggers_delete_update.sql` — 7 triggers corrigés :
+1. `fn_ps_cuttings` (cuttings) — hard delete
+2. `fn_ps_dryings` (dryings) — hard delete
+3. `fn_ps_sortings` (sortings) — hard delete
+4. `fn_ps_production_lot_ingredients` (production_lot_ingredients) — hard delete
+5. `fn_ps_production_lots_time` (production_lots) — soft delete (deleted_at)
+6. `fn_ps_direct_sales` (stock_direct_sales) — hard delete
+7. `fn_ps_purchases` (stock_purchases) — hard delete
+
+Non modifié : `fn_ps_harvests` — déjà AFTER INSERT OR UPDATE (migration 001).
+
+Pattern appliqué : TG_OP check → v_row/v_sign → UPDATE annule OLD puis ajoute NEW → appel `_ps_upsert` avec deltas signés.
+
+### Vérifications
+- [x] Build : `npm run build` ✅
+- [x] Tests : 221/221 ✅
+- [x] ⚠️ Migration à exécuter manuellement dans Supabase SQL Editor
+
+---
+
+## [2026-03-07 13:20] — review(transformation): Review complète A3 — Module Transformation
+
+**Type :** `review`
+**Périmètre :** Migration SQL 017, types TS, validation Zod, parsers, server actions, composants UI, sidebar/mobile, stock-logic, tests
+
+### 1. Statut global : ✅ VALIDÉ
+
+Le module A3 (Transformation : Tronçonnage + Séchage + Triage) est solide. Aucun problème critique. Un problème mineur pré-existant identifié sur les triggers production_summary.
+
+### 2. Checklist détaillée
+
+#### Migration SQL — `017_transformation_rpcs.sql`
+
+**3 fonctions CREATE :**
+- [x] `create_cutting_with_stock` : params corrects (p_farm_id, p_variety_id, p_partie_plante, p_type, p_date, p_poids_g, p_temps_min, p_commentaire, p_created_by, p_uuid_client)
+- [x] `create_drying_with_stock` : mêmes params + `p_etat_plante`
+- [x] `create_sorting_with_stock` : mêmes params + `p_etat_plante`
+- [x] Les 3 fonctions sont `SECURITY DEFINER SET search_path = public`
+- [x] Les 3 fonctions retournent UUID
+- [x] Idempotence : `ON CONFLICT (uuid_client) DO NOTHING` + récupération id existant
+- [x] Tronçonnage : entrée → stock SORTIE `frais`, sortie → stock ENTRÉE `tronconnee`
+- [x] Séchage entrée : RAISE EXCEPTION si etat_plante NOT IN ('frais', 'tronconnee')
+- [x] Séchage sortie : RAISE EXCEPTION si etat_plante NOT IN ('sechee', 'tronconnee_sechee')
+- [x] Triage entrée : RAISE EXCEPTION si etat_plante NOT IN ('sechee', 'tronconnee_sechee')
+- [x] Triage sortie : RAISE EXCEPTION si etat_plante NOT IN ('sechee_triee', 'tronconnee_sechee_triee')
+- [x] source_type correct : `tronconnage_entree`, `tronconnage_sortie`, `sechage_entree`, `sechage_sortie`, `triage_entree`, `triage_sortie`
+- [x] stock_movements INSERT inclut : farm_id, variety_id, partie_plante, date, type_mouvement, etat_plante, poids_g, source_type, source_id, created_by
+
+**3 fonctions UPDATE :**
+- [x] `update_cutting_with_stock` : ne modifie PAS le `type` (entrée/sortie)
+- [x] `update_drying_with_stock` : inclut `p_etat_plante` dans les params
+- [x] `update_sorting_with_stock` : inclut `p_etat_plante` dans les params
+- [x] Les 3 mettent à jour le stock_movement via `source_id` + `source_type IN (...)`
+- [x] Les 3 sont `SECURITY DEFINER SET search_path = public`
+- [x] Gestion NOT FOUND (RAISE EXCEPTION si l'enregistrement n'existe pas)
+
+**3 fonctions DELETE :**
+- [x] Les 3 suppriment le stock_movement AVANT l'enregistrement source (ordre correct)
+- [x] Filtrage par `source_id` ET `source_type IN (...)` (pas juste source_id)
+- [x] Les 3 sont `SECURITY DEFINER SET search_path = public`
+- [x] Pas de référence à `deleted_at` (pas de soft delete)
+
+#### Types TypeScript — Alignement SQL ↔ Types
+
+- [x] `src/lib/supabase/types.ts` Functions : 9 entrées avec Args correspondant exactement aux params SQL
+- [x] Les types Args utilisent les bons types (string pour UUID/text, number pour decimal/integer, `string | null` pour les optionnels)
+- [x] Returns : string (UUID) pour les create, undefined pour update et delete
+- [x] `src/lib/types.ts` : TransformationType = 'entree' | 'sortie'
+- [x] Cutting : tous les champs de la table SQL présents, types corrects
+- [x] Drying : tous les champs + `etat_plante: string`
+- [x] Sorting : tous les champs + `etat_plante: string`
+- [x] CuttingWithVariety, DryingWithVariety, SortingWithVariety : jointure varieties correcte (id, nom_vernaculaire, nom_latin)
+
+#### Validation Zod
+
+- [x] `cuttingSchema` : variety_id UUID, partie_plante enum 6 valeurs, type enum entree/sortie, date ≤ aujourd'hui, poids_g positif max 2 décimales, temps_min optionnel entier positif
+- [x] `dryingSchema` : mêmes champs + etat_plante + superRefine type↔etat_plante
+- [x] `sortingSchema` : mêmes champs + etat_plante + superRefine type↔etat_plante
+- [x] Séchage superRefine : entree accepte uniquement frais/tronconnee, sortie accepte uniquement sechee/tronconnee_sechee
+- [x] Triage superRefine : entree accepte uniquement sechee/tronconnee_sechee, sortie accepte uniquement sechee_triee/tronconnee_sechee_triee
+
+#### Parsers
+
+- [x] `parseCuttingForm` : extraction FormData → types corrects, retourne `{ data }` ou `{ error }`
+- [x] `parseDryingForm` : idem + extraction etat_plante
+- [x] `parseSortingForm` : idem + extraction etat_plante
+- [x] Valeurs string vides → null (commentaire, temps_min)
+- [x] poids_g converti en number correctement (parseFloat)
+- [x] Pas de champ superflu extrait
+
+#### Server Actions (3 fichiers)
+
+- [x] `'use server'` en tête de chaque fichier
+- [x] Import et appel de `getContext()` dans chaque action
+- [x] `fetchXxx()` : `.eq('farm_id', farmId)`, jointure varieties, tri date DESC + created_at DESC
+- [x] `createXxx()` : appelle la bonne RPC avec tous les params, date au format string
+- [x] `updateXxx()` : appelle la bonne RPC d'update, inclut `p_updated_by`
+- [x] `deleteXxx()` : appelle la bonne RPC de delete (pas un `.delete()` direct)
+- [x] `revalidatePath(buildPath(orgSlug, '/transformation/xxx'))` après chaque mutation
+- [x] Pas de `revalidatePath` hardcodé (tout via `buildPath`)
+- [x] Gestion d'erreur : retourne `{ error: message }` si la RPC échoue
+- [x] Pas de `console.log`
+
+#### Composants UI
+
+**TransformationClient :**
+- [x] Reçoit `config: TransformationModuleConfig` en props
+- [x] 2 boutons [+ Entree] et [+ Sortie] dans la toolbar
+- [x] Filtres inline : Tous / Entrées / Sorties
+- [x] Colonnes : Type (badge), Variété, Partie (badge coloré), État, Date, Poids, Temps, Commentaire, Actions
+- [x] Badge Type : visuel distinct entrée (vert DCFCE7) vs sortie (ocre FEF3C7)
+- [x] Colonne État : pour tronçonnage, affiche l'état implicite (Frais/Tronconnée) via config
+- [x] Recherche insensible casse/accents (normalize NFD)
+- [x] Suppression 2-clics avec auto-reset (4s timeout)
+- [x] `router.refresh()` après chaque mutation
+- [x] Aucune couleur `#3A5A40` hardcodée — utilise `var(--color-primary)` pour bouton entrée
+- [x] Import PARTIE_COLORS depuis `@/lib/utils/colors` (pas dupliqué)
+
+**TransformationSlideOver :**
+- [x] Le `type` (entrée/sortie) est passé en props — input hidden `name="type"` + `fd.set('type', type)`
+- [x] En édition, le type est affiché en badge lecture seule dans le header
+- [x] Variété : select catalogue complet + QuickAddVariety
+- [x] Partie plante : `useVarietyParts(varietyId)` — auto si 1 partie, dropdown si plusieurs
+- [x] État plante : sélecteur présent pour séchage/triage (hasEtatSelector), ABSENT pour tronçonnage (etatsEntree/etatsSortie null)
+- [x] Options du sélecteur état : adaptées au type (entree → etatsEntree, sortie → etatsSortie)
+- [x] Labels FR pour les états via ETAT_PLANTE_LABELS
+- [x] Bouton submit : texte et couleur adaptés au type (vert entrée, ocre sortie)
+- [x] Gestion erreur affichée sous le bouton
+- [x] Fermeture Escape + clic overlay
+
+**Pages (3 page.tsx) :**
+- [x] Server Components avec Promise.all (fetchData + fetchVarieties)
+- [x] Import des bonnes actions et de la bonne config
+- [x] Gestion erreur de chargement (try/catch + message)
+- [x] Passage des actions au composant partagé (pas de duplication)
+
+#### Sidebar + MobileHeader
+
+- [x] 3 liens sous 🔄 Transformation : Tronçonnage, Séchage, Triage
+- [x] href corrects : `/transformation/tronconnage`, `/transformation/sechage`, `/transformation/triage`
+- [x] Liens préfixés par orgSlug (via helper `h()`)
+
+#### Triggers production_summary
+
+- [ ] ⚠️ Les triggers `trg_ps_cuttings`, `trg_ps_dryings`, `trg_ps_sortings` ne se déclenchent que sur INSERT (migration 001 lignes 867/890/913), pas sur DELETE ni UPDATE
+- [x] Les fonctions trigger passent `NEW.farm_id` à `_ps_upsert` (migration 011)
+- [ ] ⚠️ Les fonctions trigger utilisent `NEW` (pas `OLD`) — un trigger DELETE ne fonctionnerait pas en l'état
+
+> **Note :** Ce problème est pré-existant (migrations 001/011), non introduit par A3. Le stock via `stock_movements` (géré par les RPCs 017) est correct. Seul `production_summary` (cache dénormalisé) est impacté. A corriger dans une migration future.
+
+#### stock-logic.ts
+
+- [x] `deduceStockMovement` couvre les 3 modules × 2 types = 6 combinaisons
+- [x] Retourne `{ typeMouvement, etatPlante, sourceType }` correctement
+- [x] Pour le tronçonnage, n'attend pas de paramètre `etatPlante`
+- [x] Pour séchage/triage, attend `etatPlante` en paramètre (throw si absent)
+- [x] La logique est identique à celle des RPCs SQL (miroir exact)
+
+#### Tests
+
+- [x] 221 tests passants (147 anciens + 74 nouveaux)
+- [x] Aucun test ne dépend de Supabase
+- [x] validation.test.ts (38 tests) : couvre les cas valides ET invalides pour les 3 schémas, y compris les superRefine conditionnels
+- [x] parsers.test.ts (20 tests) : couvre FormData valide, champs vides → null, erreurs de parsing
+- [x] stock-flow.test.ts (16 tests) : couvre les 10 combinaisons module×type + 2 flux complets + cohérence inter-étapes
+
+#### Cohérence globale
+
+- [x] Les source_type dans les RPCs SQL, dans stock-logic.ts, et dans les tests sont identiques
+- [x] Les états acceptés dans les RPCs (RAISE EXCEPTION), dans les schémas Zod (superRefine), et dans les configs UI (etatsEntree/etatsSortie) sont identiques
+- [x] La factorisation est effective : 2 composants partagés (TransformationClient + TransformationSlideOver), pas de duplication de logique entre les 3 modules
+- [x] CueilletteClient fonctionne après l'extraction de PARTIE_COLORS (`import { PARTIE_COLORS } from '@/lib/utils/colors'`)
+- [x] Le build passe sans erreur
+- [x] Les 3 routes sont listées comme Dynamic (ƒ)
+
+### 3. Problèmes trouvés
+
+**P1 — Triggers production_summary : INSERT only (pré-existant)**
+- Fichier : `supabase/migrations/001_initial_schema.sql` (lignes 867, 890, 913) + `011_multitenant.sql` (lignes 808-848)
+- Description : Les triggers `trg_ps_cuttings/dryings/sortings` ne sont définis que sur `AFTER INSERT`. Un DELETE ou UPDATE d'un cutting/drying/sorting ne met pas à jour `production_summary`.
+- Impact : Le cache `production_summary` peut devenir stale après suppression/modification. Le stock réel via `stock_movements` n'est PAS affecté (géré correctement par les RPCs 017).
+- Priorité : Basse — pré-existant, non bloquant pour A3. Les fonctions trigger utilisent `NEW` qui est NULL sur DELETE → nécessite une réécriture avec gestion de `TG_OP` et `OLD`.
+- Recommandation : Corriger dans une migration future (ajout `AFTER INSERT OR DELETE OR UPDATE` + gestion `TG_OP`/`OLD`).
+
+### 4. Points positifs
+
+- **Architecture factorisée exemplaire** : 2 composants partagés (TransformationClient + TransformationSlideOver) + 1 type de config → 0 duplication entre les 3 modules. Ajouter un 4e module serait trivial.
+- **RPCs transactionnelles robustes** : atomicité enregistrement + stock_movement, idempotence via uuid_client, validation des états avec RAISE EXCEPTION.
+- **Double validation** : Zod côté TypeScript (superRefine) + RAISE EXCEPTION côté SQL — la même logique validée aux 2 niveaux.
+- **Miroir SQL ↔ TypeScript** : `stock-logic.ts` encode exactement la même logique que les RPCs, testable unitairement sans DB.
+- **Couverture de tests solide** : 74 nouveaux tests couvrant validation, parsing et logique de stock. Aucune dépendance réseau.
+- **UI cohérente** : Extraction de PARTIE_COLORS dans un module partagé, labels FR pour les états, useVarietyParts réutilisé.
+
+### 5. Recommandations avant A4
+
+1. ~~Aucun problème bloquant~~ — le module A3 est prêt pour la production.
+2. **Production_summary (P1)** : planifier une migration corrective pour les triggers (INSERT + DELETE + UPDATE avec TG_OP) — peut être faite en parallèle de A4.
+3. Le pattern RPC transactionnelle est éprouvé — le réutiliser pour A4 (production_lots + ingredients).
+
+### 6. Résultats
+
+- **Build** : ✅ Succès — 3 routes transformation Dynamic
+- **Tests** : ✅ 221 passants (10 fichiers, 74 nouveaux)
+- **Durée tests** : 805ms
+
+---
+
+## [2026-03-07] — fix(auth): Boucle redirect /login en production (Vercel)
+
+**Type :** `fix`
+**Fichiers concernés :** `src/proxy.ts`, `src/app/login/actions.ts`, `src/lib/supabase/server.ts`, `src/app/[orgSlug]/layout.tsx`, `src/app/[orgSlug]/(dashboard)/layout.tsx`, `src/lib/context.ts`
+
+### Description
+Résolution d'une boucle de redirect infinie `/login` en production après un login réussi. Le diagnostic a révélé 3 problèmes distincts, corrigés itérativement :
+
+### Problème 1 — Proxy : redirects perdaient les cookies de token refresh
+Les `NextResponse.redirect()` dans le proxy créaient une nouvelle response sans les cookies écrits par `setAll` lors du refresh de token par `getUser()`. Ajout d'un helper `redirectTo()` qui copie les cookies de `response` vers le redirect.
+
+### Problème 2 — Login action : `redirect()` dans un chemin d'erreur implicite
+Le `redirect()` de Next.js lance une exception `NEXT_REDIRECT`. La Server Action `login()` a été restructurée pour que `redirect()` soit EN DEHORS de tout `try/catch`, avec un client Supabase inline (sans le `try/catch` silencieux du `createClient()` partagé).
+
+### Problème 3 — `auth.uid()` NULL dans le contexte PostgREST (limitation @supabase/ssr)
+`getUser()` fonctionne (appel Auth API direct), mais les requêtes PostgREST (`.from('organizations')`, etc.) avaient `auth.uid() = NULL` → les RLS bloquaient tout. Ce problème affectait :
+- Le proxy → org/membership introuvables → redirect /login
+- `[orgSlug]/layout.tsx` → org introuvable → `notFound()` → 404
+- `(dashboard)/layout.tsx` → org/farms introuvables → sidebar vide
+- `getContext()` → membership introuvable → "No organization access"
+
+**Solution** : tous les composants serveur utilisent maintenant `createAdminClient()` (service_role, bypass RLS) pour les requêtes DB, avec filtrage explicite par `user_id`. L'authentification reste via le client SSR (`getUser()` avec cookies). C'est sûr car le proxy vérifie l'auth et le membership en amont.
+
+### Commits
+- `664ab49` fix(auth): boucle redirect /login — cookies perdus dans le proxy
+- `4d76d7d` debug(auth): logs temporaires pour diagnostiquer la boucle /login
+- `98d6b39` fix(auth): client Supabase inline dans login — setAll sans try/catch
+- `4421b04` fix(auth): proxy utilise admin client pour les requêtes DB
+- `8d526bd` fix(auth): layouts utilisent admin client pour les requêtes org/farms
+- `1f5235a` fix(auth): getContext() utilise admin client pour les requêtes DB
+
+### Notes
+- Les `console.log` de debug (`[PROXY]`, `[LOGIN]`) sont encore présents — à retirer dans un prochain cleanup
+- Le pattern `createAdminClient()` pour les requêtes DB côté serveur est désormais la convention du projet (limitation `@supabase/ssr` avec Next.js 16)
+
+---
+
 ## [2026-03-07 09:14] — test(transformation): A3.4 — Tests unitaires Transformation
 
 **Type :** `test`
