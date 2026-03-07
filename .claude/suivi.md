@@ -2,6 +2,25 @@
 
 ---
 
+## [2026-03-07 09:14] — test(transformation): A3.4 — Tests unitaires Transformation
+
+**Type :** `test`
+**Fichiers concernés :** `src/lib/utils/stock-logic.ts`, `src/tests/transformation/validation.test.ts`, `src/tests/transformation/parsers.test.ts`, `src/tests/transformation/stock-flow.test.ts`
+
+### Description
+- Création de `deduceStockMovement()` dans `src/lib/utils/stock-logic.ts` : fonction pure encodant la même logique que les RPCs SQL (017_transformation_rpcs.sql) en TypeScript, réutilisable dans les tests et l'UI
+- `validation.test.ts` (38 tests) : validation des 3 schémas Zod (cuttingSchema, dryingSchema, sortingSchema) — cas valides, invalides, validation conditionnelle type↔etat_plante pour séchage et triage
+- `parsers.test.ts` (20 tests) : parsing FormData → objet validé pour les 3 parsers (parseCuttingForm, parseDryingForm, parseSortingForm) — conversions string→number, champs optionnels→null, cas d'erreur
+- `stock-flow.test.ts` (16 tests) : logique unitaire de déduction des mouvements de stock (12 tests) + flux complets avec/sans tronçonnage + cohérence inter-étapes + vérification entrée/sortie inversée
+
+### Détails techniques
+- 74 nouveaux tests, total 221 tests passants, build OK
+- Aucune dépendance réseau ou Supabase — tests purement unitaires
+- Conventions suivies : patterns identiques à `src/tests/semis/` et `src/tests/parcelles/`
+- Aucune modification des fichiers existants (RPCs, actions, composants UI)
+
+---
+
 ## [2026-03-07] — feat(transformation): A3.3 — UI bureau tronconnage/sechage/triage
 
 **Type :** `feat`
