@@ -2,6 +2,24 @@
 
 ---
 
+## [2026-03-06 21:55] — feat(parcelles): A2.7 — Module Arrachage (backend + UI + desactivation plantings)
+
+**Type :** `feature`
+**Fichiers concernés :** `src/lib/utils/parcelles-parsers.ts`, `src/app/[orgSlug]/(dashboard)/parcelles/arrachage/actions.ts`, `src/app/[orgSlug]/(dashboard)/parcelles/arrachage/page.tsx`, `src/components/parcelles/ArrachageClient.tsx`, `src/components/parcelles/ArrachageSlideOver.tsx`
+
+### Description
+Module Arrachage complet : CRUD arrachages avec logique critique de desactivation des plantings actifs lors de la creation d'un arrachage (plantings.actif = false).
+
+### Details techniques
+- **Parser** `parseUprootingForm` ajoute dans parcelles-parsers.ts (champs : row_id, date, variety_id optionnel, temps_min, commentaire)
+- **Server Actions** : fetchUprootings (SELECT avec jointures rows->parcels->sites + varieties), createUprooting (INSERT + desactivation plantings actifs correspondants), updateUprooting, deleteUprooting (suppression reelle, pas de soft delete)
+- **Logique critique createUprooting** : apres INSERT, desactive les plantings actifs du rang (filtre par variety_id si specifie, sinon tout le rang). Revalide aussi le path /parcelles/plantations. Erreur de desactivation loguee mais non bloquante (cas degrade acceptable).
+- **ArrachageClient** : tableau avec colonnes Rang (Site — Parcelle -> Rang N), Variete (nom ou badge "Tout le rang"), Date, Temps, Commentaire tronque, Actions. Recherche insensible casse/accents. Confirmation suppression 2-clics avec auto-reset 4s.
+- **ArrachageSlideOver** : formulaire avec logique adaptative variete via useRowVarieties. Si 1 variete active → auto-remplie. Si plusieurs → dropdown avec option "Tout le rang" en tete. Si 0 → avertissement + bouton submit desactive. Message informatif listant les plantations actives du rang.
+- Build OK, 147 tests passants, route `/[orgSlug]/parcelles/arrachage` listee comme Dynamic.
+
+---
+
 ## [2026-03-06] — fix: lien Sidebar plantation → plantations (404)
 
 **Type :** `fix`
