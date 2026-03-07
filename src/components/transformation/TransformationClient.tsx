@@ -2,17 +2,17 @@
 
 import { useState, useEffect, useTransition } from 'react'
 import { useRouter } from 'next/navigation'
-import type { HarvestWithRelations, RowWithParcel, Variety, PartiePlante } from '@/lib/types'
+import type { Variety, PartiePlante, TransformationType } from '@/lib/types'
 import { PARTIE_PLANTE_LABELS } from '@/lib/types'
 import { PARTIE_COLORS } from '@/lib/utils/colors'
-import {
-  createHarvest,
-  updateHarvest,
-  archiveHarvest,
-  restoreHarvest,
-} from '@/app/[orgSlug]/(dashboard)/parcelles/cueillette/actions'
-import CueilletteSlideOver from './CueilletteSlideOver'
 import { formatDate, formatDuration } from '@/lib/utils/format'
+import type {
+  TransformationModuleConfig,
+  TransformationItem,
+  TransformationActions,
+} from './types'
+import { ETAT_PLANTE_LABELS } from './types'
+import TransformationSlideOver from './TransformationSlideOver'
 
 /** Normalise une chaine pour la recherche insensible casse + accents */
 function normalize(str: string): string {
@@ -25,76 +25,80 @@ function formatWeight(g: number): string {
   return `${g} g`
 }
 
-/** Construit le label du lieu selon le type de cueillette */
-function lieuLabel(h: HarvestWithRelations): string {
-  if (h.type_cueillette === 'sauvage') return h.lieu_sauvage ?? '—'
-  const r = h.rows
-  if (!r) return '—'
-  const parcel = r.parcels as { nom?: string } | null
-  if (!parcel) return `Rang ${r.numero}`
-  return `${parcel.nom} — Rang ${r.numero}`
+/** Tronque un texte a n caracteres */
+function truncate(text: string, max: number): string {
+  if (text.length <= max) return text
+  return text.slice(0, max) + '…'
 }
 
-
-type TypeFilter = 'all' | 'parcelle' | 'sauvage'
+type TypeFilter = 'all' | 'entree' | 'sortie'
 
 type Props = {
-  initialHarvests: HarvestWithRelations[]
-  rows: RowWithParcel[]
+  config: TransformationModuleConfig
+  items: TransformationItem[]
   varieties: Pick<Variety, 'id' | 'nom_vernaculaire'>[]
-  lieuxSauvages: string[]
+  actions: TransformationActions
 }
 
-export default function CueilletteClient({ initialHarvests, rows, varieties, lieuxSauvages }: Props) {
+export default function TransformationClient({ config, items: initialItems, varieties, actions }: Props) {
   const router = useRouter()
   const [, startTransition] = useTransition()
 
-  const [harvests, setHarvests] = useState(initialHarvests)
+  const [items, setItems] = useState(initialItems)
   const [search, setSearch] = useState('')
-  const [showArchived, setShowArchived] = useState(false)
   const [typeFilter, setTypeFilter] = useState<TypeFilter>('all')
   const [slideOverOpen, setSlideOverOpen] = useState(false)
-  const [editingHarvest, setEditingHarvest] = useState<HarvestWithRelations | null>(null)
-  const [confirmArchiveId, setConfirmArchiveId] = useState<string | null>(null)
+  const [slideOverType, setSlideOverType] = useState<TransformationType>('entree')
+  const [editingItem, setEditingItem] = useState<TransformationItem | null>(null)
+  const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null)
   const [pendingId, setPendingId] = useState<string | null>(null)
 
-  useEffect(() => { setHarvests(initialHarvests) }, [initialHarvests])
+  useEffect(() => { setItems(initialItems) }, [initialItems])
 
   useEffect(() => {
-    if (!confirmArchiveId) return
-    const timer = setTimeout(() => setConfirmArchiveId(null), 4000)
+    if (!confirmDeleteId) return
+    const timer = setTimeout(() => setConfirmDeleteId(null), 4000)
     return () => clearTimeout(timer)
-  }, [confirmArchiveId])
+  }, [confirmDeleteId])
 
-  const active = harvests.filter(h => !h.deleted_at)
-  const archived = harvests.filter(h => !!h.deleted_at)
+  /** Resolve l'etat plante affiche pour un item */
+  function getEtatLabel(item: TransformationItem): string {
+    if (config.etatsEntree === null) {
+      // Tronconnage : etat implicite
+      return ETAT_PLANTE_LABELS[
+        item.type === 'entree' ? config.etatEntreeImplicite! : config.etatSortieImplicite!
+      ] ?? '—'
+    }
+    return ETAT_PLANTE_LABELS[item.etat_plante ?? ''] ?? '—'
+  }
 
-  const displayed = (showArchived ? archived : active).filter(h => {
-    const matchType = typeFilter === 'all' || h.type_cueillette === typeFilter
+  const displayed = items.filter(item => {
+    const matchType = typeFilter === 'all' || item.type === typeFilter
     if (!matchType) return false
     if (!search.trim()) return true
     const q = normalize(search)
     return (
-      (h.varieties?.nom_vernaculaire && normalize(h.varieties.nom_vernaculaire).includes(q)) ||
-      normalize(lieuLabel(h)).includes(q) ||
-      (h.commentaire && normalize(h.commentaire).includes(q)) ||
-      (h.lieu_sauvage && normalize(h.lieu_sauvage).includes(q))
+      (item.varieties?.nom_vernaculaire && normalize(item.varieties.nom_vernaculaire).includes(q)) ||
+      (item.commentaire && normalize(item.commentaire).includes(q)) ||
+      (item.etat_plante && normalize(item.etat_plante).includes(q))
     )
   })
 
-  function openCreate() {
-    setEditingHarvest(null)
+  function openCreate(type: TransformationType) {
+    setEditingItem(null)
+    setSlideOverType(type)
     setSlideOverOpen(true)
   }
 
-  function openEdit(h: HarvestWithRelations) {
-    setEditingHarvest(h)
+  function openEdit(item: TransformationItem) {
+    setEditingItem(item)
+    setSlideOverType(item.type)
     setSlideOverOpen(true)
   }
 
   async function handleSave(formData: FormData) {
-    if (editingHarvest) return updateHarvest(editingHarvest.id, formData)
-    return createHarvest(formData)
+    if (editingItem) return actions.update(editingItem.id, formData)
+    return actions.create(formData)
   }
 
   function handleSaveSuccess() {
@@ -102,27 +106,18 @@ export default function CueilletteClient({ initialHarvests, rows, varieties, lie
     router.refresh()
   }
 
-  function handleArchiveClick(id: string) {
-    if (confirmArchiveId === id) {
-      setConfirmArchiveId(null)
+  function handleDeleteClick(id: string) {
+    if (confirmDeleteId === id) {
+      setConfirmDeleteId(null)
       setPendingId(id)
       startTransition(async () => {
-        await archiveHarvest(id)
+        await actions.delete(id)
         setPendingId(null)
         router.refresh()
       })
     } else {
-      setConfirmArchiveId(id)
+      setConfirmDeleteId(id)
     }
-  }
-
-  function handleRestore(id: string) {
-    setPendingId(id)
-    startTransition(async () => {
-      await restoreHarvest(id)
-      setPendingId(null)
-      router.refresh()
-    })
   }
 
   return (
@@ -131,21 +126,31 @@ export default function CueilletteClient({ initialHarvests, rows, varieties, lie
       <div className="flex items-start justify-between mb-6">
         <div>
           <h1 className="text-xl font-semibold" style={{ color: '#2C3E2D' }}>
-            Cueillette
+            {config.titre}
           </h1>
           <p className="text-sm mt-0.5" style={{ color: '#9CA89D' }}>
-            {active.length} enregistrement{active.length !== 1 ? 's' : ''}
+            {items.length} enregistrement{items.length !== 1 ? 's' : ''}
           </p>
         </div>
 
-        <button
-          onClick={openCreate}
-          className="flex items-center gap-1.5 px-4 py-2 rounded-lg text-sm font-medium transition-opacity"
-          style={{ backgroundColor: 'var(--color-primary)', color: '#F9F8F6' }}
-        >
-          <span className="text-base leading-none">+</span>
-          Nouvelle cueillette
-        </button>
+        <div className="flex items-center gap-2">
+          <button
+            onClick={() => openCreate('entree')}
+            className="flex items-center gap-1.5 px-4 py-2 rounded-lg text-sm font-medium transition-opacity"
+            style={{ backgroundColor: 'var(--color-primary)', color: '#F9F8F6' }}
+          >
+            <span className="text-base leading-none">↓</span>
+            + Entree
+          </button>
+          <button
+            onClick={() => openCreate('sortie')}
+            className="flex items-center gap-1.5 px-4 py-2 rounded-lg text-sm font-medium transition-opacity"
+            style={{ backgroundColor: '#DDA15E', color: '#F9F8F6' }}
+          >
+            <span className="text-base leading-none">↑</span>
+            + Sortie
+          </button>
+        </div>
       </div>
 
       {/* Barre de recherche + filtres */}
@@ -159,7 +164,7 @@ export default function CueilletteClient({ initialHarvests, rows, varieties, lie
           </span>
           <input
             type="text"
-            placeholder="Rechercher par variete, lieu, commentaire…"
+            placeholder="Rechercher par variete, commentaire…"
             value={search}
             onChange={e => setSearch(e.target.value)}
             className="w-full pl-9 pr-3 py-2 text-sm rounded-lg border outline-none"
@@ -173,8 +178,8 @@ export default function CueilletteClient({ initialHarvests, rows, varieties, lie
         <div className="flex gap-1">
           {([
             { value: 'all', label: 'Tous' },
-            { value: 'parcelle', label: '🌿 Parcelle' },
-            { value: 'sauvage', label: '🌾 Sauvage' },
+            { value: 'entree', label: '🟢 Entrees' },
+            { value: 'sortie', label: '🔴 Sorties' },
           ] as { value: TypeFilter; label: string }[]).map(f => (
             <button
               key={f.value}
@@ -190,19 +195,6 @@ export default function CueilletteClient({ initialHarvests, rows, varieties, lie
             </button>
           ))}
         </div>
-
-        {/* Toggle archives */}
-        <button
-          onClick={() => setShowArchived(!showArchived)}
-          className="px-3 py-1.5 rounded-lg text-xs font-medium transition-colors"
-          style={{
-            backgroundColor: showArchived ? '#FEF3C7' : 'transparent',
-            color: showArchived ? '#92400E' : '#9CA89D',
-            border: `1px solid ${showArchived ? '#F59E0B44' : '#D8E0D9'}`,
-          }}
-        >
-          {showArchived ? `Archives (${archived.length})` : 'Voir archives'}
-        </button>
       </div>
 
       {/* Tableau */}
@@ -211,13 +203,11 @@ export default function CueilletteClient({ initialHarvests, rows, varieties, lie
           className="text-center py-16 rounded-xl border"
           style={{ borderColor: '#D8E0D9', color: '#9CA89D' }}
         >
-          <div className="text-3xl mb-2">🌿</div>
+          <div className="text-3xl mb-2">🔄</div>
           <p className="text-sm">
             {search || typeFilter !== 'all'
-              ? 'Aucune cueillette ne correspond aux filtres.'
-              : showArchived
-                ? 'Aucune cueillette archivee.'
-                : 'Aucune cueillette. Commencez par en creer une.'}
+              ? 'Aucun resultat ne correspond aux filtres.'
+              : `Aucun ${config.titreSingulier} enregistre.`}
           </p>
         </div>
       ) : (
@@ -228,37 +218,38 @@ export default function CueilletteClient({ initialHarvests, rows, varieties, lie
                 <Th>Type</Th>
                 <Th>Variete</Th>
                 <Th>Partie</Th>
-                <Th>Lieu</Th>
+                <Th>Etat</Th>
                 <Th>Date</Th>
                 <Th>Poids</Th>
                 <Th>Temps</Th>
+                <Th>Commentaire</Th>
                 <Th align="right">Actions</Th>
               </tr>
             </thead>
             <tbody>
-              {displayed.map((h, i) => {
-                const isArchiving = pendingId === h.id
-                const isConfirming = confirmArchiveId === h.id
-                const partie = h.partie_plante as PartiePlante
+              {displayed.map((item, i) => {
+                const isDeleting = pendingId === item.id
+                const isConfirming = confirmDeleteId === item.id
+                const partie = item.partie_plante as PartiePlante
                 const partieStyle = PARTIE_COLORS[partie] ?? PARTIE_COLORS.plante_entiere
 
                 return (
                   <tr
-                    key={h.id}
+                    key={item.id}
                     style={{
                       backgroundColor: i % 2 === 0 ? '#FAF5E9' : '#F9F8F6',
                       borderBottom: '1px solid #EDE8E0',
-                      opacity: isArchiving ? 0.4 : 1,
+                      opacity: isDeleting ? 0.4 : 1,
                     }}
                   >
                     {/* Type */}
                     <td className="px-4 py-3">
-                      <TypeBadge type={h.type_cueillette} />
+                      <TypeBadge type={item.type} />
                     </td>
 
                     {/* Variete */}
                     <td className="px-4 py-3 font-medium" style={{ color: '#2C3E2D' }}>
-                      {h.varieties?.nom_vernaculaire ?? <Dash />}
+                      {item.varieties?.nom_vernaculaire ?? <Dash />}
                     </td>
 
                     {/* Partie */}
@@ -271,48 +262,45 @@ export default function CueilletteClient({ initialHarvests, rows, varieties, lie
                       </span>
                     </td>
 
-                    {/* Lieu */}
+                    {/* Etat */}
                     <td className="px-4 py-3" style={{ color: '#2C3E2D' }}>
-                      {lieuLabel(h)}
+                      {getEtatLabel(item)}
                     </td>
 
                     {/* Date */}
                     <td className="px-4 py-3 whitespace-nowrap" style={{ color: '#2C3E2D' }}>
-                      {formatDate(h.date)}
+                      {formatDate(item.date)}
                     </td>
 
                     {/* Poids */}
                     <td className="px-4 py-3 whitespace-nowrap font-medium" style={{ color: '#2C3E2D' }}>
-                      {formatWeight(h.poids_g)}
+                      {formatWeight(item.poids_g)}
                     </td>
 
                     {/* Temps */}
                     <td className="px-4 py-3 whitespace-nowrap" style={{ color: '#6B7B6C' }}>
-                      {formatDuration(h.temps_min)}
+                      {formatDuration(item.temps_min)}
+                    </td>
+
+                    {/* Commentaire */}
+                    <td className="px-4 py-3" style={{ color: '#9CA89D', fontStyle: 'italic' }}>
+                      {item.commentaire ? truncate(item.commentaire, 40) : <Dash />}
                     </td>
 
                     {/* Actions */}
                     <td className="px-4 py-3">
                       <div className="flex items-center justify-end gap-1">
-                        {showArchived ? (
-                          <button
-                            onClick={() => handleRestore(h.id)}
-                            className="px-2.5 py-1 rounded-lg text-xs font-medium border"
-                            style={{ borderColor: '#D8E0D9', color: '#6B7B6C' }}
-                          >
-                            Restaurer
-                          </button>
-                        ) : isConfirming ? (
+                        {isConfirming ? (
                           <>
                             <button
-                              onClick={() => handleArchiveClick(h.id)}
+                              onClick={() => handleDeleteClick(item.id)}
                               className="px-2.5 py-1 rounded-lg text-xs font-medium"
                               style={{ backgroundColor: '#DC2626', color: '#FFF' }}
                             >
                               Confirmer
                             </button>
                             <button
-                              onClick={() => setConfirmArchiveId(null)}
+                              onClick={() => setConfirmDeleteId(null)}
                               className="px-2.5 py-1 rounded-lg text-xs border"
                               style={{ borderColor: '#D8E0D9', color: '#9CA89D' }}
                             >
@@ -322,7 +310,7 @@ export default function CueilletteClient({ initialHarvests, rows, varieties, lie
                         ) : (
                           <>
                             <button
-                              onClick={() => openEdit(h)}
+                              onClick={() => openEdit(item)}
                               className="p-1.5 rounded-lg transition-colors"
                               title="Modifier"
                               style={{ color: '#9CA89D' }}
@@ -332,9 +320,9 @@ export default function CueilletteClient({ initialHarvests, rows, varieties, lie
                               ✏️
                             </button>
                             <button
-                              onClick={() => handleArchiveClick(h.id)}
+                              onClick={() => handleDeleteClick(item.id)}
                               className="p-1.5 rounded-lg transition-colors"
-                              title="Archiver"
+                              title="Supprimer"
                               style={{ color: '#9CA89D' }}
                               onMouseEnter={e => ((e.currentTarget as HTMLElement).style.color = '#DC2626')}
                               onMouseLeave={e => ((e.currentTarget as HTMLElement).style.color = '#9CA89D')}
@@ -354,14 +342,14 @@ export default function CueilletteClient({ initialHarvests, rows, varieties, lie
       )}
 
       {/* Slide-over */}
-      <CueilletteSlideOver
-        key={editingHarvest?.id ?? 'new'}
+      <TransformationSlideOver
+        key={editingItem?.id ?? `new-${slideOverType}`}
+        config={config}
         open={slideOverOpen}
-        harvest={editingHarvest}
-        rows={rows}
-        varieties={varieties}
-        lieuxSauvages={lieuxSauvages}
         onClose={() => setSlideOverOpen(false)}
+        type={slideOverType}
+        item={editingItem}
+        varieties={varieties}
         onSubmit={handleSave}
         onSuccess={handleSaveSuccess}
       />
@@ -371,10 +359,10 @@ export default function CueilletteClient({ initialHarvests, rows, varieties, lie
 
 /* ---- Sous-composants utilitaires ---- */
 
-function TypeBadge({ type }: { type: 'parcelle' | 'sauvage' }) {
+function TypeBadge({ type }: { type: TransformationType }) {
   const styles = {
-    parcelle: { label: '🌿 Parcelle', bg: '#DCFCE7', color: '#166534' },
-    sauvage:  { label: '🌾 Sauvage',  bg: '#FEF3C7', color: '#92400E' },
+    entree: { label: '🟢 Entree', bg: '#DCFCE7', color: '#166534' },
+    sortie: { label: '🔴 Sortie', bg: '#FEF3C7', color: '#92400E' },
   }
   const s = styles[type]
   return (

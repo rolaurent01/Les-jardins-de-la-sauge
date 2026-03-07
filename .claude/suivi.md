@@ -2,6 +2,22 @@
 
 ---
 
+## [2026-03-07] — feat(transformation): A3.3 — UI bureau tronconnage/sechage/triage
+
+**Type :** `feat`
+**Fichiers concernés :** `src/components/transformation/types.ts`, `src/components/transformation/TransformationClient.tsx`, `src/components/transformation/TransformationSlideOver.tsx`, `src/app/[orgSlug]/(dashboard)/transformation/tronconnage/page.tsx`, `src/app/[orgSlug]/(dashboard)/transformation/sechage/page.tsx`, `src/app/[orgSlug]/(dashboard)/transformation/triage/page.tsx`, `src/lib/utils/colors.ts`
+
+### Description
+- Création de 2 composants partagés (TransformationClient + TransformationSlideOver) paramétrés par TransformationModuleConfig — les 3 modules partagent le même code
+- TransformationClient : tableau avec recherche insensible accents, filtres Tous/Entrées/Sorties, badges type (vert/ocre), badges partie plante colorés, affichage état plante (implicite pour tronçonnage, sélecteur pour séchage/triage), suppression 2-clics avec auto-reset 4s
+- TransformationSlideOver : panneau droit 480px avec overlay blur, type fixé à l'ouverture (non modifiable en édition), variété avec QuickAddVariety, partie plante adaptative via useVarietyParts, sélecteur état plante conditionnel, bouton submit coloré selon type
+- Extraction de PARTIE_COLORS dans src/lib/utils/colors.ts (partagé avec CueilletteClient)
+- 3 page.tsx Server Components (Promise.all + gestion erreur) passant les actions et config appropriées
+- Sidebar et MobileHeader : liens transformation déjà corrects (vérifiés)
+- Build OK, 147 tests passants, pas de #3A5A40 hardcodé, pas de console.log
+
+---
+
 ## [2026-03-07] — feat(transformation): A3.2 — Parsers + Server Actions tronconnage/sechage/triage
 
 **Type :** `feat`
