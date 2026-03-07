@@ -429,6 +429,79 @@ export type OccultationWithRelations = Occultation & {
     | null
 }
 
+// ---- Module Transformation ----
+
+/** Type d'opération de transformation (entrée ou sortie de stock) */
+export type TransformationType = 'entree' | 'sortie'
+
+/** Tronçonnage — table cuttings */
+export type Cutting = {
+  id: string
+  farm_id: string
+  uuid_client: string | null
+  variety_id: string
+  partie_plante: PartiePlante
+  type: TransformationType
+  date: string
+  poids_g: number
+  temps_min: number | null
+  commentaire: string | null
+  created_by: string | null
+  updated_by: string | null
+  created_at: string
+}
+
+/** Tronçonnage avec variété jointe */
+export type CuttingWithVariety = Cutting & {
+  varieties: Pick<Variety, 'id' | 'nom_vernaculaire' | 'nom_latin'>
+}
+
+/** Séchage — table dryings */
+export type Drying = {
+  id: string
+  farm_id: string
+  uuid_client: string | null
+  variety_id: string
+  partie_plante: PartiePlante
+  type: TransformationType
+  etat_plante: string
+  date: string
+  poids_g: number
+  temps_min: number | null
+  commentaire: string | null
+  created_by: string | null
+  updated_by: string | null
+  created_at: string
+}
+
+/** Séchage avec variété jointe */
+export type DryingWithVariety = Drying & {
+  varieties: Pick<Variety, 'id' | 'nom_vernaculaire' | 'nom_latin'>
+}
+
+/** Triage — table sortings */
+export type Sorting = {
+  id: string
+  farm_id: string
+  uuid_client: string | null
+  variety_id: string
+  partie_plante: PartiePlante
+  type: TransformationType
+  etat_plante: string
+  date: string
+  poids_g: number
+  temps_min: number | null
+  commentaire: string | null
+  created_by: string | null
+  updated_by: string | null
+  created_at: string
+}
+
+/** Triage avec variété jointe */
+export type SortingWithVariety = Sorting & {
+  varieties: Pick<Variety, 'id' | 'nom_vernaculaire' | 'nom_latin'>
+}
+
 // ---- Plateforme multi-tenant (migration 011) ----
 
 /** Organisation propriétaire de une ou plusieurs fermes */

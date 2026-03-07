@@ -2,6 +2,20 @@
 
 ---
 
+## [2026-03-07] — feat(transformation): A3.2 — Parsers + Server Actions tronconnage/sechage/triage
+
+**Type :** `feat`
+**Fichiers concernés :** `src/lib/types.ts`, `src/lib/validation/transformation.ts`, `src/lib/utils/transformation-parsers.ts`, `src/app/[orgSlug]/(dashboard)/transformation/tronconnage/actions.ts`, `src/app/[orgSlug]/(dashboard)/transformation/sechage/actions.ts`, `src/app/[orgSlug]/(dashboard)/transformation/triage/actions.ts`
+
+### Description
+- Ajout des types métier Cutting, Drying, Sorting (+ WithVariety) et TransformationType dans types.ts
+- Création des schémas Zod (cuttingSchema, dryingSchema, sortingSchema) dans validation/transformation.ts avec validation conditionnelle type↔etat_plante pour séchage et triage
+- Création des 3 parsers (parseCuttingForm, parseDryingForm, parseSortingForm) dans transformation-parsers.ts
+- Création des Server Actions CRUD pour les 3 modules (fetch, create, update, delete) utilisant les RPCs transactionnelles de 017_transformation_rpcs.sql
+- Build OK sans erreur
+
+---
+
 ## [2026-03-07 08:40] — fix(review): corrections P1 + P6 + P7 + P8 + P9
 
 **Type :** `fix`
