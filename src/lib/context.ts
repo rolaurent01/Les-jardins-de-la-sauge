@@ -1,4 +1,4 @@
-import { createClient } from '@/lib/supabase/server'
+import { createClient, createAdminClient } from '@/lib/supabase/server'
 import { cookies } from 'next/headers'
 
 /**
@@ -15,6 +15,11 @@ export type AppContext = {
 /**
  * Résout le contexte applicatif courant depuis la session et le cookie active_farm_id.
  * Priorise le cookie, puis la première ferme de la première organisation.
+ *
+ * getUser() utilise le client SSR (cookies). Les requêtes DB utilisent le client admin
+ * car auth.uid() peut être NULL dans le contexte PostgREST (limitation @supabase/ssr).
+ * Le filtrage par user_id est fait explicitement dans les requêtes.
+ *
  * @throws Error si l'utilisateur n'est pas authentifié ou n'a pas d'organisation
  */
 export async function getContext(): Promise<AppContext> {
@@ -23,17 +28,18 @@ export async function getContext(): Promise<AppContext> {
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) throw new Error('Not authenticated')
 
+  const admin = createAdminClient()
   const cookieStore = await cookies()
   const activeFarmId = cookieStore.get('active_farm_id')?.value
 
   // Tentative avec le cookie active_farm_id
   if (activeFarmId) {
-    const ctx = await resolveFarmContext(supabase, user.id, activeFarmId)
+    const ctx = await resolveFarmContext(admin, user.id, activeFarmId)
     if (ctx) return ctx
   }
 
   // Fallback : première ferme via membership
-  return resolveFirstFarmContext(supabase, user.id)
+  return resolveFirstFarmContext(admin, user.id)
 }
 
 /** Résout le contexte depuis un farm_id donné (vérifié par RLS) */
