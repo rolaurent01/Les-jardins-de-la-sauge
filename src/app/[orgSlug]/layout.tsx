@@ -1,10 +1,14 @@
 import { notFound } from 'next/navigation'
-import { createClient } from '@/lib/supabase/server'
+import { createAdminClient } from '@/lib/supabase/server'
 
 /**
  * Layout de segment dynamique [orgSlug].
  * Résout l'organisation par son slug et injecte les CSS variables de branding.
  * S'exécute en premier pour toutes les routes sous /{orgSlug}/*.
+ *
+ * Utilise le client admin car auth.uid() peut être NULL dans les Server Components
+ * lors du premier rendu après login. Le proxy a déjà vérifié l'authentification
+ * et l'appartenance à l'organisation.
  */
 export default async function OrgSlugLayout({
   children,
@@ -14,9 +18,9 @@ export default async function OrgSlugLayout({
   params: Promise<{ orgSlug: string }>
 }) {
   const { orgSlug } = await params
-  const supabase = await createClient()
+  const admin = createAdminClient()
 
-  const { data: org } = await supabase
+  const { data: org } = await admin
     .from('organizations')
     .select('id, slug, nom_affiche, logo_url, couleur_primaire, couleur_secondaire')
     .eq('slug', orgSlug)

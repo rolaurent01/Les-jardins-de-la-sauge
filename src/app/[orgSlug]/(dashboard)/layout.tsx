@@ -1,13 +1,17 @@
 import { cookies } from 'next/headers'
-import { createClient } from '@/lib/supabase/server'
+import { createClient, createAdminClient } from '@/lib/supabase/server'
 import Sidebar from '@/components/Sidebar'
 import MobileHeader from '@/components/MobileHeader'
 
 /**
  * Layout bureau — wraps toutes les pages authentifiées.
- * Le middleware garantit qu'on n'arrive ici que si l'utilisateur est connecté.
+ * Le proxy garantit qu'on n'arrive ici que si l'utilisateur est connecté.
  * Sur mobile (< md) : sidebar cachée, MobileHeader avec drawer à la place.
  * Sur desktop (≥ md) : sidebar fixe à gauche, MobileHeader masqué.
+ *
+ * getUser() utilise le client SSR (cookies). Les requêtes DB utilisent le
+ * client admin car auth.uid() peut être NULL dans les Server Components
+ * lors du premier rendu après login (limitation @supabase/ssr).
  */
 export default async function DashboardLayout({
   children,
@@ -18,6 +22,7 @@ export default async function DashboardLayout({
 }) {
   const { orgSlug } = await params
   const supabase = await createClient()
+  const admin = createAdminClient()
 
   const [
     { data: { user } },
@@ -27,15 +32,15 @@ export default async function DashboardLayout({
     cookies(),
   ])
 
-  // Récupérer l'organisation et ses fermes accessibles
-  const { data: org } = await supabase
+  // Récupérer l'organisation et ses fermes accessibles (admin bypass RLS)
+  const { data: org } = await admin
     .from('organizations')
     .select('id, nom_affiche, logo_url')
     .eq('slug', orgSlug)
     .single()
 
   const { data: farms } = org
-    ? await supabase
+    ? await admin
         .from('farms')
         .select('id, nom, slug')
         .eq('organization_id', org.id)
