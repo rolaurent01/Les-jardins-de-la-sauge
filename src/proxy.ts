@@ -39,11 +39,21 @@ export async function proxy(request: NextRequest) {
     }
   )
 
-  // Vérification d'authentification
+  // IMPORTANT : getUser() peut rafraîchir le token et appeler setAll.
+  // Tous les redirects doivent préserver les cookies de `response`.
   const { data: { user } } = await supabase.auth.getUser()
 
+  /** Crée un redirect qui préserve les cookies écrits par setAll (token refresh) */
+  function redirectTo(url: URL) {
+    const redirectResponse = NextResponse.redirect(url)
+    response.cookies.getAll().forEach((cookie) => {
+      redirectResponse.cookies.set(cookie.name, cookie.value)
+    })
+    return redirectResponse
+  }
+
   if (!user) {
-    return NextResponse.redirect(new URL('/login', request.url))
+    return redirectTo(new URL('/login', request.url))
   }
 
   // Initialiser le cookie active_farm_id si absent
@@ -62,8 +72,8 @@ export async function proxy(request: NextRequest) {
   // Redirection de la racine vers la première organisation de l'utilisateur
   if (pathname === '/') {
     const orgSlug = await resolveFirstOrgSlug(supabase, user.id)
-    if (!orgSlug) return NextResponse.redirect(new URL('/login', request.url))
-    return NextResponse.redirect(new URL(`/${orgSlug}/dashboard`, request.url))
+    if (!orgSlug) return redirectTo(new URL('/login', request.url))
+    return redirectTo(new URL(`/${orgSlug}/dashboard`, request.url))
   }
 
   // Vérification du slug d'organisation dans le path
@@ -79,8 +89,8 @@ export async function proxy(request: NextRequest) {
 
     if (!org) {
       const orgSlug = await resolveFirstOrgSlug(supabase, user.id)
-      if (!orgSlug) return NextResponse.redirect(new URL('/login', request.url))
-      return NextResponse.redirect(new URL(`/${orgSlug}/dashboard`, request.url))
+      if (!orgSlug) return redirectTo(new URL('/login', request.url))
+      return redirectTo(new URL(`/${orgSlug}/dashboard`, request.url))
     }
 
     // Vérifier l'appartenance à cette organisation
@@ -93,8 +103,8 @@ export async function proxy(request: NextRequest) {
 
     if (!membership) {
       const orgSlug = await resolveFirstOrgSlug(supabase, user.id)
-      if (!orgSlug) return NextResponse.redirect(new URL('/login', request.url))
-      return NextResponse.redirect(new URL(`/${orgSlug}/dashboard`, request.url))
+      if (!orgSlug) return redirectTo(new URL('/login', request.url))
+      return redirectTo(new URL(`/${orgSlug}/dashboard`, request.url))
     }
   }
 

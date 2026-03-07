@@ -18,22 +18,30 @@ export async function login(formData: FormData): Promise<{ error: string } | nev
   // Récupérer la première organisation de l'utilisateur pour construire l'URL de redirection.
   // On utilise le client admin (service role) car les cookies de session ne sont pas encore
   // lisibles dans la même requête — auth.uid() retourne NULL dans les politiques RLS.
-  const admin = createAdminClient()
-  const { data: membership } = await admin
-    .from('memberships')
-    .select('organizations(slug)')
-    .eq('user_id', authData.user.id)
-    .limit(1)
-    .single()
+  let redirectPath: string | null = null
+  try {
+    const admin = createAdminClient()
+    const { data: membership } = await admin
+      .from('memberships')
+      .select('organizations(slug)')
+      .eq('user_id', authData.user.id)
+      .limit(1)
+      .single()
 
-  const orgSlug = (membership?.organizations as { slug: string } | null)?.slug
+    const orgSlug = (membership?.organizations as { slug: string } | null)?.slug
+    if (orgSlug) {
+      redirectPath = `/${orgSlug}/dashboard`
+    }
+  } catch {
+    // Erreur réseau ou DB — on laisse redirectPath à null
+  }
 
-  if (!orgSlug) {
-    // L'utilisateur n'a pas d'organisation — cas anormal (onboarding manquant)
+  if (!redirectPath) {
     return { error: 'Aucune organisation associée à ce compte. Contactez un administrateur.' }
   }
 
-  redirect(`/${orgSlug}/dashboard`)
+  // redirect() lance une exception NEXT_REDIRECT — il doit être EN DEHORS du try/catch
+  redirect(redirectPath)
 }
 
 export async function logout(): Promise<never> {
