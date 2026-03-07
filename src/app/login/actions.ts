@@ -1,10 +1,33 @@
 'use server'
 
+import { createServerClient } from '@supabase/ssr'
 import { createClient, createAdminClient } from '@/lib/supabase/server'
+import { cookies } from 'next/headers'
 import { redirect } from 'next/navigation'
+import type { Database } from '@/lib/supabase/types'
 
 export async function login(formData: FormData): Promise<{ error: string } | never> {
-  const supabase = await createClient()
+  const cookieStore = await cookies()
+
+  // Client Supabase inline — PAS de try/catch sur setAll pour détecter les erreurs
+  const supabase = createServerClient<Database>(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+    {
+      cookies: {
+        getAll() {
+          return cookieStore.getAll()
+        },
+        setAll(cookiesToSet) {
+          // --- DEBUG TEMPORAIRE (à retirer après diagnostic) ---
+          console.log('[LOGIN] setAll called, cookies:', cookiesToSet.map(c => c.name))
+          cookiesToSet.forEach(({ name, value, options }) => {
+            cookieStore.set(name, value, options)
+          })
+        },
+      },
+    }
+  )
 
   const { data: authData, error } = await supabase.auth.signInWithPassword({
     email: formData.get('email') as string,
@@ -22,9 +45,8 @@ export async function login(formData: FormData): Promise<{ error: string } | nev
     return { error: 'Identifiants incorrects. Vérifiez votre email et mot de passe.' }
   }
 
-  // Récupérer la première organisation de l'utilisateur pour construire l'URL de redirection.
-  // On utilise le client admin (service role) car les cookies de session ne sont pas encore
-  // lisibles dans la même requête — auth.uid() retourne NULL dans les politiques RLS.
+  // Récupérer la première organisation pour l'URL de redirection.
+  // Client admin car les cookies de session ne sont pas encore lisibles via RLS.
   let redirectPath: string | null = null
   try {
     const admin = createAdminClient()
