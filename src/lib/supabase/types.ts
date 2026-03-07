@@ -2027,6 +2027,121 @@ export type Database = {
         }
         Returns: undefined
       }
+      /** Cree un cutting + stock_movement dans une seule transaction */
+      create_cutting_with_stock: {
+        Args: {
+          p_farm_id: string
+          p_variety_id: string
+          p_partie_plante: string
+          p_type: string
+          p_date: string
+          p_poids_g: number
+          p_temps_min: number | null
+          p_commentaire: string | null
+          p_created_by: string
+          p_uuid_client: string | null
+        }
+        Returns: string
+      }
+      /** Met a jour un cutting + son stock_movement dans une seule transaction */
+      update_cutting_with_stock: {
+        Args: {
+          p_cutting_id: string
+          p_variety_id: string
+          p_partie_plante: string
+          p_date: string
+          p_poids_g: number
+          p_temps_min: number | null
+          p_commentaire: string | null
+          p_updated_by: string
+        }
+        Returns: undefined
+      }
+      /** Supprime un cutting + son stock_movement dans une seule transaction */
+      delete_cutting_with_stock: {
+        Args: {
+          p_cutting_id: string
+        }
+        Returns: undefined
+      }
+      /** Cree un drying + stock_movement dans une seule transaction */
+      create_drying_with_stock: {
+        Args: {
+          p_farm_id: string
+          p_variety_id: string
+          p_partie_plante: string
+          p_type: string
+          p_etat_plante: string
+          p_date: string
+          p_poids_g: number
+          p_temps_min: number | null
+          p_commentaire: string | null
+          p_created_by: string
+          p_uuid_client: string | null
+        }
+        Returns: string
+      }
+      /** Met a jour un drying + son stock_movement dans une seule transaction */
+      update_drying_with_stock: {
+        Args: {
+          p_drying_id: string
+          p_variety_id: string
+          p_partie_plante: string
+          p_etat_plante: string
+          p_date: string
+          p_poids_g: number
+          p_temps_min: number | null
+          p_commentaire: string | null
+          p_updated_by: string
+        }
+        Returns: undefined
+      }
+      /** Supprime un drying + son stock_movement dans une seule transaction */
+      delete_drying_with_stock: {
+        Args: {
+          p_drying_id: string
+        }
+        Returns: undefined
+      }
+      /** Cree un sorting + stock_movement dans une seule transaction */
+      create_sorting_with_stock: {
+        Args: {
+          p_farm_id: string
+          p_variety_id: string
+          p_partie_plante: string
+          p_type: string
+          p_etat_plante: string
+          p_date: string
+          p_poids_g: number
+          p_temps_min: number | null
+          p_commentaire: string | null
+          p_created_by: string
+          p_uuid_client: string | null
+        }
+        Returns: string
+      }
+      /** Met a jour un sorting + son stock_movement dans une seule transaction */
+      update_sorting_with_stock: {
+        Args: {
+          p_sorting_id: string
+          p_variety_id: string
+          p_partie_plante: string
+          p_etat_plante: string
+          p_date: string
+          p_poids_g: number
+          p_temps_min: number | null
+          p_commentaire: string | null
+          p_updated_by: string
+        }
+        Returns: undefined
+      }
+      /** Supprime un sorting + son stock_movement dans une seule transaction */
+      delete_sorting_with_stock: {
+        Args: {
+          p_sorting_id: string
+        }
+        Returns: undefined
+      }
     }
     Enums: Record<string, never>
   }
