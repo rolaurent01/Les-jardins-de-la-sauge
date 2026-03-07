@@ -41,7 +41,16 @@ export async function proxy(request: NextRequest) {
 
   // IMPORTANT : getUser() peut rafraîchir le token et appeler setAll.
   // Tous les redirects doivent préserver les cookies de `response`.
-  const { data: { user } } = await supabase.auth.getUser()
+  const { data: { user }, error: userError } = await supabase.auth.getUser()
+
+  // --- DEBUG TEMPORAIRE (à retirer après diagnostic) ---
+  console.log('[PROXY]', {
+    path: pathname,
+    hasUser: !!user,
+    userId: user?.id?.slice(0, 8) || null,
+    userError: userError?.message || null,
+    sbCookies: request.cookies.getAll().map(c => c.name).filter(n => n.startsWith('sb-')),
+  })
 
   /** Crée un redirect qui préserve les cookies écrits par setAll (token refresh) */
   function redirectTo(url: URL) {
@@ -53,6 +62,7 @@ export async function proxy(request: NextRequest) {
   }
 
   if (!user) {
+    console.log('[PROXY] → redirect /login (no user)')
     return redirectTo(new URL('/login', request.url))
   }
 
@@ -88,7 +98,9 @@ export async function proxy(request: NextRequest) {
       .single()
 
     if (!org) {
+      console.log('[PROXY] → org not found for slug:', potentialSlug)
       const orgSlug = await resolveFirstOrgSlug(supabase, user.id)
+      console.log('[PROXY] → resolveFirstOrgSlug fallback:', orgSlug)
       if (!orgSlug) return redirectTo(new URL('/login', request.url))
       return redirectTo(new URL(`/${orgSlug}/dashboard`, request.url))
     }
@@ -102,7 +114,9 @@ export async function proxy(request: NextRequest) {
       .single()
 
     if (!membership) {
+      console.log('[PROXY] → no membership for org:', org.id, 'user:', user.id)
       const orgSlug = await resolveFirstOrgSlug(supabase, user.id)
+      console.log('[PROXY] → resolveFirstOrgSlug fallback:', orgSlug)
       if (!orgSlug) return redirectTo(new URL('/login', request.url))
       return redirectTo(new URL(`/${orgSlug}/dashboard`, request.url))
     }

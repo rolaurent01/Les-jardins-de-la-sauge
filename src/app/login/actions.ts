@@ -11,6 +11,13 @@ export async function login(formData: FormData): Promise<{ error: string } | nev
     password: formData.get('password') as string,
   })
 
+  // --- DEBUG TEMPORAIRE (à retirer après diagnostic) ---
+  console.log('[LOGIN]', {
+    success: !error,
+    error: error?.message || null,
+    userId: authData?.user?.id?.slice(0, 8) || null,
+  })
+
   if (error || !authData.user) {
     return { error: 'Identifiants incorrects. Vérifiez votre email et mot de passe.' }
   }
@@ -35,6 +42,8 @@ export async function login(formData: FormData): Promise<{ error: string } | nev
   } catch {
     // Erreur réseau ou DB — on laisse redirectPath à null
   }
+
+  console.log('[LOGIN] redirectPath:', redirectPath)
 
   if (!redirectPath) {
     return { error: 'Aucune organisation associée à ce compte. Contactez un administrateur.' }
