@@ -1,15 +1,31 @@
 import { createServerClient } from '@supabase/ssr'
+import { createClient } from '@supabase/supabase-js'
 import { NextResponse, type NextRequest } from 'next/server'
 import type { Database } from '@/lib/supabase/types'
+
+/**
+ * Client admin (service_role) pour les vérifications du proxy.
+ * Bypass RLS — sûr ici car le proxy vérifie l'user via getUser() d'abord.
+ */
+function createAdminClient() {
+  return createClient<Database>(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.SUPABASE_SERVICE_ROLE_KEY!,
+    { auth: { autoRefreshToken: false, persistSession: false } }
+  )
+}
 
 /**
  * Proxy d'authentification + résolution du slug d'organisation (Next.js 16).
  *
  * Logique :
  * 1. Page /login → publique (passe-travers)
- * 2. Vérifie l'authentification Supabase
+ * 2. Vérifie l'authentification Supabase (getUser via cookies)
  * 3. / (racine) → redirect vers /{orgSlug}/dashboard
  * 4. /{slug}/... → vérifie que le slug existe et que l'utilisateur est membre
+ *
+ * Les requêtes DB utilisent le client admin (service_role) car auth.uid()
+ * n'est pas disponible dans le contexte PostgREST du proxy/middleware.
  */
 export async function proxy(request: NextRequest) {
   let response = NextResponse.next({ request })
@@ -49,7 +65,6 @@ export async function proxy(request: NextRequest) {
     hasUser: !!user,
     userId: user?.id?.slice(0, 8) || null,
     userError: userError?.message || null,
-    sbCookies: request.cookies.getAll().map(c => c.name).filter(n => n.startsWith('sb-')),
   })
 
   /** Crée un redirect qui préserve les cookies écrits par setAll (token refresh) */
@@ -62,13 +77,15 @@ export async function proxy(request: NextRequest) {
   }
 
   if (!user) {
-    console.log('[PROXY] → redirect /login (no user)')
     return redirectTo(new URL('/login', request.url))
   }
 
+  // Client admin pour les requêtes DB (bypass RLS, car auth.uid() est NULL dans le proxy)
+  const admin = createAdminClient()
+
   // Initialiser le cookie active_farm_id si absent
   if (!request.cookies.get('active_farm_id')?.value) {
-    const farmId = await resolveFirstFarmId(supabase, user.id)
+    const farmId = await resolveFirstFarmId(admin, user.id)
     if (farmId) {
       response.cookies.set('active_farm_id', farmId, {
         path: '/',
@@ -81,7 +98,7 @@ export async function proxy(request: NextRequest) {
 
   // Redirection de la racine vers la première organisation de l'utilisateur
   if (pathname === '/') {
-    const orgSlug = await resolveFirstOrgSlug(supabase, user.id)
+    const orgSlug = await resolveFirstOrgSlug(admin, user.id)
     if (!orgSlug) return redirectTo(new URL('/login', request.url))
     return redirectTo(new URL(`/${orgSlug}/dashboard`, request.url))
   }
@@ -91,22 +108,20 @@ export async function proxy(request: NextRequest) {
   if (segments.length > 0) {
     const potentialSlug = segments[0]
 
-    const { data: org } = await supabase
+    const { data: org } = await admin
       .from('organizations')
       .select('id')
       .eq('slug', potentialSlug)
       .single()
 
     if (!org) {
-      console.log('[PROXY] → org not found for slug:', potentialSlug)
-      const orgSlug = await resolveFirstOrgSlug(supabase, user.id)
-      console.log('[PROXY] → resolveFirstOrgSlug fallback:', orgSlug)
+      const orgSlug = await resolveFirstOrgSlug(admin, user.id)
       if (!orgSlug) return redirectTo(new URL('/login', request.url))
       return redirectTo(new URL(`/${orgSlug}/dashboard`, request.url))
     }
 
     // Vérifier l'appartenance à cette organisation
-    const { data: membership } = await supabase
+    const { data: membership } = await admin
       .from('memberships')
       .select('id')
       .eq('organization_id', org.id)
@@ -114,9 +129,7 @@ export async function proxy(request: NextRequest) {
       .single()
 
     if (!membership) {
-      console.log('[PROXY] → no membership for org:', org.id, 'user:', user.id)
-      const orgSlug = await resolveFirstOrgSlug(supabase, user.id)
-      console.log('[PROXY] → resolveFirstOrgSlug fallback:', orgSlug)
+      const orgSlug = await resolveFirstOrgSlug(admin, user.id)
       if (!orgSlug) return redirectTo(new URL('/login', request.url))
       return redirectTo(new URL(`/${orgSlug}/dashboard`, request.url))
     }
@@ -128,10 +141,10 @@ export async function proxy(request: NextRequest) {
 /** Résout le slug de la première organisation accessible à l'utilisateur */
 async function resolveFirstOrgSlug(
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  supabase: any,
+  admin: any,
   userId: string
 ): Promise<string | null> {
-  const { data } = await supabase
+  const { data } = await admin
     .from('memberships')
     .select('organizations(slug)')
     .eq('user_id', userId)
@@ -144,10 +157,10 @@ async function resolveFirstOrgSlug(
 /** Résout l'id de la première ferme accessible à l'utilisateur */
 async function resolveFirstFarmId(
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  supabase: any,
+  admin: any,
   userId: string
 ): Promise<string | null> {
-  const { data } = await supabase
+  const { data } = await admin
     .from('memberships')
     .select('organizations(farms(id))')
     .eq('user_id', userId)
