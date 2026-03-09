@@ -2,6 +2,48 @@
 
 ---
 
+## [2026-03-09 10:15] — fix(production): A4.1 — Cloisonnement multi-tenant RPCs production
+
+**Type :** `fix`
+**Fichiers concernés :** `supabase/migrations/019_production_module.sql`
+
+### Description
+Audit et correction du cloisonnement multi-tenant sur les 4 RPCs du module Produits.
+
+### Détails techniques
+- `create_production_lot_with_stock` : ajout validation `recipes WHERE id = p_recipe_id AND farm_id = p_farm_id`
+- `delete_production_lot_with_stock` : ajout param `p_farm_id`, filtre `farm_id` sur production_lots + stock_movements
+- `restore_production_lot_with_stock` : ajout param `p_farm_id`, filtre `farm_id` sur SELECT + UPDATE
+- `update_production_lot_conditionner` : ajout param `p_farm_id`, filtre `farm_id` sur EXISTS + UPDATE
+- Principe : defense en profondeur, meme si getContext() verifie l'acces cote Server Action
+
+---
+
+## [2026-03-09 10:00] — feat(production): A4.1 — Migration 019 : module Produits (schema + RPCs)
+
+**Type :** `feature`
+**Fichiers concernés :** `supabase/migrations/019_production_module.sql`
+
+### Description
+Migration SQL pour le module Produits (A4). Ajustements schema + 4 RPCs transactionnelles.
+
+### Détails techniques
+- **Schema** :
+  - `production_lots.mode` TEXT NOT NULL DEFAULT 'produit' CHECK ('produit', 'melange')
+  - `production_lots.nb_unites` rendu nullable (NULL en mode melange)
+  - `production_lots.poids_total_g` rendu nullable
+  - `production_lot_ingredients.fournisseur` TEXT (manquant, requis par context.md)
+- **RPCs** :
+  1. `create_production_lot_with_stock` — cree lot + N ingredients + N stock_movements (sortie). Verifie stock via v_stock (3 dimensions : variete x partie x etat). RAISE EXCEPTION si stock insuffisant.
+  2. `delete_production_lot_with_stock` — soft delete lot + soft delete stock_movements + hard delete ingredients
+  3. `restore_production_lot_with_stock` — restaure lot + recree ingredients + re-verifie stock + recree stock_movements
+  4. `update_production_lot_conditionner` — met a jour nb_unites sur un lot mode melange
+- Meme style que 017 (SECURITY DEFINER, prefixe p_, RAISE EXCEPTION)
+- Contrainte UNIQUE(farm_id, numero_lot) deja existante (migration 011)
+- Triggers production_summary (018) compatibles — non modifies
+
+---
+
 ## [2026-03-07 13:25] — fix(transformation): A3.5 — Migration 018 : triggers production_summary DELETE/UPDATE
 
 **Type :** `fix`
