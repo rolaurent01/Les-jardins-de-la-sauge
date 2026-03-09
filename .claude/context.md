@@ -199,6 +199,25 @@ Le bureau est le CENTRE DE COMMANDE complet. Le mobile est un TERMINAL DE SAISIE
 | **Gestion recettes/variétés** | Oui (CRUD complet) | Ajout rapide de variété uniquement (depuis un formulaire). Pas de modification/suppression. |
 | **Traitement des données** | Tout le traitement, la vérification, l'analyse se fait ici | Les données saisies sur mobile sont traitées/vérifiées sur le bureau |
 
+#### Routing mobile
+
+Les routes mobile sont sous `src/app/[orgSlug]/(mobile)/` :
+
+```
+src/app/[orgSlug]/(mobile)/
+├── layout.tsx          # Layout mobile : barre sync permanente, pas de sidebar
+└── saisie/
+    ├── page.tsx        # Grille 5 tuiles d'actions
+    └── [action]/
+        └── page.tsx    # Formulaire de saisie
+```
+
+**Détection et redirection** : le proxy détecte le User-Agent au login et redirige :
+- Mobile → `/{orgSlug}/m/saisie`
+- Desktop → `/{orgSlug}/dashboard`
+
+Chaque layout (bureau et mobile) inclut un lien de bascule vers l'autre version ("Mode terrain" / "Mode bureau"). Pas de blocage — l'utilisateur peut accéder manuellement à l'autre version.
+
 ### 3.4 Architecture Multi-Tenant
 
 L'application est conçue pour accueillir plusieurs structures indépendantes (fermes) sur la même plateforme technique. L'isolation des données est garantie par RLS PostgreSQL.
@@ -1566,6 +1585,25 @@ Le dashboard est la page d'accueil bureau. Il montre un résumé avec des liens 
 - Si le nom existe déjà (contrainte UNIQUE insensible casse/accents) : message « Cette variété existe déjà » + proposition de sélection directe.
 - Outil de merge super admin (Phase B6) : fusionner un doublon vers une cible (UPDATE toutes les FK + soft delete + log audit).
 
+### 8.5b Sélection des variétés actives par ferme ("Mes variétés")
+
+La table `farm_variety_settings` permet de masquer des variétés pour une ferme (`hidden = true`). Plutôt que de masquer les indésirables une par une (fastidieux si le catalogue grandit), l'approche est inversée :
+
+**Page bureau "Mes variétés"** (Référentiel → Mes variétés) :
+- Affiche le catalogue complet avec des checkboxes
+- L'utilisateur coche les variétés qu'il utilise
+- Les variétés non cochées sont automatiquement masquées (`hidden = true` dans `farm_variety_settings`)
+- Recherche et filtres par famille pour faciliter la sélection
+- Compteur "X variétés sélectionnées sur Y"
+
+**Onboarding première ferme** : à la première visite de cette page (aucun `farm_variety_settings` pour cette ferme), proposer un mode "Cochez les variétés que vous cultivez" pour initialiser en une fois.
+
+**Impact mobile** : le cache IndexedDB ne charge que les variétés non masquées (filtrage server-side). Le mobile ne voit que les variétés pertinentes dans les dropdowns, ce qui améliore l'ergonomie terrain.
+
+**Impact technique** : aucun changement de modèle de données. `farm_variety_settings` existe déjà. C'est uniquement une page UI bureau.
+
+**Planification** : Phase A7 (polish) ou B5. Pas dans A6.
+
 ### 8.6 Notifications
 
 Les alertes sont stockées dans la table `notifications` et affichées dans l'UI :
@@ -1835,12 +1873,12 @@ app-ljs/
 │   │   │   │       ├── sites/
 │   │   │   │       └── materiaux/
 │   │   │   └── admin/           # 🔧 Super admin (Phase B6, accès platform_admins)
-│   │   ├── (mobile)/            # Routes mobile — ULTRA-MINIMAL
-│   │   │   ├── layout.tsx       # Layout mobile : barre sync + pas de navigation
-│   │   │   └── saisie/
-│   │   │       ├── page.tsx     # Grille de tuiles d'actions
-│   │   │       └── [action]/
-│   │   │           └── page.tsx
+│   │   │   └── (mobile)/        # Routes mobile — ULTRA-MINIMAL (sous [orgSlug])
+│   │   │       ├── layout.tsx   # Layout mobile : barre sync permanente, pas de sidebar
+│   │   │       └── saisie/
+│   │   │           ├── page.tsx # Grille 5 tuiles d'actions
+│   │   │           └── [action]/
+│   │   │               └── page.tsx # Formulaire de saisie
 │   │   └── api/
 │   │       ├── keep-alive/
 │   │       ├── backup/          # Backup quotidien → GitHub (par organisation)
@@ -1980,6 +2018,15 @@ app-ljs/
 | **Rétention données** | **On garde tout — l'historique est la valeur du produit. Pas de purge des données métier.** |
 | **Multi-langue** | **Français uniquement pour l'instant.** |
 | **API externe** | **Pas maintenant. Architecture REST standard Next.js, extensible si besoin.** |
+| **Auth offline** | **Session Supabase 30 jours (refresh token). Pas de fallback local (PIN, cache userId). Si session expirée + offline → app inaccessible (cas irréaliste avec usage quotidien). Config : REFRESH_TOKEN_REUSE_INTERVAL = 2592000s dans Supabase Dashboard.** |
+| **Service Worker** | **Serwist (successeur de next-pwa, basé sur Workbox). Précache automatique du build Next.js. Pas de SW custom.** |
+| **Détection mobile** | **User-Agent dans le proxy au login → redirection vers /{orgSlug}/m/saisie si mobile. Lien de bascule "Mode terrain" / "Mode bureau" dans les deux layouts. Pas de blocage — l'utilisateur peut accéder manuellement à l'autre version.** |
+| **Stockage offline — indicateur** | **Écran "État sync" accessible depuis la barre de sync mobile : espace utilisé/quota (navigator.storage.estimate()), nb saisies en attente, nb archives en rétention, bouton "Purger les archives".** |
+| **Stockage offline — garde-fou** | **Purge auto des archives confirmées > 7j quand usage > 80% du quota (~40 Mo iOS). La saisie n'est jamais bloquée.** |
+| **Cache variétés mobile** | **Filtrage server-side au chargement du cache : exclure hidden (farm_variety_settings) + merged_into_id NOT NULL + deleted_at NOT NULL. Le mobile ne reçoit que les variétés pertinentes pour sa ferme.** |
+| **Audit batch — pagination** | **Paginer l'envoi des uuid_client par lots de 200 pour éviter les clauses IN() trop longues en SQL. Transparent pour l'UX (barre de progression).** |
+| **Cache au switch de ferme** | **Rechargement complet (vider IndexedDB + recharger). Acceptable pour 2-3 fermes. Cache multi-ferme possible plus tard si besoin.** |
+| **Sécurité multi-tenant offline** | **farm_id dans chaque payload sync, validé server-side via getContext(). Cache IndexedDB scopé par ferme active. Aucune donnée cross-tenant en local.** |
 | **Super admin** | **Interface `/admin` séparée. Impersonation (`impersonate_farm_id` + bandeau rouge). Merge variétés. Super data cross-tenant via `service_role`. Consultation `app_logs`.** |
 | **Super data** | **Agrégation à la volée via `service_role` (bypass RLS). Pas de table d'agrégation dédiée pour le cross-tenant.** |
 | **Numérotation lots** | **Scopée par `farm_id` : `UNIQUE(farm_id, lot_interne)`, `UNIQUE(farm_id, numero_lot)`. Chaque ferme a sa propre séquence.** |

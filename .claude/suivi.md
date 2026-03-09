@@ -2,6 +2,24 @@
 
 ---
 
+## [2026-03-09 23:15] — Mise à jour documentation A6 + Mes variétés
+
+**Type :** `docs`
+**Fichiers concernés :** `.claude/context.md`, `.claude/plan-action.md`
+
+### Description
+Mise à jour des specs avec les décisions techniques A6 (Mobile PWA Offline + Sync) et la feature "Mes variétés".
+
+### Détails techniques
+- **context.md §13** : ajout de 9 décisions A6 (auth offline, Serwist, détection mobile, indicateur stockage, garde-fou quota, cache variétés, audit pagination, cache switch ferme, sécurité multi-tenant offline)
+- **context.md §3.3** : ajout du routing mobile (`[orgSlug]/(mobile)/`) avec détection User-Agent et lien de bascule
+- **context.md §11** : arborescence mise à jour — routes `(mobile)/` déplacées sous `[orgSlug]/`
+- **context.md §8.5b** : nouvelle sous-section "Mes variétés" — page bureau avec checkboxes pour sélectionner les variétés actives par ferme, onboarding première visite, impact sur le cache mobile
+- **plan-action.md A6** : remplacement du contenu par un séquençage en 10 sous-phases (A6.1 à A6.8) avec tableau de dépendances et résumé des décisions techniques
+- **plan-action.md A7** : ajout du bullet "Page Mes variétés"
+
+---
+
 ## [2026-03-09 22:35] — feat(affinage-stock): A5.2 — Server Actions + Pages + UI + Tests
 
 **Type :** `feature`

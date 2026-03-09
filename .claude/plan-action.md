@@ -264,40 +264,34 @@ A7. Polish Phase A
 
 ---
 
-### A6 — 📱 Mobile PWA Offline (terminal de saisie terrain)
+### A6 — 📱 Mobile PWA Offline + Sync
 **Durée** : 5-7 jours
 
-Le mobile est UN TERMINAL DE SAISIE TERRAIN. Pas de consultation, pas de dashboard, pas de tableaux. 3 écrans max : choix d'action → formulaire → confirmation.
+Le mobile est UN TERMINAL DE SAISIE TERRAIN. Le protocole de sync garantit ZÉRO PERTE DE DONNÉES.
 
-**Livrables** :
-- Service Worker : cache des pages et assets pour fonctionnement offline
-- IndexedDB (via Dexie.js) :
-  - Cache des données de référence (variétés, parcelles, rangs) pour pré-remplir les sélecteurs
-  - Table `sync_queue` : file d'attente des saisies
-- UI mobile **ultra-légère** :
-  - Écran d'accueil = 5 tuiles correspondant aux 5 ensembles :
-    ```
-    🌱 Semis       🌿 Parcelle
-    🔄 Transfo     📦 Stock
-    🧪 Produits
-    ```
-  - Tap sur un ensemble → sous-actions
-    - 🌿 Parcelle → Travail de sol, Plantation, Suivi de rang, Cueillette, Arrachage, **Occultation**
-  - Tap sur une sous-action → formulaire minimaliste → Enregistrer → "✅" → retour
-  - Barre de sync permanente + bouton "Forcer la synchronisation"
-  - Timer start/stop optionnel pour mesurer le temps de travail
-  - **AUCUNE page de consultation**
-- **PROTOCOLE SYNC ZÉRO PERTE** (détail dans context.md section 3.2) :
-  - UUID client généré localement pour chaque saisie
-  - Cycle simplifié : pending → syncing → synced (POST OK suffit) → archivé 7j → supprimé
-  - Idempotence serveur (ON CONFLICT DO NOTHING)
-  - Retry auto 30s, max 5 tentatives
-  - Archivage 7 jours post-sync
-- **Audit "Tout vérifier"** 🔍 : vérification batch mobile↔serveur (remplace le GET verify unitaire)
-- Endpoints : POST /api/sync, POST /api/sync/audit
-- **Pas de création de variété en offline** : message "notez en commentaire, ajoutez au retour"
-- Logs client IndexedDB pour diagnostic terrain
-- Tests CRITIQUES (~20% du temps) : mode avion, coupure pendant envoi, audit, idempotence, perte serveur simulée
+**Séquençage en 10 sous-phases :**
+
+| Phase | Contenu | Dépendances |
+|-------|---------|-------------|
+| A6.1 | PWA Infrastructure (Serwist + manifest + useOnlineStatus) | — |
+| A6.2 | IndexedDB schema + cache de référence (Dexie.js, scopé farm_id, filtrage variétés server-side) | A6.1 |
+| A6.3 | API endpoints sync (POST /api/sync + POST /api/sync/audit avec pagination 200) | — |
+| A6.4 | Moteur de sync client (cycle pending→synced, retry 30s, max 5 tentatives, archivage 7j, purge auto 80%) | A6.1, A6.2, A6.3 |
+| A6.5 | Layout mobile + navigation tuiles + détection device (proxy User-Agent + lien bascule) | A6.2 |
+| A6.6a | Formulaires mobiles : Semis (sachet, suivi semis) | A6.4, A6.5 |
+| A6.6b | Formulaires mobiles : Parcelle (travail sol, plantation, suivi rang, cueillette, arrachage, occultation) | A6.4, A6.5 |
+| A6.6c | Formulaires mobiles : Transfo + Stock + Produits (tronçonnage, séchage, triage, achat, vente, production lot) | A6.4, A6.5 |
+| A6.7 | UI sync (barre permanente, boutons, audit visuel, indicateur stockage, timer chronomètre) | A6.4, A6.6* |
+| A6.8 | Tests + polish + checklist E2E (mode avion → saisie → sync → audit) | Tout |
+
+**Décisions techniques A6 :**
+- Auth offline : session Supabase 30 jours, pas de fallback local
+- Service Worker : Serwist (précache auto, pas de SW custom)
+- Détection mobile : User-Agent au login dans le proxy + lien bascule
+- Stockage : indicateur volume + purge auto archives à 80% du quota
+- Cache variétés : filtrage server-side (hidden + merged + deleted exclus)
+- Audit batch : paginé par lots de 200
+- Multi-tenant : farm_id dans chaque payload, validé server-side, cache scopé par ferme
 
 **Claude Code — Instruction** : Mobile le plus LÉGER possible. Validations Zod partagées. L'objectif est ZÉRO PERTE DE DONNÉES. Cache IndexedDB scopé par ferme active — au switch de ferme, le cache est rechargé entièrement. Le payload de sync inclut `farm_id` dans chaque enregistrement, validé côté serveur. Toutes les Server Actions de sync incluent `farm_id`, `created_by`, `updated_by` nativement.
 
@@ -311,6 +305,7 @@ Le mobile est UN TERMINAL DE SAISIE TERRAIN. Pas de consultation, pas de dashboa
 - Vérification triggers (production_summary) + test de la fonction `recalculate_production_summary()`
 - **Clôture de saison** : bouton admin "Clôturer la saison [année]" — confirmation rang par rang des vivaces, arrachage auto des annuelles non clôturées
 - **Espace admin** : accès au recalcul production_summary, consultation des logs (`app_logs`), vérification backup
+- **Page "Mes variétés"** : page bureau Référentiel → Mes variétés. Checkboxes pour sélectionner les variétés actives de la ferme. Impact direct sur le cache mobile (seules les variétés non masquées sont chargées).
 
 **✅ Critère de fin Phase A** : tu vas au terrain avec ton téléphone, tu saisis toutes tes opérations, tu synchronises le soir, et les données sont justes. Le stock reflète la réalité. L'appli est utilisable au quotidien.
 
