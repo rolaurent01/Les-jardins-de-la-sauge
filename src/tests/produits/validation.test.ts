@@ -82,6 +82,29 @@ describe('recipeSchema', () => {
       expect(result.success).toBe(true)
     })
 
+    it('devrait accepter une recette mono-ingredient a 100%', () => {
+      const result = recipeSchema.safeParse({
+        nom: 'Verveine pure',
+        poids_sachet_g: 25,
+        ingredients: [
+          { ...BASE_INGREDIENT_PLANTE, pourcentage: 1.0 },
+        ],
+      })
+      expect(result.success).toBe(true)
+    })
+
+    it('devrait accepter une recette 2 ingredients 50/50 (non-regression)', () => {
+      const result = recipeSchema.safeParse({
+        nom: 'Duo menthe-verveine',
+        poids_sachet_g: 25,
+        ingredients: [
+          { ...BASE_INGREDIENT_PLANTE, pourcentage: 0.50 },
+          { ...BASE_INGREDIENT_PLANTE, variety_id: VARIETY_UUID_2, pourcentage: 0.50, ordre: 2 },
+        ],
+      })
+      expect(result.success).toBe(true)
+    })
+
     it('devrait accepter la somme = 1.0 avec tolerance flottante (0.999)', () => {
       const result = recipeSchema.safeParse({
         nom: 'Test tolerance',
@@ -261,6 +284,33 @@ describe('productionLotSchema', () => {
         nb_unites: null,
         poids_total_g: 500,
         ingredients: [BASE_INGREDIENT_A, BASE_INGREDIENT_B],
+      })
+      expect(result.success).toBe(true)
+    })
+
+    it('devrait accepter un lot mono-ingredient a 100% en mode produit', () => {
+      const result = productionLotSchema.safeParse({
+        recipe_id: RECIPE_UUID,
+        mode: 'produit',
+        date_production: YESTERDAY,
+        nb_unites: 50,
+        ingredients: [
+          { ...BASE_INGREDIENT_A, pourcentage: 1.0, poids_g: 25 },
+        ],
+      })
+      expect(result.success).toBe(true)
+    })
+
+    it('devrait accepter un lot 2 ingredients 50/50 en mode produit (non-regression)', () => {
+      const result = productionLotSchema.safeParse({
+        recipe_id: RECIPE_UUID,
+        mode: 'produit',
+        date_production: YESTERDAY,
+        nb_unites: 50,
+        ingredients: [
+          { ...BASE_INGREDIENT_A, pourcentage: 0.50, poids_g: 12.5 },
+          { ...BASE_INGREDIENT_B, pourcentage: 0.50, poids_g: 12.5 },
+        ],
       })
       expect(result.success).toBe(true)
     })

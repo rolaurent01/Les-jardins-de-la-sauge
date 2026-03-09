@@ -38,7 +38,7 @@ const recipeIngredientSchema = z.object({
   external_material_id: z.string().uuid().optional().nullable(),
   etat_plante: z.string().optional().nullable(),
   partie_plante: z.enum(PARTIES_PLANTE as [string, ...string[]]).optional().nullable(),
-  pourcentage: z.number().gt(0, 'Doit être > 0').lt(1, 'Doit être < 1'),
+  pourcentage: z.number().gt(0, 'Doit être > 0').lte(1, 'Doit être ≤ 100%'),
   ordre: z.number().int().optional().nullable(),
 })
 

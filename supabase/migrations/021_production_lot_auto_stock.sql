@@ -239,6 +239,10 @@ BEGIN
   WHERE production_lot_id = p_lot_id AND farm_id = p_farm_id AND deleted_at IS NOT NULL;
 
   -- 4. Re-verifier le stock pour chaque ingredient plante
+  -- IMPORTANT : les stock_movements (sorties) sont deja restaures a ce stade,
+  -- donc v_stock reflete deja les deductions. On verifie que le stock ne passe
+  -- pas en negatif (< 0), PAS qu'il reste >= poids_g (ce serait trop restrictif
+  -- car le poids est deja deduit par les mouvements restaures).
   FOR v_ing IN
     SELECT * FROM production_lot_ingredients WHERE production_lot_id = p_lot_id
   LOOP
@@ -250,24 +254,12 @@ BEGIN
         AND partie_plante = v_ing.partie_plante
         AND etat_plante = v_ing.etat_plante;
 
-      IF v_stock_dispo IS NULL OR v_stock_dispo < v_ing.poids_g THEN
-        -- Annuler la restauration en cas de stock insuffisant
-        UPDATE production_lots
-        SET deleted_at = NOW(), updated_by = p_updated_by
-        WHERE id = p_lot_id AND farm_id = p_farm_id;
-
-        UPDATE stock_movements
-        SET deleted_at = NOW()
-        WHERE source_type = 'production' AND source_id = p_lot_id AND farm_id = p_farm_id;
-
-        UPDATE product_stock_movements
-        SET deleted_at = NOW()
-        WHERE production_lot_id = p_lot_id AND farm_id = p_farm_id;
-
-        RAISE EXCEPTION 'Stock insuffisant pour restauration — % (partie: %, etat: %) : % g disponible, % g requis',
+      IF v_stock_dispo IS NULL OR v_stock_dispo < 0 THEN
+        -- RAISE EXCEPTION annule toute la transaction (restauration incluse)
+        RAISE EXCEPTION 'Stock insuffisant pour restauration — % (partie: %, etat: %) : stock negatif (% g) apres restauration des mouvements',
           (SELECT nom_vernaculaire FROM varieties WHERE id = v_ing.variety_id),
           v_ing.partie_plante, v_ing.etat_plante,
-          COALESCE(v_stock_dispo, 0), v_ing.poids_g;
+          COALESCE(v_stock_dispo, 0);
       END IF;
     END IF;
   END LOOP;

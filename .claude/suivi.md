@@ -2,6 +2,44 @@
 
 ---
 
+## [2026-03-09 21:08] — fix(produits): Correction vérification stock dans restore_production_lot_with_stock
+
+**Type :** `fix`
+**Fichiers concernés :** `supabase/migrations/021_production_lot_auto_stock.sql`
+
+### Description
+Review globale A4 : 1 bug critique trouvé dans la RPC `restore_production_lot_with_stock`.
+Après restauration des `stock_movements` (sorties), v_stock reflète déjà les déductions.
+L'ancienne vérification `v_stock_dispo < v_ing.poids_g` échouait systématiquement car elle
+comparait le stock (déjà réduit) au poids de l'ingrédient. Remplacé par `v_stock_dispo < 0`
+(vérifie que le stock ne passe pas en négatif après restauration).
+
+Supprimé les UPDATEs de rollback manuels inutiles avant le RAISE EXCEPTION (la transaction
+PG annule automatiquement toutes les modifications).
+
+### Détails techniques
+- La review couvre : intégrité données, multi-tenant, Zod, UI, triggers, numéros de lot, DDM, compilation, tests
+- 74/74 tests passent, 0 erreur tsc
+- Seul bug critique corrigé : vérification stock dans restore
+- Bug connu non bloquant : trigger `fn_ps_production_lots_time` ne trouve pas les ingrédients au moment du fire (lot inséré avant ingrédients dans la RPC). Corrigeable via `recalculate_production_summary()`.
+
+---
+
+## [2026-03-09 21:00] — fix(produits): Autoriser les recettes mono-ingrédient (pourcentage = 100%)
+
+**Type :** `bugfix`
+**Fichiers concernés :**
+- `src/lib/validation/produits.ts` (`.lt(1)` → `.lte(1)` sur `recipeIngredientSchema.pourcentage`)
+- `src/tests/produits/validation.test.ts` (+5 tests : mono-ingrédient recette/lot, 50/50 non-régression)
+
+**Détail :**
+- Le champ `pourcentage` de `recipeIngredientSchema` utilisait `.lt(1)` (strictement < 1), ce qui empêchait les recettes mono-plante à 100% (cas métier valide : tisane mono-plante, vrac).
+- `productionIngredientSchema` hérite de `recipeIngredientSchema` via `.extend()`, donc corrigé automatiquement.
+- Vérification dans `RecetteSlideOver.tsx` : la barre récap utilise `Math.abs(totalPct - 1.0) <= 0.001`, pas de comparaison stricte → OK.
+- 74 tests passent (4 fichiers).
+
+---
+
 ## [2026-03-09 16:00] — feat(produits): A4.5 — Stock produits finis + Tests + Finalisation module A4
 
 **Type :** `feature`
