@@ -694,3 +694,75 @@ export type StockLevel = {
   etat_plante: string
   stock_g: number
 }
+
+// ---- Module Affinage du stock ----
+
+/** Achat externe de plante — table stock_purchases */
+export type StockPurchase = {
+  id: string
+  farm_id: string
+  uuid_client: string | null
+  variety_id: string
+  partie_plante: string
+  date: string
+  etat_plante: string
+  poids_g: number
+  fournisseur: string | null
+  numero_lot_fournisseur: string | null
+  certif_ab: boolean
+  prix: number | null
+  commentaire: string | null
+  created_by: string | null
+  updated_by: string | null
+  created_at: string
+}
+
+/** Achat avec variété jointe */
+export type StockPurchaseWithVariety = StockPurchase & {
+  varieties: { id: string; nom_vernaculaire: string } | null
+}
+
+/** Vente directe de plante — table stock_direct_sales */
+export type StockDirectSale = {
+  id: string
+  farm_id: string
+  uuid_client: string | null
+  variety_id: string
+  partie_plante: string
+  date: string
+  etat_plante: string
+  poids_g: number
+  destinataire: string | null
+  commentaire: string | null
+  created_by: string | null
+  updated_by: string | null
+  created_at: string
+}
+
+/** Vente directe avec variété jointe */
+export type StockDirectSaleWithVariety = StockDirectSale & {
+  varieties: { id: string; nom_vernaculaire: string } | null
+}
+
+/** Ajustement manuel de stock — table stock_adjustments */
+export type StockAdjustment = {
+  id: string
+  farm_id: string
+  uuid_client: string | null
+  variety_id: string
+  partie_plante: string
+  date: string
+  type_mouvement: 'entree' | 'sortie'
+  etat_plante: string
+  poids_g: number
+  motif: string
+  commentaire: string | null
+  created_by: string | null
+  updated_by: string | null
+  created_at: string
+}
+
+/** Ajustement avec variété jointe */
+export type StockAdjustmentWithVariety = StockAdjustment & {
+  varieties: { id: string; nom_vernaculaire: string } | null
+}

@@ -2,6 +2,29 @@
 
 ---
 
+## [2026-03-09 22:00] — feat(affinage-stock): A5.1 — Migration SQL (RPCs) + Types + Validation + Parsers
+
+**Type :** `feature`
+**Fichiers concernés :** `supabase/migrations/022_stock_affinage_rpcs.sql`, `src/lib/types.ts`, `src/lib/validation/affinage-stock.ts`, `src/lib/utils/affinage-stock-parsers.ts`
+
+### Description
+Implémentation de la couche données du module A5 (Affinage du stock) couvrant 3 sous-modules : Achats externes, Ventes directes, Ajustements manuels.
+
+### Détails techniques
+- **Migration 022** : ALTER TABLE pour ajouter `partie_plante` aux 3 tables (manquant depuis migration 001) + `commentaire` sur `stock_adjustments`. 9 RPCs SECURITY DEFINER avec filtrage multi-tenant explicite (`farm_id`).
+  - `create/update/delete_purchase_with_stock` — achat = entrée stock, idempotence uuid_client
+  - `create/update/delete_direct_sale_with_stock` — vente = sortie stock, vérification stock suffisant via `v_stock`
+  - `create/update/delete_adjustment_with_stock` — entrée ou sortie selon `type_mouvement`, vérification stock si sortie
+  - Les RPCs update vérifient le delta (nouveau poids - ancien) pour les sorties
+  - Les RPCs update d'ajustement gèrent le changement de type_mouvement (entree→sortie)
+- **Types** : `StockPurchase`, `StockDirectSale`, `StockAdjustment` + variantes WithVariety
+- **Validation Zod** : 3 schémas (`purchaseSchema`, `directSaleSchema`, `adjustmentSchema`) avec les 6 états plante valides
+- **Parsers** : 3 fonctions (`parsePurchaseForm`, `parseDirectSaleForm`, `parseAdjustmentForm`)
+- Triggers `fn_ps_purchases` et `fn_ps_direct_sales` (migration 018) compatibles — pas de modification nécessaire
+- 0 erreur tsc
+
+---
+
 ## [2026-03-09 21:08] — fix(produits): Correction vérification stock dans restore_production_lot_with_stock
 
 **Type :** `fix`
