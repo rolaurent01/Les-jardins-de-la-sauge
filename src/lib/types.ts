@@ -564,3 +564,114 @@ export type AppContext = {
   organizationId: string
   orgSlug: string
 }
+
+// ---- Module Produits ----
+
+/** Mode de production : produit (par sachets) ou mélange (par poids) */
+export type ProductionMode = 'produit' | 'melange'
+
+/** Catégorie de produit */
+export type ProductCategory = {
+  id: string
+  nom: string
+}
+
+/** Recette de base — table recipes */
+export type Recipe = {
+  id: string
+  farm_id: string
+  category_id: string | null
+  nom: string
+  numero_tisane: string | null
+  poids_sachet_g: number
+  description: string | null
+  actif: boolean
+  deleted_at: string | null
+  created_by: string | null
+  updated_by: string | null
+  created_at: string
+  updated_at: string
+}
+
+/** Recette avec relations (pour les listes) */
+export type RecipeWithRelations = Recipe & {
+  product_categories: { id: string; nom: string } | null
+  recipe_ingredients: RecipeIngredient[]
+}
+
+/** Ingrédient d'une recette — table recipe_ingredients */
+export type RecipeIngredient = {
+  id: string
+  recipe_id: string | null
+  variety_id: string | null
+  external_material_id: string | null
+  etat_plante: string | null
+  partie_plante: string | null
+  pourcentage: number
+  ordre: number | null
+  varieties?: { id: string; nom_vernaculaire: string } | null
+  external_materials?: { id: string; nom: string } | null
+}
+
+/** Lot de production — table production_lots */
+export type ProductionLot = {
+  id: string
+  farm_id: string
+  recipe_id: string | null
+  numero_lot: string
+  mode: ProductionMode
+  date_production: string
+  ddm: string
+  nb_unites: number | null
+  poids_total_g: number | null
+  temps_min: number | null
+  commentaire: string | null
+  deleted_at: string | null
+  created_by: string | null
+  updated_by: string | null
+  created_at: string
+}
+
+/** Lot de production avec relations (pour les listes) */
+export type ProductionLotWithRelations = ProductionLot & {
+  recipes: { id: string; nom: string; poids_sachet_g: number; numero_tisane: string | null } | null
+  production_lot_ingredients: ProductionLotIngredient[]
+}
+
+/** Ingrédient d'un lot de production — table production_lot_ingredients */
+export type ProductionLotIngredient = {
+  id: string
+  production_lot_id: string | null
+  variety_id: string | null
+  external_material_id: string | null
+  etat_plante: string | null
+  partie_plante: string | null
+  pourcentage: number
+  poids_g: number
+  annee_recolte: number | null
+  fournisseur: string | null
+  varieties?: { id: string; nom_vernaculaire: string } | null
+  external_materials?: { id: string; nom: string } | null
+}
+
+/** Mouvement de stock produit fini — table product_stock_movements */
+export type ProductStockMovement = {
+  id: string
+  farm_id: string
+  production_lot_id: string | null
+  date: string
+  type_mouvement: 'entree' | 'sortie'
+  quantite: number
+  commentaire: string | null
+  created_by: string | null
+  updated_by: string | null
+  created_at: string
+}
+
+/** Niveau de stock disponible (vue v_stock) — utilisé par le wizard production */
+export type StockLevel = {
+  variety_id: string
+  partie_plante: string
+  etat_plante: string
+  stock_g: number
+}

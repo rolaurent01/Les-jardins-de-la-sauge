@@ -2,6 +2,33 @@
 
 ---
 
+## [2026-03-09 11:00] — feat(produits): A4.2 — Types, Validation Zod, Parsers module Produits
+
+**Type :** `feature`
+**Fichiers concernés :**
+- `src/lib/types.ts` (ajout types Produits)
+- `src/lib/validation/produits.ts` (nouveau)
+- `src/lib/utils/produits-parsers.ts` (nouveau)
+- `src/lib/utils/lots.ts` (ajout RECIPE_CODES + getRecipeCode)
+- `src/components/produits/types.ts` (nouveau)
+
+### Description
+Couche logique partagée pour le module Produits : types métier, schémas Zod, parsers FormData, codes recettes.
+
+### Détails techniques
+- **Types** (`types.ts`) : ProductionMode, ProductCategory, Recipe, RecipeWithRelations, RecipeIngredient, ProductionLot, ProductionLotWithRelations, ProductionLotIngredient, ProductStockMovement, StockLevel
+- **Validation** (`produits.ts`) :
+  - `recipeSchema` — nom, poids_sachet_g, ingrédients (variety_id XOR external_material_id), superRefine somme % = 100%
+  - `productionLotSchema` — recipe_id, mode produit/mélange, ingrédients étendus (poids_g, annee_recolte, fournisseur obligatoire si matière externe), superRefine nb_unites obligatoire en mode produit
+  - `conditionnerSchema` — nb_unites (positiveInt)
+  - `productStockMovementSchema` — production_lot_id, date, type_mouvement, quantité
+- **Parsers** (`produits-parsers.ts`) : parseRecipeForm, parseProductionLotForm, parseConditionnerForm, parseProductStockMovementForm — ingrédients transmis en JSON dans FormData
+- **Lots** (`lots.ts`) : RECIPE_CODES (20 recettes → codes 2-3 lettres), getRecipeCode() avec fallback 2 premières lettres
+- **UI** (`produits/types.ts`) : MODE_LABELS, MODE_DESCRIPTIONS
+- Compilation TypeScript OK (0 erreurs)
+
+---
+
 ## [2026-03-09 10:15] — fix(production): A4.1 — Cloisonnement multi-tenant RPCs production
 
 **Type :** `fix`

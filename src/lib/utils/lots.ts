@@ -44,3 +44,35 @@ export function generateProductionLotNumber(recipeCode: string, date: Date): str
   const day = String(date.getDate()).padStart(2, '0')
   return `${recipeCode}${year}${month}${day}`
 }
+
+/** Codes recettes pour la génération des numéros de lot */
+export const RECIPE_CODES: Record<string, string> = {
+  'La Balade Digestive': 'BD',
+  'Nuit Étoilée': 'NE',
+  'Lever de Soleil': 'LS',
+  'Feu de Camp': 'FC',
+  'La Montagne au Féminin': 'MF',
+  "L'Équilibre": 'EQ',
+  'Le Chant des Rivières': 'CR',
+  'Plein Air': 'PA',
+  "L'Hivernal": 'HI',
+  'Tisane de Noël': 'NO',
+  'Douceur Maternelle': 'DM',
+  'Aromate volaille': 'AV',
+  'Aromate potage': 'AP',
+  'Aromate grillades': 'AG',
+  'Pique-nique': 'PN',
+  'Les Lacs': 'LL',
+  'Sel Ortie Calendula': 'SOC',
+  'Sel aux herbes': 'SAH',
+  'Sel Ail des ours': 'SAO',
+  'Sucre Reine des prés': 'SU',
+}
+
+/**
+ * Extrait le code recette à partir du nom de la recette.
+ * Retourne les 2 premières lettres en majuscule si le nom n'est pas dans la map.
+ */
+export function getRecipeCode(recipeName: string): string {
+  return RECIPE_CODES[recipeName] ?? recipeName.substring(0, 2).toUpperCase()
+}
