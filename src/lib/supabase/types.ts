@@ -2142,6 +2142,140 @@ export type Database = {
         }
         Returns: undefined
       }
+
+      // ── Affinage du stock : Achats ──
+
+      /** Cree un achat + stock_movement d'entree dans une seule transaction */
+      create_purchase_with_stock: {
+        Args: {
+          p_farm_id: string
+          p_variety_id: string
+          p_partie_plante: string
+          p_date: string
+          p_etat_plante: string
+          p_poids_g: number
+          p_fournisseur: string
+          p_numero_lot_fournisseur: string | null
+          p_certif_ab: boolean
+          p_prix: number | null
+          p_commentaire: string | null
+          p_created_by: string
+          p_uuid_client: string | null
+        }
+        Returns: string
+      }
+      /** Met a jour un achat + son stock_movement dans une seule transaction */
+      update_purchase_with_stock: {
+        Args: {
+          p_purchase_id: string
+          p_variety_id: string
+          p_partie_plante: string
+          p_date: string
+          p_etat_plante: string
+          p_poids_g: number
+          p_fournisseur: string
+          p_numero_lot_fournisseur: string | null
+          p_certif_ab: boolean
+          p_prix: number | null
+          p_commentaire: string | null
+          p_updated_by: string
+        }
+        Returns: undefined
+      }
+      /** Supprime un achat + son stock_movement dans une seule transaction */
+      delete_purchase_with_stock: {
+        Args: {
+          p_purchase_id: string
+          p_farm_id: string
+        }
+        Returns: undefined
+      }
+
+      // ── Affinage du stock : Ventes directes ──
+
+      /** Cree une vente directe + stock_movement de sortie dans une seule transaction */
+      create_direct_sale_with_stock: {
+        Args: {
+          p_farm_id: string
+          p_variety_id: string
+          p_partie_plante: string
+          p_date: string
+          p_etat_plante: string
+          p_poids_g: number
+          p_destinataire: string | null
+          p_commentaire: string | null
+          p_created_by: string
+          p_uuid_client: string | null
+        }
+        Returns: string
+      }
+      /** Met a jour une vente directe + son stock_movement dans une seule transaction */
+      update_direct_sale_with_stock: {
+        Args: {
+          p_sale_id: string
+          p_variety_id: string
+          p_partie_plante: string
+          p_date: string
+          p_etat_plante: string
+          p_poids_g: number
+          p_destinataire: string | null
+          p_commentaire: string | null
+          p_updated_by: string
+        }
+        Returns: undefined
+      }
+      /** Supprime une vente directe + son stock_movement dans une seule transaction */
+      delete_direct_sale_with_stock: {
+        Args: {
+          p_sale_id: string
+          p_farm_id: string
+        }
+        Returns: undefined
+      }
+
+      // ── Affinage du stock : Ajustements ──
+
+      /** Cree un ajustement + stock_movement dans une seule transaction */
+      create_adjustment_with_stock: {
+        Args: {
+          p_farm_id: string
+          p_variety_id: string
+          p_partie_plante: string
+          p_date: string
+          p_type_mouvement: string
+          p_etat_plante: string
+          p_poids_g: number
+          p_motif: string
+          p_commentaire: string | null
+          p_created_by: string
+          p_uuid_client: string | null
+        }
+        Returns: string
+      }
+      /** Met a jour un ajustement + son stock_movement dans une seule transaction */
+      update_adjustment_with_stock: {
+        Args: {
+          p_adjustment_id: string
+          p_variety_id: string
+          p_partie_plante: string
+          p_date: string
+          p_type_mouvement: string
+          p_etat_plante: string
+          p_poids_g: number
+          p_motif: string
+          p_commentaire: string | null
+          p_updated_by: string
+        }
+        Returns: undefined
+      }
+      /** Supprime un ajustement + son stock_movement dans une seule transaction */
+      delete_adjustment_with_stock: {
+        Args: {
+          p_adjustment_id: string
+          p_farm_id: string
+        }
+        Returns: undefined
+      }
     }
     Enums: Record<string, never>
   }

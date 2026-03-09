@@ -2,6 +2,39 @@
 
 ---
 
+## [2026-03-09 22:35] — feat(affinage-stock): A5.2 — Server Actions + Pages + UI + Tests
+
+**Type :** `feature`
+**Fichiers concernés :**
+- `src/app/[orgSlug]/(dashboard)/stock/shared-actions.ts`
+- `src/app/[orgSlug]/(dashboard)/stock/achats/actions.ts`, `page.tsx`
+- `src/app/[orgSlug]/(dashboard)/stock/ventes/actions.ts`, `page.tsx`
+- `src/app/[orgSlug]/(dashboard)/stock/ajustements/actions.ts`, `page.tsx`
+- `src/components/affinage-stock/AchatsClient.tsx`, `AchatSlideOver.tsx`
+- `src/components/affinage-stock/VentesClient.tsx`, `VenteSlideOver.tsx`
+- `src/components/affinage-stock/AjustementsClient.tsx`, `AjustementSlideOver.tsx`
+- `src/lib/supabase/types.ts` (ajout 9 RPCs dans Functions)
+- `src/tests/affinage-stock/validation.test.ts`, `parsers.test.ts`
+
+### Description
+Module A5 complet : 3 pages CRUD (Achats, Ventes directes, Ajustements) avec le pattern identique aux modules Transformation/Produits.
+
+### Details techniques
+- **Shared Actions** : reexporte `fetchVarietiesWithStock` et `fetchStockLevels` depuis `produits/shared-actions.ts`
+- **Server Actions** (3 fichiers) : fetch + create/update/delete via RPCs transactionnelles, revalidatePath
+- **Pages RSC** (3) : Promise.all pour fetch paralleles, try/catch avec erreur stylee
+- **Clients** (3) : tableau avec badges partie/etat, recherche normalisee (accents), filtres (etat, type pour ajustements), double confirmation suppression, compteur
+- **Slide-Overs** (3) : overlay blur + panneau fixe droit 480px, logique adaptative partie_plante (useVarietyParts), QuickAddVariety, 6 etats plante
+  - Ventes + Ajustements(sortie) : affichage stock disponible temps reel + avertissement si insuffisant
+  - Ajustements : toggle Entree/Sortie, motif obligatoire
+  - Achats : fournisseur obligatoire, certif AB checkbox, prix optionnel
+- **Supabase types** : 9 RPCs ajoutees dans Functions (purchase, direct_sale, adjustment CRUD)
+- **Navigation** : Sidebar + MobileHeader deja configures (`/stock/achats`, `/stock/ventes`, `/stock/ajustements`)
+- **Tests** : 25 tests (17 validation + 8 parsers), tous passants
+- 0 erreur tsc, 0 console.log
+
+---
+
 ## [2026-03-09 22:00] — feat(affinage-stock): A5.1 — Migration SQL (RPCs) + Types + Validation + Parsers
 
 **Type :** `feature`
