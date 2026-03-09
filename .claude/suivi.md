@@ -2,6 +2,30 @@
 
 ---
 
+## [2026-03-09 12:00] — feat(produits): A4.3 — Recettes CRUD complet (Server Actions + Page + UI)
+
+**Type :** `feature`
+**Fichiers concernés :**
+- `src/app/[orgSlug]/(dashboard)/produits/shared-actions.ts` (nouveau)
+- `src/app/[orgSlug]/(dashboard)/produits/recettes/actions.ts` (nouveau)
+- `src/app/[orgSlug]/(dashboard)/produits/recettes/page.tsx` (nouveau)
+- `src/components/produits/RecettesClient.tsx` (nouveau)
+- `src/components/produits/RecetteSlideOver.tsx` (nouveau)
+
+### Description
+CRUD complet des recettes : Server Actions, page RSC, composant client avec tableau filtrable, et slide-over avec tableau d'ingredients dynamique.
+
+### Détails techniques
+- **shared-actions.ts** : fetchProductCategories (catalogue partage), fetchVarietiesWithStock (avec parties_utilisees), fetchExternalMaterials (filtre farm_material_settings.hidden), fetchStockLevels (vue v_stock)
+- **actions.ts** : fetchRecipes (jointures categories + ingredients), createRecipe (insert recipe + N ingredients), updateRecipe (update + delete/re-insert ingredients), archiveRecipe (soft delete), restoreRecipe, toggleRecipeActive
+- **RecettesClient.tsx** : tableau avec filtres (recherche textuelle, categorie, actif/inactif, archives), double confirmation archivage, clic ligne → slide-over
+- **RecetteSlideOver.tsx** : formulaire avec section ingredients dynamique (toggle plante/materiau, select variete/materiau, partie_plante adaptative depuis parties_utilisees, etat_plante parmi 5 etats production, pourcentage affiche en % stocke en decimal), barre recapitulative somme % avec couleurs (vert 100%, orange <100%, rouge >100%)
+- Sidebar et MobileHeader deja a jour (liens Produits presents depuis migrations precedentes)
+- Cast `PartiePlante` pour compatibilite types Supabase generes
+- Compilation TypeScript OK (0 erreurs)
+
+---
+
 ## [2026-03-09 11:00] — feat(produits): A4.2 — Types, Validation Zod, Parsers module Produits
 
 **Type :** `feature`
