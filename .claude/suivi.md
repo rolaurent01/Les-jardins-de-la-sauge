@@ -2,6 +2,40 @@
 
 ---
 
+## [2026-03-09 14:00] — feat(produits): A4.4 — Production de lots (Server Actions + Wizard UI + CRUD)
+
+**Type :** `feature`
+**Fichiers concernés :**
+- `supabase/migrations/020_fix_production_lot_delete.sql` (nouveau)
+- `src/app/[orgSlug]/(dashboard)/produits/production/actions.ts` (nouveau)
+- `src/app/[orgSlug]/(dashboard)/produits/production/page.tsx` (nouveau)
+- `src/components/produits/ProductionClient.tsx` (nouveau)
+- `src/components/produits/ProductionWizard.tsx` (nouveau)
+- `src/components/produits/WizardStepRecipe.tsx` (nouveau)
+- `src/components/produits/WizardStepIngredients.tsx` (nouveau)
+- `src/components/produits/WizardStepStock.tsx` (nouveau)
+- `src/components/produits/WizardStepConfirm.tsx` (nouveau)
+- `src/components/produits/ConditionnerModal.tsx` (nouveau)
+- `src/components/produits/ProductionLotDetail.tsx` (nouveau)
+
+### Description
+Production de lots complete : wizard 4 etapes (2 modes produit/melange), tableau filtrable, conditionnement, detail en slide-over, archivage/restauration. Migration 020 corrige les RPCs (Option B : garder les ingredients au soft-delete).
+
+### Details techniques
+- **Migration 020** : `delete_production_lot_with_stock` ne supprime plus les `production_lot_ingredients` (ils restent en base pour la restauration). `restore_production_lot_with_stock` simplifiee (plus de parametre `p_ingredients JSONB` — relit les ingredients depuis la table). Re-verification du stock a la restauration avec rollback si insuffisant.
+- **Server Actions** : `fetchProductionLots` (jointures recipes + ingredients + varieties/materials), `fetchRecipesForSelect` (recettes actives avec ingredients), `createProductionLot` (generation numero lot unique via `getRecipeCode` + `generateProductionLotNumber` + suffixe si doublon, DDM = date + 24 mois, appel RPC transactionnelle), `archiveProductionLot`, `restoreProductionLot`, `conditionnerLot` — toutes via RPCs `SECURITY DEFINER`, castees `(supabase as any).rpc(...)` car types non generes.
+- **ProductionWizard** : overlay pleine page avec barre de progression 4 etapes. State centralise (`WizardState` + `WizardIngredient`). Mode produit : saisie nb_unites → poids calcules depuis pourcentages recette. Mode melange : saisie poids reels → pourcentages recalcules automatiquement.
+- **WizardStepRecipe** : choix mode (2 boutons radio avec descriptions), selection recette (copie ingredients), date, nb_unites (mode produit), temps, commentaire.
+- **WizardStepIngredients** : tableau editable par ingredient (etat, partie, pourcentage/poids selon mode, annee recolte, fournisseur obligatoire si materiau externe). Barre recapitulative % ou poids total.
+- **WizardStepStock** : verification stock 3 dimensions (variete × partie × etat) depuis `v_stock`. Bandeau vert/orange global, bouton Suivant desactive si stock insuffisant.
+- **WizardStepConfirm** : recapitulatif complet + appel `createProductionLot`. Ecran de succes avec numero de lot.
+- **ProductionClient** : tableau avec filtres (recherche, categorie, mode, archives). Actions : voir detail, conditionner (lots melange sans nb_unites), archiver (double confirmation).
+- **ConditionnerModal** : modale centree avec champ nb_unites, appel RPC `update_production_lot_conditionner`.
+- **ProductionLotDetail** : slide-over lecture seule avec infos generales + tableau ingredients.
+- Compilation TypeScript OK (0 erreurs)
+
+---
+
 ## [2026-03-09 12:00] — feat(produits): A4.3 — Recettes CRUD complet (Server Actions + Page + UI)
 
 **Type :** `feature`
