@@ -663,9 +663,28 @@ export type ProductStockMovement = {
   type_mouvement: 'entree' | 'sortie'
   quantite: number
   commentaire: string | null
+  deleted_at: string | null
   created_by: string | null
   updated_by: string | null
   created_at: string
+}
+
+/** Mouvement de stock produit fini enrichi avec les relations */
+export type ProductStockMovementWithRelations = ProductStockMovement & {
+  production_lots: {
+    id: string
+    numero_lot: string
+    recipes: { id: string; nom: string } | null
+  } | null
+}
+
+/** Resume du stock produit fini par lot */
+export type ProductStockSummary = {
+  production_lot_id: string
+  numero_lot: string
+  recipe_nom: string
+  nb_unites_produites: number | null
+  stock_net: number
 }
 
 /** Niveau de stock disponible (vue v_stock) — utilisé par le wizard production */

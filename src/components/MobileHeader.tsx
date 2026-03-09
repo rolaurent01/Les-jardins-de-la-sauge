@@ -70,7 +70,7 @@ const NAV: NavSection[] = [
     emoji: '🧪',
     children: [
       { label: 'Recettes', href: '/produits/recettes' },
-      { label: 'Production de lots', href: '/produits/lots' },
+      { label: 'Production de lots', href: '/produits/production' },
       { label: 'Stock produits finis', href: '/produits/stock' },
     ],
   },

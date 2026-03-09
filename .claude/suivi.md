@@ -2,6 +2,36 @@
 
 ---
 
+## [2026-03-09 16:00] — feat(produits): A4.5 — Stock produits finis + Tests + Finalisation module A4
+
+**Type :** `feature`
+**Fichiers concernés :**
+- `supabase/migrations/021_production_lot_auto_stock.sql` (nouveau)
+- `src/app/[orgSlug]/(dashboard)/produits/stock/actions.ts` (nouveau)
+- `src/app/[orgSlug]/(dashboard)/produits/stock/page.tsx` (nouveau)
+- `src/components/produits/ProductStockClient.tsx` (nouveau)
+- `src/components/produits/ProductStockSlideOver.tsx` (nouveau)
+- `src/lib/types.ts` (ajout deleted_at, ProductStockMovementWithRelations, ProductStockSummary)
+- `src/components/Sidebar.tsx` (fix lien produits/lots → produits/production)
+- `src/components/MobileHeader.tsx` (idem)
+- `src/tests/produits/validation.test.ts` (nouveau — 30 tests)
+- `src/tests/produits/parsers.test.ts` (nouveau — 14 tests)
+- `src/tests/produits/lots.test.ts` (nouveau — 10 tests)
+- `src/tests/produits/stock-flow.test.ts` (nouveau — 16 tests)
+
+### Description
+Stock produits finis complet : page avec resume par lot + historique mouvements (entrees/sorties), slide-over de saisie, entree automatique a la production et au conditionnement. Migration 021 met a jour les 4 RPCs. 70 tests unitaires couvrent validation Zod, parsers FormData, generation numeros de lot, et logique metier stock. Compilation TypeScript 0 erreurs.
+
+### Details techniques
+- **Migration 021** : ajout `deleted_at` sur `product_stock_movements`. Mise a jour `create_production_lot_with_stock` (ajout INSERT `product_stock_movements` entree auto si `nb_unites` renseigne). Mise a jour `update_production_lot_conditionner` (ajout INSERT entree auto au conditionnement). Mise a jour `delete_production_lot_with_stock` et `restore_production_lot_with_stock` (soft-delete/restore symetrique des `product_stock_movements`). Les `production_lot_ingredients` ne sont plus hard-deleted au soft-delete du lot (Option B de migration 020).
+- **Server Actions** : `fetchProductStockMovements` (jointures production_lots + recipes), `fetchProductStockSummary` (calcul stock net par lot event-sourced), `fetchProductionLotsForSelect` (lots actifs pour select), `createProductStockMovement` (validation stock suffisant en sortie), `deleteProductStockMovement` (hard delete avec verification farm_id).
+- **ProductStockClient** : section haute resume stock par lot (badges En stock/Epuise), section basse historique mouvements avec badges Entree/Sortie, filtres recherche + type, double confirmation suppression.
+- **ProductStockSlideOver** : toggle Entree/Sortie, select lot, date, quantite, commentaire. Affichage stock actuel sous le select, avertissement orange si stock insuffisant en mode sortie.
+- **Navigation** : correction lien Sidebar et MobileHeader `/produits/lots` → `/produits/production`.
+- **Tests** (70 tests, 4 fichiers) : `validation.test.ts` (recipeSchema, productionLotSchema, conditionnerSchema, productStockMovementSchema), `parsers.test.ts` (parseRecipeForm, parseProductionLotForm, parseConditionnerForm, parseProductStockMovementForm), `lots.test.ts` (generateProductionLotNumber, getRecipeCode, RECIPE_CODES coverage), `stock-flow.test.ts` (checkStockSuffisant, calcPoidsModeProduit, calcPourcentagesMelange, calcStockNetProduitFini).
+
+---
+
 ## [2026-03-09 14:00] — feat(produits): A4.4 — Production de lots (Server Actions + Wizard UI + CRUD)
 
 **Type :** `feature`
