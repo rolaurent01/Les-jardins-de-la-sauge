@@ -1,6 +1,7 @@
 'use client'
 
 import MobileField from './MobileField'
+import TimerInsertButton from './TimerInsertButton'
 
 interface MobileInputProps {
   label: string
@@ -12,6 +13,8 @@ interface MobileInputProps {
   error?: string | null
   /** Unité affichée à droite (ex: "g", "min") */
   suffix?: string
+  /** Affiche le bouton "⏱️ Insérer" du timer à côté du label */
+  showTimerInsert?: boolean
 }
 
 /** Input texte/number/date adapté mobile */
@@ -24,9 +27,12 @@ export default function MobileInput({
   placeholder,
   error,
   suffix,
+  showTimerInsert,
 }: MobileInputProps) {
   return (
-    <MobileField label={label} required={required} error={error}>
+    <MobileField label={label} required={required} error={error} trailing={
+      showTimerInsert ? <TimerInsertButton onInsert={onChange} /> : undefined
+    }>
       <div className="relative">
         <input
           type={type}

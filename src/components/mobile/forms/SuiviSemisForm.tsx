@@ -352,6 +352,7 @@ export default function SuiviSemisForm({ orgSlug }: SuiviSemisFormProps) {
         onChange={(v) => set('temps_semis_min', v)}
         placeholder="0"
         suffix="min"
+        showTimerInsert
         error={errors.temps_semis_min}
       />
 

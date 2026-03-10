@@ -271,6 +271,7 @@ export default function TransformationMobileForm({
         onChange={(v) => set('temps_min', v)}
         placeholder="0"
         suffix="min"
+        showTimerInsert
         error={errors.temps_min}
       />
 

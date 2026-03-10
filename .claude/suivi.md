@@ -2,6 +2,43 @@
 
 ---
 
+## [2026-03-10 23:45] — A6.8 : Tests unitaires offline, corrections et checklist E2E
+
+**Type :** `test`
+**Fichiers concernés :** `src/tests/offline/helpers/mock-db.ts`, `src/tests/offline/sync-service.test.ts`, `src/tests/offline/sync-validation.test.ts`, `src/tests/offline/uuid.test.ts`, `src/tests/offline/storage-monitor.test.ts`, `src/tests/offline/farm-access.test.ts`, `src/tests/offline/cache-loader.test.ts`, `src/components/mobile/fields/TimerInsertButton.tsx`, `src/components/mobile/fields/MobileField.tsx`, `src/components/mobile/fields/MobileInput.tsx`, `docs/checklist-mobile-e2e.md`
+
+### Description
+Tests unitaires complets pour le module mobile offline (56 tests sur 6 fichiers), intégration timer → formulaires, et checklist E2E manuelle.
+
+### Détails techniques
+
+**Tests unitaires (56 tests, 6 fichiers) :**
+- `sync-service.test.ts` (25 tests) — addToSyncQueue, processSyncQueue (succès, erreurs, 5 échecs → error, continuation après erreur, ignorer synced/error), purgeOldArchives (7j, status protection), runAudit (pagination 200, missing → pending, erreur API), getSyncQueueStatus
+- `sync-validation.test.ts` (11 tests) — syncRequestSchema (15 tables valides, UUID, payload vide), auditRequestSchema (max 200, min 1, UUID invalide)
+- `uuid.test.ts` (4 tests) — format UUID v4, 36 chars, 1000 uniques, pas de collision
+- `storage-monitor.test.ts` (6 tests) — getStorageEstimate (navigator.storage + fallback), checkAndPurgeIfNeeded (< 80% → pas de purge, > 80% + archives → purge, > 80% sans archives → pas de purge)
+- `farm-access.test.ts` (3 tests) — membership → true, pas de membership → false, farm inexistante → false
+- `cache-loader.test.ts` (7 tests) — isCacheValid (même farmId, différent, pas de ctx, lastSyncedAt null), clearReferenceCache (7 stores vidés, syncQueue préservée, context préservé)
+
+**Dépendance ajoutée :** `fake-indexeddb` (devDependency) — polyfill IndexedDB pour Dexie en environnement jsdom
+
+**Vérification payload consistency (14 tables) :** Tous les champs envoyés par les formulaires mobiles sont cohérents avec les handlers dispatch.ts. Aucune correction nécessaire.
+
+**Intégration timer → formulaires :**
+- Composant `TimerInsertButton` — bouton "⏱️ X min" qui insère la valeur du timer dans un champ
+- Prop `trailing` ajoutée à `MobileField` pour permettre du contenu à droite du label
+- Prop `showTimerInsert` ajoutée à `MobileInput` — active le bouton timer
+- Intégré sur les 9 formulaires mobiles ayant un champ temps (suffix="min")
+
+**Checklist E2E :** `docs/checklist-mobile-e2e.md` — 12 sections couvrant PWA, login, saisie online/offline, sync, audit, idempotence, erreurs, timer, stockage, switch ferme, bascule mobile/bureau
+
+**Vérifications finales :**
+- `npm run build` ✅ (aucune erreur)
+- `npm run test` ✅ (22 fichiers, 376 tests passants)
+- Pas de `console.log` dans le code A6 (3 existants dans login/actions.ts hors scope)
+
+---
+
 ## [2026-03-10 23:00] — A6.7 : Interface de synchronisation mobile
 
 **Type :** `feature`

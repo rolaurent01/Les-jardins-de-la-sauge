@@ -155,6 +155,7 @@ export default function TravailSolForm({ orgSlug }: TravailSolFormProps) {
         onChange={(v) => set('temps_min', v)}
         placeholder="0"
         suffix="min"
+        showTimerInsert
         error={errors.temps_min}
       />
 

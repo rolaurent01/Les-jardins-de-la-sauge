@@ -158,6 +158,7 @@ export default function ProductionLotForm({ orgSlug }: ProductionLotFormProps) {
         onChange={(v) => set('temps_min', v)}
         placeholder="0"
         suffix="min"
+        showTimerInsert
         error={errors.temps_min}
       />
 
