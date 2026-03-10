@@ -38,7 +38,7 @@ export default async function MobileLayout({
       className="min-h-screen flex flex-col"
       style={{ backgroundColor: '#F9F8F6', color: '#2C3E2D' }}
     >
-      {/* Barre du haut — placeholder pour la barre de sync (A6.7) */}
+      {/* Header mobile */}
       <header
         className="flex items-center justify-between px-4 py-3 flex-shrink-0"
         style={{ backgroundColor: 'var(--color-primary)', color: '#fff' }}

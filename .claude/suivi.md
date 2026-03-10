@@ -2,6 +2,30 @@
 
 ---
 
+## [2026-03-10 23:00] — A6.7 : Interface de synchronisation mobile
+
+**Type :** `feature`
+**Fichiers concernés :** `src/components/mobile/SyncBar.tsx`, `src/components/mobile/SyncPanel.tsx`, `src/components/mobile/MobileSyncUI.tsx`, `src/components/mobile/MobileTimer.tsx`, `src/components/mobile/TimerContext.tsx`, `src/components/mobile/MobileShell.tsx`, `src/app/[orgSlug]/(mobile)/layout.tsx`
+
+### Description
+Implémentation de l'interface de synchronisation mobile (A6.7) : barre de sync permanente, panneau de détail avec contrôles, et chronomètre terrain flottant.
+
+### Détails techniques
+- **SyncBar** : barre permanente 40px sous le header, affichant l'état de la sync en 7 états possibles (tout synchronisé / envoi en cours / hors ligne+pending / hors ligne / erreurs / audit / sync en cours). Logique de priorité stricte (audit > processing > errors > offline+pending > offline > pending > ok). Cliquable → ouvre le SyncPanel.
+- **SyncPanel** : panneau slide-from-top avec overlay sombre. 5 sections : compteurs détaillés (pending/syncing/synced/error/total), boutons d'action (forcer sync + tout vérifier), résultat du dernier audit (✅/⚠️/❌), indicateur de stockage avec barre de progression + purge avec confirmation, liste des erreurs détaillées avec réessai individuel/global. Accès direct à Dexie `offlineDb.syncQueue` pour les erreurs. Labels FR pour les 15 tables.
+- **TimerContext** : contexte React séparé fournissant chronomètre persistant (start/stop/reset, elapsedSeconds, elapsedMinutes, isRunning). Monté dans MobileShell → survit à la navigation.
+- **MobileTimer** : bouton flottant 48px (⏱️) en bas à droite, z-index 80. Animation pulse quand actif. Mini-panneau avec affichage MM:SS (monospace 24px), minutes arrondies, start/stop/reset, copier minutes dans le presse-papier.
+- **MobileSyncUI** : wrapper client regroupant SyncBar + SyncPanel avec gestion open/close.
+- **MobileShell** : intègre MobileSyncUI (barre + panneau) + TimerProvider + MobileTimer au niveau du context provider. SyncBar visible sur TOUTES les pages mobile, timer visible partout.
+- **Layout mobile** : suppression du placeholder A6.7.
+- Build passe sans erreur. Pas de console.log.
+
+### TODO restants
+- Intégration timer ↔ formulaires (bouton "Insérer le temps" dans MobileFormLayout) — à faire en phase ultérieure
+- Composant bureau pour afficher l'état de sync (optionnel, pas critique pour A6)
+
+---
+
 ## [2026-03-10 22:00] — A6.6c : Formulaires mobiles Transfo + Stock + Produits (7 formulaires)
 
 **Type :** `feature`

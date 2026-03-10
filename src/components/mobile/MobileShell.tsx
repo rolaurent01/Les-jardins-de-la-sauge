@@ -5,6 +5,9 @@ import { useOfflineCache } from '@/hooks/useOfflineCache'
 import { useOnlineStatus } from '@/hooks/useOnlineStatus'
 import { useSyncQueue } from '@/hooks/useSyncQueue'
 import { MobileSyncContext, type MobileSyncContextValue } from './MobileSyncContext'
+import MobileSyncUI from './MobileSyncUI'
+import MobileTimer from './MobileTimer'
+import { TimerProvider } from './TimerContext'
 
 interface MobileShellProps {
   farmId: string
@@ -93,7 +96,11 @@ export default function MobileShell({
 
   return (
     <MobileSyncContext value={contextValue}>
-      {children}
+      <TimerProvider>
+        <MobileSyncUI />
+        {children}
+        <MobileTimer />
+      </TimerProvider>
     </MobileSyncContext>
   )
 }
