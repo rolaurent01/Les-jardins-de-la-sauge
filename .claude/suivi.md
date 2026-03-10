@@ -2,6 +2,31 @@
 
 ---
 
+## [2026-03-10 14:30] — A6.3 : Endpoints serveur de synchronisation mobile
+
+**Type :** `feature`
+**Fichiers concernés :** `src/lib/validation/sync.ts`, `src/lib/sync/farm-access.ts`, `src/lib/sync/dispatch.ts`, `src/app/api/sync/route.ts`, `src/app/api/sync/audit/route.ts`
+
+### Description
+Implémentation des deux endpoints serveur de synchronisation mobile. `POST /api/sync` reçoit une saisie mobile et l'insère dans la bonne table via RPC transactionnelle ou INSERT direct. `POST /api/sync/audit` vérifie qu'une liste de uuid_client sont bien présents en base (filet de sécurité "Tout vérifier"). Le protocole garantit ZÉRO PERTE DE DONNÉES grâce à l'idempotence (uuid_client UNIQUE).
+
+### Détails techniques
+- **Validation Zod** (`validation/sync.ts`) : schémas `syncRequestSchema` et `auditRequestSchema` avec les 15 tables autorisées. Zod v4 (`.issues`, `z.record(key, value)`, `message` au lieu de `errorMap`)
+- **Farm access helper** (`sync/farm-access.ts`) : vérifie le membership via `createAdminClient()` (bypass RLS). Même logique que `resolveFarmContext()` dans context.ts
+- **Dispatch** (`sync/dispatch.ts`) : routing vers 8 RPCs transactionnelles + 7 INSERT directs. Idempotence via `ON CONFLICT (uuid_client) DO NOTHING` (RPCs) ou vérification préalable `SELECT id WHERE uuid_client = ?` (INSERTs)
+- **Logique métier répliquée** depuis les Server Actions bureau :
+  - `seed_lots` : génération auto `lot_interne` (SL-AAAA-NNN) scopée par farm_id
+  - `seedlings` : normalisation `nb_mortes_*` de null → 0
+  - `plantings` : pré-remplissage `longueur_m`/`largeur_m` depuis le rang + `actif: true`
+  - `uprootings` : désactivation des plantings actifs du rang (filtrée par variety_id si spécifié)
+  - `production_lots` : génération numéro de lot, DDM +24 mois, ingrédients JSONB
+- **Sécurité multi-tenant** : auth vérifié → farm_id vérifié → `created_by` extrait du token auth (pas du payload client)
+- **Codes erreur HTTP** : 400 (payload invalide), 401 (non authentifié), 403 (accès refusé), 409 (erreur métier RPC), 500 (erreur serveur)
+- **Audit endpoint** : recherche en parallèle dans les 15 tables, max 200 UUID par requête, retourne `confirmed[]` et `missing[]`
+- Build `npm run build` passe sans erreur ✅
+
+---
+
 ## [2026-03-10 12:00] — A6.2 : Schéma IndexedDB + cache de référence offline (Dexie.js)
 
 **Type :** `feature`
