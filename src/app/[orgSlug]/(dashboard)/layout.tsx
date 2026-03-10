@@ -1,5 +1,6 @@
 import { cookies } from 'next/headers'
 import { createClient, createAdminClient } from '@/lib/supabase/server'
+import { isPlatformAdmin } from '@/lib/admin/is-platform-admin'
 import Sidebar from '@/components/Sidebar'
 import MobileHeader from '@/components/MobileHeader'
 
@@ -59,6 +60,9 @@ export default async function DashboardLayout({
 
   const farmList = farms ?? []
 
+  // Vérifier si l'utilisateur est super admin plateforme
+  const isAdmin = user ? await isPlatformAdmin(user.id) : false
+
   return (
     <div className="flex h-screen overflow-hidden" style={{ backgroundColor: '#F9F8F6' }}>
       {/* Sidebar — cachée sur mobile, visible à partir de md */}
@@ -69,6 +73,7 @@ export default async function DashboardLayout({
           farms={farmList}
           activeFarmId={activeFarmId}
           orgSlug={orgSlug}
+          isPlatformAdmin={isAdmin}
         />
       </div>
 

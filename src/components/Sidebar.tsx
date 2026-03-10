@@ -200,9 +200,10 @@ type SidebarProps = {
   farms: { id: string; nom: string }[]
   activeFarmId: string
   orgSlug: string
+  isPlatformAdmin?: boolean
 }
 
-export default function Sidebar({ userEmail, organization, farms, activeFarmId, orgSlug }: SidebarProps) {
+export default function Sidebar({ userEmail, organization, farms, activeFarmId, orgSlug, isPlatformAdmin = false }: SidebarProps) {
   const pathname = usePathname()
 
   /** Construit le chemin absolu avec le préfixe orgSlug */
@@ -391,6 +392,37 @@ export default function Sidebar({ userEmail, organization, farms, activeFarmId, 
           )
         })}
       </nav>
+
+      {/* ── Lien Admin (visible uniquement pour les super admins) ── */}
+      {isPlatformAdmin && (
+        <div className="px-3 pb-1 flex-shrink-0">
+          <Link
+            href={h('/admin/organisations')}
+            className="flex items-center gap-2.5 rounded-md text-[12.5px]"
+            style={{
+              padding: '7px 10px',
+              color: pathname.includes('/admin/') ? C.activeText : C.normalText,
+              backgroundColor: pathname.includes('/admin/') ? C.activeBg : 'transparent',
+              transition: 'all 150ms ease-out',
+            }}
+            onMouseEnter={e => {
+              if (!pathname.includes('/admin/')) {
+                e.currentTarget.style.backgroundColor = C.hoverBg
+                e.currentTarget.style.color = C.hoverText
+              }
+            }}
+            onMouseLeave={e => {
+              if (!pathname.includes('/admin/')) {
+                e.currentTarget.style.backgroundColor = 'transparent'
+                e.currentTarget.style.color = C.normalText
+              }
+            }}
+          >
+            <span style={{ opacity: pathname.includes('/admin/') ? 0.9 : 0.55, fontSize: '13px', lineHeight: 1 }}>&#x1F527;</span>
+            <span>Admin</span>
+          </Link>
+        </div>
+      )}
 
       {/* ── Lien Mode terrain ────────────────────── */}
       <div className="px-3 pb-1 flex-shrink-0">

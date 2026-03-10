@@ -134,6 +134,19 @@ export async function proxy(request: NextRequest) {
       if (!orgSlug) return redirectTo(new URL('/login', request.url))
       return redirectTo(new URL(`/${orgSlug}/dashboard`, request.url))
     }
+
+    // Protection des routes admin — uniquement platform_admins
+    if (pathname.includes('/admin/') || pathname.endsWith('/admin')) {
+      const { data: platformAdmin } = await admin
+        .from('platform_admins')
+        .select('user_id')
+        .eq('user_id', user.id)
+        .single()
+
+      if (!platformAdmin) {
+        return redirectTo(new URL(`/${potentialSlug}/dashboard`, request.url))
+      }
+    }
   }
 
   return response

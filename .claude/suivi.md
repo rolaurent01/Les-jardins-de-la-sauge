@@ -2,6 +2,30 @@
 
 ---
 
+## [2026-03-10 25:00] — A7.1 : Espace d'administration plateforme
+
+**Type :** `feature`
+**Fichiers concernés :** `supabase/migrations/023_bootstrap_platform_admin.sql`, `src/lib/admin/is-platform-admin.ts`, `src/proxy.ts`, `src/app/[orgSlug]/(dashboard)/layout.tsx`, `src/components/Sidebar.tsx`, `src/app/[orgSlug]/(dashboard)/admin/layout.tsx`, `src/components/admin/AdminNav.tsx`, `src/app/[orgSlug]/(dashboard)/admin/organisations/actions.ts`, `src/app/[orgSlug]/(dashboard)/admin/organisations/page.tsx`, `src/components/admin/OrganisationsClient.tsx`, `src/components/admin/OrganisationSlideOver.tsx`, `src/app/[orgSlug]/(dashboard)/admin/fermes/actions.ts`, `src/app/[orgSlug]/(dashboard)/admin/fermes/page.tsx`, `src/components/admin/FermesClient.tsx`, `src/components/admin/FermeSlideOver.tsx`, `src/app/[orgSlug]/(dashboard)/admin/utilisateurs/actions.ts`, `src/app/[orgSlug]/(dashboard)/admin/utilisateurs/page.tsx`, `src/components/admin/UtilisateursClient.tsx`, `src/components/admin/UserCreateSlideOver.tsx`, `src/components/admin/UserEditSlideOver.tsx`
+
+### Description
+Implémentation complète de l'espace d'administration plateforme (A7.1). Interface accessible uniquement aux super admins (platform_admins) pour gérer les organisations, fermes, utilisateurs et modules sans passer par SQL.
+
+### Détails techniques
+- Migration SQL 023 : bootstrap du super admin rolaurent01@hotmail.com dans platform_admins
+- Helper `isPlatformAdmin()` utilisant createAdminClient() (bypass RLS)
+- Protection des routes `/admin/` dans le proxy (redirect silencieux vers dashboard si non-admin)
+- Layout admin avec bandeau rouge/orange distinctif et sous-navigation (Organisations, Fermes, Utilisateurs, Logs, Outils)
+- Lien Admin conditionnel dans la Sidebar (visible uniquement pour les platform_admins)
+- CRUD Organisations : création/édition/suppression avec slug auto-généré, plan, limites, couleurs, upload logo vers Supabase Storage
+- CRUD Fermes : création/édition/suppression avec vérification max_farms, toggle modules (PAM, Apiculture, Maraîchage), filtre par organisation
+- CRUD Utilisateurs : création via Supabase Auth admin API (email/password + membership + farm_access), modification rôle, gestion accès fermes, réinitialisation mot de passe, suppression avec vérification dernier owner
+- Toutes les actions admin utilisent createAdminClient() (service_role, bypass RLS) avec vérification isPlatformAdmin dans chaque action (défense en profondeur)
+- Vérifications : suppression organisation bloquée si fermes existantes, suppression ferme bloquée si données métier, suppression user bloquée si dernier owner, max_users et max_farms vérifiés
+- Tabs Logs et Outils en placeholder (A7.2)
+- Build passe sans erreur
+
+---
+
 ## [2026-03-10 24:30] — Refactoring timer mobile : suppression du bouton flottant, intégration chrono dans le champ temps
 
 **Type :** `refactor`
