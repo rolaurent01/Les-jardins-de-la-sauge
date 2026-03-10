@@ -2,6 +2,20 @@
 
 ---
 
+## [2026-03-10 00:10] — Fix build Vercel : shared-actions stock
+
+**Type :** `fix`
+**Fichiers concernés :** `src/app/[orgSlug]/(dashboard)/stock/shared-actions.ts`
+
+### Description
+Correction erreur de build Turbopack : les re-exports `export { ... } from '...'` ne sont pas autorisés dans un fichier `"use server"` (seules les fonctions async le sont).
+
+### Détails techniques
+- Remplacement des re-exports par des fonctions async wrapper (`fetchVarietiesForAffinage`, `fetchStockLevelsForAffinage`) qui appellent les fonctions originales du module Produits
+- Build Next.js validé localement
+
+---
+
 ## [2026-03-09 23:15] — Mise à jour documentation A6 + Mes variétés
 
 **Type :** `docs`
