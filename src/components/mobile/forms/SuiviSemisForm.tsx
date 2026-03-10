@@ -5,6 +5,7 @@ import { useMobileSync } from '@/components/mobile/MobileSyncContext'
 import MobileFormLayout from '@/components/mobile/MobileFormLayout'
 import MobileSelect from '@/components/mobile/fields/MobileSelect'
 import MobileInput from '@/components/mobile/fields/MobileInput'
+import MobileTimerInput from '@/components/mobile/fields/MobileTimerInput'
 import MobileTextarea from '@/components/mobile/fields/MobileTextarea'
 import { useCachedVarieties, useCachedSeedLots } from '@/hooks/useCachedData'
 import { seedlingSchema } from '@/lib/validation/semis'
@@ -345,14 +346,10 @@ export default function SuiviSemisForm({ orgSlug }: SuiviSemisFormProps) {
         error={errors.poids_graines_utilise_g}
       />
 
-      <MobileInput
+      <MobileTimerInput
         label="Temps semis"
-        type="number"
         value={form.temps_semis_min ?? ''}
         onChange={(v) => set('temps_semis_min', v)}
-        placeholder="0"
-        suffix="min"
-        showTimerInsert
         error={errors.temps_semis_min}
       />
 

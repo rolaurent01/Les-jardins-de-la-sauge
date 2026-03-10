@@ -2,6 +2,30 @@
 
 ---
 
+## [2026-03-10 24:30] — Refactoring timer mobile : suppression du bouton flottant, intégration chrono dans le champ temps
+
+**Type :** `refactor`
+**Fichiers concernés :** `src/components/mobile/fields/MobileTimerInput.tsx` (créé), `src/components/mobile/MobileTimer.tsx` (supprimé), `src/components/mobile/TimerContext.tsx` (supprimé), `src/components/mobile/fields/TimerInsertButton.tsx` (supprimé), `src/components/mobile/fields/MobileInput.tsx`, `src/components/mobile/fields/MobileField.tsx`, `src/components/mobile/MobileShell.tsx`, `src/components/mobile/forms/TravailSolForm.tsx`, `src/components/mobile/forms/PlantationForm.tsx`, `src/components/mobile/forms/SuiviRangForm.tsx`, `src/components/mobile/forms/CueilletteForm.tsx`, `src/components/mobile/forms/ArrachageForm.tsx`, `src/components/mobile/forms/OccultationForm.tsx`, `src/components/mobile/forms/TransformationMobileForm.tsx`, `src/components/mobile/forms/ProductionLotForm.tsx`, `src/components/mobile/forms/SuiviSemisForm.tsx`
+
+### Description
+Refactoring complet du timer mobile. Le bouton flottant (MobileTimer) et le TimerContext global sont supprimés. Le chronomètre est désormais intégré directement dans chaque champ "Temps" via le nouveau composant MobileTimerInput.
+
+### Détails techniques
+- **MobileTimerInput** : nouveau composant avec 3 états visuels :
+  - État 1 (défaut) : input number classique avec suffix "min" + bouton ⏱️ à droite
+  - État 2 (timer actif) : affichage mm:ss en monospace, fond teinté #FEF3C7, bouton ⏹️ rouge, animation pulse
+  - État 3 (après stop) : valeur en minutes insérée (Math.ceil), champ éditable, bouton ✕ pour reset
+- **Supprimé** : MobileTimer.tsx (bouton flottant), TimerContext.tsx (provider global), TimerInsertButton.tsx
+- **MobileShell** : suppression du TimerProvider et du MobileTimer
+- **MobileInput** : suppression de la prop `showTimerInsert` et de l'import TimerInsertButton
+- **MobileField** : suppression de la prop `trailing` (plus utilisée)
+- **9 formulaires mis à jour** : TravailSol, Plantation, SuiviRang, Cueillette, Arrachage, Occultation, TransformationMobile (3 sous-formulaires), ProductionLot, SuiviSemis — remplacement de `<MobileInput showTimerInsert>` par `<MobileTimerInput>`
+- Logique timer locale au composant (state local, setInterval 1000ms, cleanup au unmount)
+- `npm run build` ✅ — aucune erreur
+- Pas de console.log
+
+---
+
 ## [2026-03-10 23:45] — A6.8 : Tests unitaires offline, corrections et checklist E2E
 
 **Type :** `test`

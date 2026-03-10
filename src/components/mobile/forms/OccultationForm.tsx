@@ -6,6 +6,7 @@ import MobileFormLayout from '@/components/mobile/MobileFormLayout'
 import MobileRowSelect from '@/components/mobile/fields/MobileRowSelect'
 import MobileSelect from '@/components/mobile/fields/MobileSelect'
 import MobileInput from '@/components/mobile/fields/MobileInput'
+import MobileTimerInput from '@/components/mobile/fields/MobileTimerInput'
 import MobileTextarea from '@/components/mobile/fields/MobileTextarea'
 import MobileCheckbox from '@/components/mobile/fields/MobileCheckbox'
 import { occultationSchema } from '@/lib/validation/parcelles'
@@ -221,14 +222,10 @@ export default function OccultationForm({ orgSlug }: OccultationFormProps) {
       )}
 
       {/* Commun */}
-      <MobileInput
+      <MobileTimerInput
         label="Temps"
-        type="number"
         value={form.temps_min}
         onChange={(v) => set('temps_min', v)}
-        placeholder="0"
-        suffix="min"
-        showTimerInsert
         error={errors.temps_min}
       />
 
