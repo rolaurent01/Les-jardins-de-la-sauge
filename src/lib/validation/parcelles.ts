@@ -113,6 +113,37 @@ export const plantingSchema = z
 
 export type PlantingFormData = z.infer<typeof plantingSchema>
 
+// ---- Schéma plantation mobile (sans seedling_id, fournisseur, date_commande, numero_facture) ----
+
+export const mobilePlantingSchema = z.object({
+  row_id: z.string().uuid('Rang invalide'),
+  variety_id: z.string().uuid('Variété invalide'),
+  annee: z.number().int('Doit être un entier').min(2000).max(2100),
+  date_plantation: dateNotInFuture,
+  lune: z.enum(['montante', 'descendante']).optional().nullable(),
+  nb_plants: positiveInt.optional().nullable(),
+  type_plant: z.enum([
+    'godet',
+    'caissette',
+    'mini_motte',
+    'plant_achete',
+    'division',
+    'bouture',
+    'marcottage',
+    'stolon',
+    'rhizome',
+    'semis_direct',
+  ]),
+  espacement_cm: positiveInt.optional().nullable(),
+  longueur_m: positiveDecimal.optional().nullable(),
+  largeur_m: positiveDecimal.optional().nullable(),
+  certif_ab: z.boolean().default(false),
+  temps_min: positiveInt.optional().nullable(),
+  commentaire: z.string().max(1000).optional().nullable(),
+})
+
+export type MobilePlantingFormData = z.infer<typeof mobilePlantingSchema>
+
 // ---- Schéma suivi de rang ----
 
 export const rowCareSchema = z.object({

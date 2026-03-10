@@ -2,6 +2,33 @@
 
 ---
 
+## [2026-03-10 20:30] — A6.6b : Formulaires mobiles Parcelle (6 formulaires)
+
+**Type :** `feature`
+**Fichiers concernés :** `src/components/mobile/fields/MobileSelect.tsx`, `src/components/mobile/fields/MobileRowSelect.tsx`, `src/components/mobile/forms/TravailSolForm.tsx`, `src/components/mobile/forms/PlantationForm.tsx`, `src/components/mobile/forms/SuiviRangForm.tsx`, `src/components/mobile/forms/CueilletteForm.tsx`, `src/components/mobile/forms/ArrachageForm.tsx`, `src/components/mobile/forms/OccultationForm.tsx`, `src/lib/validation/parcelles.ts`, `src/app/[orgSlug]/(mobile)/m/saisie/parcelle/page.tsx`, `src/app/[orgSlug]/(mobile)/m/saisie/parcelle/travail-sol/page.tsx`, `src/app/[orgSlug]/(mobile)/m/saisie/parcelle/plantation/page.tsx`, `src/app/[orgSlug]/(mobile)/m/saisie/parcelle/suivi-rang/page.tsx`, `src/app/[orgSlug]/(mobile)/m/saisie/parcelle/cueillette/page.tsx`, `src/app/[orgSlug]/(mobile)/m/saisie/parcelle/arrachage/page.tsx`, `src/app/[orgSlug]/(mobile)/m/saisie/parcelle/occultation/page.tsx`
+
+### Description
+Implémentation des 6 formulaires mobiles du module Parcelle (A6.6b). Réutilisent le pattern A6.6a (MobileFormLayout, composants de champs, validation Zod, addEntry via MobileSyncContext, écran ✅ avec auto-retour 2s).
+
+### Détails techniques
+- **MobileSelect** : ajout du support `<optgroup>` natif HTML via la prop `groupedOptions: OptionGroup[]`. La prop `options` existante reste compatible (pas de breaking change).
+- **MobileRowSelect** : composant helper réutilisé dans 5 des 6 formulaires. Construit les options groupées par site/parcelle depuis `useCachedRows()`. Format : "Site — Code-Parcelle" → "Rang N". Tri par position_ordre.
+- **TravailSolForm** : soil_works — rang, date, type_travail (4 options), détail, temps, commentaire. Validation `soilWorkSchema`.
+- **PlantationForm** : plantings — rang, variété, année, date, lune, nb_plants, type_plant (10 options), espacement, longueur, largeur, certif_ab, temps, commentaire. Validation `mobilePlantingSchema` (sans seedling_id, fournisseur, date_commande, numero_facture).
+- **SuiviRangForm** : row_care — rang, variété (toutes, pas de logique adaptative offline), date, type_soin (4 options), temps, commentaire. Validation `rowCareSchema`.
+- **CueilletteForm** : harvests — toggle parcelle/sauvage (2 boutons), champs conditionnels (rang ou lieu texte libre), variété, partie_plante (6 options, pas de logique adaptative), date, poids, temps, commentaire. Validation `harvestSchema` (superRefine conditionnel).
+- **ArrachageForm** : uprootings — rang, variété (optionnel), date, temps, commentaire. Validation `uprootingSchema`.
+- **OccultationForm** : occultations — rang, date_début, méthode (4 options), champs conditionnels par méthode (paille/foin → fournisseur + attestation, engrais_vert → nom + fournisseur + facture + certif_ab, bâche → rien), temps, commentaire. Validation `occultationSchema` (superRefine conditionnel).
+- **mobilePlantingSchema** : schéma Zod simplifié pour le mobile, sans seedling_id et fournisseur (champs bureau uniquement) ni superRefine.
+- **Routing** : 7 pages sous `parcelle/` (page.tsx catégorie + 6 formulaires). Routes statiques prioritaires sur le catch-all `[category]/[action]`.
+- Pas de logique adaptative variété (simplification mobile acceptée)
+- Pas de QuickAddVariety, pas d'autocomplétion offline
+- font-size 16px partout (pas de zoom iOS)
+- Pas de `console.log`
+- Build `npm run build` passe sans erreur
+
+---
+
 ## [2026-03-10 19:00] — A6.6a : Formulaires mobiles Semis (sachet + suivi semis)
 
 **Type :** `feature`

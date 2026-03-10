@@ -1,0 +1,266 @@
+'use client'
+
+import { useState, useCallback } from 'react'
+import { useMobileSync } from '@/components/mobile/MobileSyncContext'
+import MobileFormLayout from '@/components/mobile/MobileFormLayout'
+import MobileRowSelect from '@/components/mobile/fields/MobileRowSelect'
+import MobileSelect from '@/components/mobile/fields/MobileSelect'
+import MobileInput from '@/components/mobile/fields/MobileInput'
+import MobileTextarea from '@/components/mobile/fields/MobileTextarea'
+import MobileCheckbox from '@/components/mobile/fields/MobileCheckbox'
+import { useCachedVarieties } from '@/hooks/useCachedData'
+import { mobilePlantingSchema } from '@/lib/validation/parcelles'
+
+function todayISO(): string {
+  return new Date().toISOString().slice(0, 10)
+}
+
+const TYPE_PLANT_OPTIONS = [
+  { value: 'godet', label: 'Godet' },
+  { value: 'caissette', label: 'Caissette' },
+  { value: 'mini_motte', label: 'Mini-motte' },
+  { value: 'plant_achete', label: 'Plant acheté' },
+  { value: 'division', label: 'Division' },
+  { value: 'bouture', label: 'Bouture' },
+  { value: 'marcottage', label: 'Marcottage' },
+  { value: 'stolon', label: 'Stolon' },
+  { value: 'rhizome', label: 'Rhizome' },
+  { value: 'semis_direct', label: 'Semis direct' },
+]
+
+const LUNE_OPTIONS = [
+  { value: 'montante', label: 'Montante' },
+  { value: 'descendante', label: 'Descendante' },
+]
+
+function initialState() {
+  return {
+    row_id: '',
+    variety_id: '',
+    annee: new Date().getFullYear().toString(),
+    date_plantation: todayISO(),
+    lune: '',
+    nb_plants: '',
+    type_plant: '',
+    espacement_cm: '',
+    longueur_m: '',
+    largeur_m: '',
+    certif_ab: false,
+    temps_min: '',
+    commentaire: '',
+  }
+}
+
+interface PlantationFormProps {
+  orgSlug: string
+}
+
+/** Formulaire mobile — Plantation (plantings) */
+export default function PlantationForm({ orgSlug }: PlantationFormProps) {
+  const { addEntry, farmId } = useMobileSync()
+  const { varieties, isLoading: varietiesLoading } = useCachedVarieties()
+
+  const [form, setForm] = useState(initialState)
+  const [errors, setErrors] = useState<Record<string, string>>({})
+  const [isSubmitting, setIsSubmitting] = useState(false)
+  const [success, setSuccess] = useState(false)
+  const [globalError, setGlobalError] = useState<string | null>(null)
+
+  const set = useCallback(
+    <K extends keyof ReturnType<typeof initialState>>(key: K, value: ReturnType<typeof initialState>[K]) => {
+      setForm((prev) => ({ ...prev, [key]: value }))
+      setErrors((prev) => {
+        if (!prev[key]) return prev
+        const next = { ...prev }
+        delete next[key]
+        return next
+      })
+    },
+    [],
+  )
+
+  const handleSubmit = async () => {
+    setGlobalError(null)
+
+    const payload = {
+      row_id: form.row_id,
+      variety_id: form.variety_id,
+      annee: form.annee ? parseInt(form.annee, 10) : undefined,
+      date_plantation: form.date_plantation,
+      lune: form.lune || null,
+      nb_plants: form.nb_plants ? parseInt(form.nb_plants, 10) : null,
+      type_plant: form.type_plant,
+      espacement_cm: form.espacement_cm ? parseInt(form.espacement_cm, 10) : null,
+      longueur_m: form.longueur_m ? parseFloat(form.longueur_m) : null,
+      largeur_m: form.largeur_m ? parseFloat(form.largeur_m) : null,
+      certif_ab: form.certif_ab,
+      temps_min: form.temps_min ? parseInt(form.temps_min, 10) : null,
+      commentaire: form.commentaire || null,
+    }
+
+    const result = mobilePlantingSchema.safeParse(payload)
+    if (!result.success) {
+      const fieldErrors: Record<string, string> = {}
+      for (const issue of result.error.issues) {
+        const key = issue.path[0]?.toString()
+        if (key && !fieldErrors[key]) fieldErrors[key] = issue.message
+      }
+      setErrors(fieldErrors)
+      return
+    }
+
+    setIsSubmitting(true)
+    try {
+      await addEntry({
+        table_cible: 'plantings',
+        farm_id: farmId,
+        payload: result.data as unknown as Record<string, unknown>,
+      })
+      setSuccess(true)
+    } catch {
+      setGlobalError('Erreur lors de l\'enregistrement')
+    } finally {
+      setIsSubmitting(false)
+    }
+  }
+
+  const handleReset = () => {
+    setForm(initialState())
+    setErrors({})
+    setSuccess(false)
+    setGlobalError(null)
+  }
+
+  const backHref = `/${orgSlug}/m/saisie/parcelle`
+
+  const varietyOptions = varieties.map((v) => ({
+    value: v.id,
+    label: v.nom_vernaculaire,
+  }))
+
+  return (
+    <MobileFormLayout
+      title="Plantation"
+      backHref={backHref}
+      onSubmit={handleSubmit}
+      isSubmitting={isSubmitting}
+      success={success}
+      error={globalError}
+      onReset={handleReset}
+    >
+      <MobileRowSelect
+        value={form.row_id}
+        onChange={(v) => set('row_id', v)}
+        error={errors.row_id}
+      />
+
+      <MobileSelect
+        label="Variété"
+        required
+        value={form.variety_id}
+        onChange={(v) => set('variety_id', v)}
+        options={varietyOptions}
+        placeholder={varietiesLoading ? 'Chargement…' : 'Sélectionner une variété'}
+        error={errors.variety_id}
+      />
+
+      <MobileInput
+        label="Année"
+        required
+        type="number"
+        value={form.annee}
+        onChange={(v) => set('annee', v)}
+        error={errors.annee}
+      />
+
+      <MobileInput
+        label="Date plantation"
+        required
+        type="date"
+        value={form.date_plantation}
+        onChange={(v) => set('date_plantation', v)}
+        error={errors.date_plantation}
+      />
+
+      <MobileSelect
+        label="Lune"
+        value={form.lune}
+        onChange={(v) => set('lune', v)}
+        options={LUNE_OPTIONS}
+        placeholder="(optionnel)"
+        error={errors.lune}
+      />
+
+      <MobileInput
+        label="Nb plants"
+        type="number"
+        value={form.nb_plants}
+        onChange={(v) => set('nb_plants', v)}
+        placeholder="0"
+        error={errors.nb_plants}
+      />
+
+      <MobileSelect
+        label="Type de plant"
+        required
+        value={form.type_plant}
+        onChange={(v) => set('type_plant', v)}
+        options={TYPE_PLANT_OPTIONS}
+        error={errors.type_plant}
+      />
+
+      <MobileInput
+        label="Espacement"
+        type="number"
+        value={form.espacement_cm}
+        onChange={(v) => set('espacement_cm', v)}
+        placeholder="0"
+        suffix="cm"
+        error={errors.espacement_cm}
+      />
+
+      <MobileInput
+        label="Longueur"
+        type="number"
+        value={form.longueur_m}
+        onChange={(v) => set('longueur_m', v)}
+        placeholder="0"
+        suffix="m"
+        error={errors.longueur_m}
+      />
+
+      <MobileInput
+        label="Largeur"
+        type="number"
+        value={form.largeur_m}
+        onChange={(v) => set('largeur_m', v)}
+        placeholder="0"
+        suffix="m"
+        error={errors.largeur_m}
+      />
+
+      <MobileCheckbox
+        label="Certifié AB"
+        checked={form.certif_ab}
+        onChange={(v) => set('certif_ab', v)}
+      />
+
+      <MobileInput
+        label="Temps"
+        type="number"
+        value={form.temps_min}
+        onChange={(v) => set('temps_min', v)}
+        placeholder="0"
+        suffix="min"
+        error={errors.temps_min}
+      />
+
+      <MobileTextarea
+        label="Commentaire"
+        value={form.commentaire}
+        onChange={(v) => set('commentaire', v)}
+        placeholder="Notes, observations…"
+      />
+    </MobileFormLayout>
+  )
+}
