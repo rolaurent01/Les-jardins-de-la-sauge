@@ -2,6 +2,26 @@
 
 ---
 
+## [2026-03-10 19:00] — A6.6a : Formulaires mobiles Semis (sachet + suivi semis)
+
+**Type :** `feature`
+**Fichiers concernés :** `src/components/mobile/MobileFormLayout.tsx`, `src/components/mobile/fields/MobileField.tsx`, `src/components/mobile/fields/MobileSelect.tsx`, `src/components/mobile/fields/MobileInput.tsx`, `src/components/mobile/fields/MobileTextarea.tsx`, `src/components/mobile/fields/MobileCheckbox.tsx`, `src/hooks/useCachedData.ts`, `src/components/mobile/forms/SachetForm.tsx`, `src/components/mobile/forms/SuiviSemisForm.tsx`, `src/app/[orgSlug]/(mobile)/m/saisie/semis/page.tsx`, `src/app/[orgSlug]/(mobile)/m/saisie/semis/sachet/page.tsx`, `src/app/[orgSlug]/(mobile)/m/saisie/semis/suivi-semis/page.tsx`
+
+### Description
+Implémentation des 2 premiers formulaires mobiles terrain (A6.6a) : sachet de graines et suivi semis. Ces formulaires posent le pattern réutilisable pour toutes les saisies mobiles suivantes.
+
+### Détails techniques
+- **MobileFormLayout** : layout réutilisable (header + body scrollable + bouton sticky + écran confirmation ✅ avec auto-retour 2s)
+- **Composants de champs** : MobileField (wrapper), MobileSelect (select natif), MobileInput (text/number/date avec suffix), MobileTextarea, MobileCheckbox (zone de tap pleine ligne). Tous avec font-size 16px (pas de zoom iOS).
+- **useCachedData.ts** : 5 hooks réactifs (useLiveQuery de dexie-react-hooks) pour lire le cache IndexedDB — variétés, rangs, recettes, sachets, matériaux.
+- **SachetForm** : formulaire seed_lots avec validation Zod partagée (seedLotSchema), soumission via addEntry() du MobileSyncContext, message explicite si cache variétés vide.
+- **SuiviSemisForm** : formulaire seedlings adaptatif (toggle mini-motte vs caissette/godet), sachets filtrés par variété, validation Zod (seedlingSchema).
+- **Routing** : pages spécifiques `/semis/sachet/` et `/semis/suivi-semis/` prioritaires sur le catch-all `[category]/[action]`. Page `semis/page.tsx` dupliquée pour la sous-navigation.
+- Dépendance ajoutée : `dexie-react-hooks`
+- Build OK sans erreur
+
+---
+
 ## [2026-03-10 17:30] — A6.5 : Layout mobile ultra-léger et navigation par tuiles
 
 **Type :** `feature`
