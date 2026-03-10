@@ -2,6 +2,27 @@
 
 ---
 
+## [2026-03-10 12:00] — A6.2 : Schéma IndexedDB + cache de référence offline (Dexie.js)
+
+**Type :** `feature`
+**Fichiers concernés :** `src/lib/offline/db.ts`, `src/lib/offline/cache-loader.ts`, `src/lib/offline/context-offline.ts`, `src/lib/offline/storage-monitor.ts`, `src/app/api/offline/reference-data/route.ts`, `src/hooks/useOfflineCache.ts`, `package.json`
+
+### Description
+Implémentation du cache IndexedDB pour le fonctionnement offline mobile. Dexie.js v4.3 gère la base locale `ljs-offline` avec 8 stores de référence + 1 file d'attente de sync. Une route API unique (`GET /api/offline/reference-data?farmId=xxx`) retourne toutes les données filtrées en une requête. Le hook `useOfflineCache` orchestre le chargement au montage.
+
+### Détails techniques
+- **Dexie.js 4.3.0** installé — compatible TypeScript strict, Next.js 16 (client-side uniquement)
+- **Schéma IndexedDB** (`db.ts`) : 9 stores — `context`, `varieties`, `sites`, `parcels`, `rows`, `recipes`, `seedLots`, `externalMaterials`, `syncQueue`. Interfaces exportées pour réutilisation en A6.4/A6.6
+- **Cache scopé par ferme** : au switch de ferme, les stores de référence sont vidés et rechargés. `syncQueue` n'est JAMAIS vidée (les saisies pending survivent)
+- **Route API** (`/api/offline/reference-data`) : auth vérifiée + membership check, utilise `createAdminClient()` pour les requêtes complexes (filtrage `farm_variety_settings.hidden`, `farm_material_settings.hidden`). 7 requêtes parallèles
+- **Filtrage variétés** : exclut `deleted_at`, `merged_into_id`, et masquées par ferme via `farm_variety_settings`
+- **Filtrage matériaux** : exclut `deleted_at` et masqués via `farm_material_settings`
+- **Storage monitor** : `getStorageEstimate()` via `navigator.storage.estimate()` + purge auto des archives syncQueue > 7 jours si usage > 80% du quota
+- **Hook `useOfflineCache`** : vérifie cache validity, charge si nécessaire (online), utilise cache existant (offline), gère les erreurs
+- Build `npm run build` passe sans erreur ✅
+
+---
+
 ## [2026-03-10 11:15] — Fix : résolution des 378 erreurs TypeScript (types DOM manquants)
 
 **Type :** `fix`
