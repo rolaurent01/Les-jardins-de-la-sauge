@@ -2,6 +2,47 @@
 
 ---
 
+## [2026-03-10 11:15] — Fix : résolution des 378 erreurs TypeScript (types DOM manquants)
+
+**Type :** `fix`
+**Fichiers concernés :** `src/env.d.ts` (créé), `next.config.ts`, `src/app/login/page.tsx`
+
+### Description
+Correction de 378 erreurs TypeScript causées par un conflit entre les interfaces DOM vides de `@types/react/global.d.ts` (fallback React Native) et les vrais types DOM de `lib.dom`. Les types DOM n'étaient pas chargés malgré `"lib": ["dom"]` dans tsconfig.
+
+### Détails techniques
+- **Cause racine** : `@types/react/global.d.ts` déclare des interfaces vides (`HTMLElement`, `HTMLInputElement`, `FormData`, `EventTarget`, etc.) comme fallback pour les projets sans DOM. Combiné avec `@types/node/web-globals` et Next.js 16, ces interfaces vides prenaient le pas sur les vraies définitions `lib.dom`.
+- **Solution** : création de `src/env.d.ts` avec `/// <reference lib="dom" />` et `/// <reference lib="dom.iterable" />` qui force le chargement explicite des types DOM.
+- **Résultat** : 378 erreurs → 0 erreurs. Aucun cast nécessaire dans le code existant.
+- **Nettoyage** : retrait de `typescript.ignoreBuildErrors: true` dans `next.config.ts`, revert du cast `as HTMLFormElement` dans `login/page.tsx`.
+- Build `npm run build` passe sans erreur ✅
+
+---
+
+## [2026-03-10 10:30] — A6.1 : Infrastructure PWA offline (Serwist Turbopack)
+
+**Type :** `feature`
+**Fichiers concernés :** `src/app/sw.ts`, `src/app/serwist/[path]/route.ts`, `src/app/serwist-provider.tsx`, `src/app/layout.tsx`, `src/hooks/useOnlineStatus.ts`, `next.config.ts`, `public/manifest.json`, `public/icons/icon-192.png`, `public/icons/icon-512.png`, `.gitignore`
+
+### Description
+Mise en place de l'infrastructure PWA pour le mode offline mobile. Le Service Worker cache les assets statiques (JS, CSS, HTML, polices, icônes) via Serwist. Pas de cache de données API — c'est IndexedDB qui s'en chargera en A6.2.
+
+### Détails techniques
+- **Serwist Turbopack** (`@serwist/turbopack@9.5.6`) utilisé à la place de `@serwist/next` (incompatible Turbopack). Le SW est compilé par esbuild et servi via un route handler Next.js (`/serwist/sw.js`), pas un fichier statique.
+- **Route handler** `src/app/serwist/[path]/route.ts` : utilise `createSerwistRoute()` avec `swSrc: "src/app/sw.ts"` et `useNativeEsbuild: true`. Revision basée sur le HEAD git pour le cache-busting.
+- **Service Worker** `src/app/sw.ts` : précache des assets (`self.__SW_MANIFEST`), `skipWaiting`, `clientsClaim`, `navigationPreload`, `runtimeCaching` par défaut de Serwist.
+- **SerwistProvider** dans le layout racine pour l'enregistrement automatique du SW côté client (`swUrl: "/serwist/sw.js"`).
+- **Hook `useOnlineStatus`** : utilise `useSyncExternalStore` (React 18+) pour un état réseau réactif + `wasOffline` sticky. SSR-safe (`getServerSnapshot` retourne `true`).
+- **Manifest PWA** enrichi (description mise à jour).
+- **Icônes** : PNG 192×192 et 512×512 placeholder (fond vert sauge #3A5A40). À remplacer par les vrais logos ultérieurement.
+- **Metadata layout** : `statusBarStyle` passé à `black-translucent` pour iOS.
+- **`next.config.ts`** : ajout `typescript.ignoreBuildErrors: true` car erreurs TS pré-existantes (types React 19) empêchaient le build — à corriger séparément.
+- **Fix login** : cast `event.currentTarget as HTMLFormElement` pour contourner le bug de type React 19 FormData.
+- Dépendances ajoutées : `@serwist/turbopack`, `serwist`, `esbuild` (devDep)
+- Build `npm run build` passe sans erreur ✅
+
+---
+
 ## [2026-03-10 00:10] — Fix build Vercel : shared-actions stock
 
 **Type :** `fix`

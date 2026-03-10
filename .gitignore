@@ -39,3 +39,8 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# serwist (SW servi via route handler, pas de fichier statique généré)
+# Ajouté par précaution au cas où un build génère ces fichiers
+public/sw.js
+public/sw.js.map

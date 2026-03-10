@@ -1,5 +1,6 @@
 import type { Metadata, Viewport } from 'next'
 import { Geist } from 'next/font/google'
+import { SerwistProvider } from './serwist-provider'
 import './globals.css'
 
 const geist = Geist({
@@ -13,7 +14,7 @@ export const metadata: Metadata = {
   manifest: '/manifest.json',
   appleWebApp: {
     capable: true,
-    statusBarStyle: 'default',
+    statusBarStyle: 'black-translucent',
     title: 'LJS',
   },
   formatDetection: { telephone: false },
@@ -30,7 +31,9 @@ export default function RootLayout({
 }: Readonly<{ children: React.ReactNode }>) {
   return (
     <html lang="fr">
-      <body className={`${geist.variable} antialiased`}>{children}</body>
+      <body className={`${geist.variable} antialiased`}>
+        <SerwistProvider swUrl="/serwist/sw.js">{children}</SerwistProvider>
+      </body>
     </html>
   )
 }

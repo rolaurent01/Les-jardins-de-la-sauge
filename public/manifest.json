@@ -1,7 +1,7 @@
 {
   "name": "Les Jardins de la Sauge",
   "short_name": "LJS",
-  "description": "Traçabilité de la graine au produit fini — Les Jardins de la Sauge",
+  "description": "Gestion de la ferme — de la graine au produit fini",
   "start_url": "/",
   "display": "standalone",
   "orientation": "portrait",
