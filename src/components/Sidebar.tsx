@@ -392,6 +392,30 @@ export default function Sidebar({ userEmail, organization, farms, activeFarmId, 
         })}
       </nav>
 
+      {/* ── Lien Mode terrain ────────────────────── */}
+      <div className="px-3 pb-1 flex-shrink-0">
+        <Link
+          href={h('/m/saisie')}
+          className="flex items-center gap-2.5 rounded-md text-[12.5px]"
+          style={{
+            padding: '7px 10px',
+            color: C.normalText,
+            transition: 'all 150ms ease-out',
+          }}
+          onMouseEnter={e => {
+            e.currentTarget.style.backgroundColor = C.hoverBg
+            e.currentTarget.style.color = C.hoverText
+          }}
+          onMouseLeave={e => {
+            e.currentTarget.style.backgroundColor = 'transparent'
+            e.currentTarget.style.color = C.normalText
+          }}
+        >
+          <span style={{ opacity: 0.55, fontSize: '13px', lineHeight: 1 }}>📱</span>
+          <span>Mode terrain</span>
+        </Link>
+      </div>
+
       {/* ── Footer ─────────────────────────────── */}
       <div
         className="px-3 py-2.5 flex-shrink-0"

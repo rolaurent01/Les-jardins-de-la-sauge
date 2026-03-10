@@ -2,6 +2,28 @@
 
 ---
 
+## [2026-03-10 17:30] — A6.5 : Layout mobile ultra-léger et navigation par tuiles
+
+**Type :** `feature`
+**Fichiers concernés :** `src/proxy.ts`, `src/components/mobile/MobileSyncContext.tsx`, `src/components/mobile/MobileShell.tsx`, `src/app/[orgSlug]/(mobile)/layout.tsx`, `src/app/[orgSlug]/(mobile)/m/saisie/page.tsx`, `src/app/[orgSlug]/(mobile)/m/saisie/[category]/page.tsx`, `src/app/[orgSlug]/(mobile)/m/saisie/[category]/[action]/page.tsx`, `src/components/Sidebar.tsx`, `src/components/MobileHeader.tsx`
+
+### Description
+Implémentation du layout mobile dédié à la saisie terrain. Le mobile est un terminal de saisie : choisir une action → remplir un formulaire → enregistrer → retour. Pas de sidebar, pas de dashboard, pas de tableaux.
+
+### Détails techniques
+- **Proxy** (`src/proxy.ts`) : détection User-Agent mobile via `isMobileUserAgent()`. Redirection post-login vers `/{orgSlug}/m/saisie` si mobile, `/{orgSlug}/dashboard` si desktop. Suppression du `console.log` debug (violation consignes). Les routes `/m/...` passent les mêmes vérifications auth+membership que les routes bureau.
+- **MobileSyncContext** (`src/components/mobile/MobileSyncContext.tsx`) : React Context exposant les données de sync (status, forceSync, addEntry, storageEstimate, isOnline, farmId, orgSlug) aux formulaires enfants via `useMobileSync()`.
+- **MobileShell** (`src/components/mobile/MobileShell.tsx`) : Wrapper client qui appelle `useOfflineCache(farmId)` pour charger le cache IndexedDB et `useSyncQueue(farmId)` pour démarrer le moteur de sync. Affiche un écran de chargement pendant l'init, un message d'erreur si offline sans cache, et fournit le `MobileSyncContext` aux children.
+- **Layout mobile** (`src/app/[orgSlug]/(mobile)/layout.tsx`) : Server Component ultra-léger. Barre du haut avec nom de l'org et lien "Mode bureau". Pas de sidebar. Fond crème #F9F8F6. MobileShell enveloppe le contenu.
+- **Page d'accueil** (`m/saisie/page.tsx`) : Grille de 5 grosses tuiles tactiles (Semis, Parcelle, Transfo, Stock, Produits). 2 colonnes, dernière tuile pleine largeur. Touch-friendly (min-height 100px, active:scale-95).
+- **Page catégorie** (`m/saisie/[category]/page.tsx`) : Sous-actions par catégorie (2-6 tuiles selon la catégorie). Bouton retour en haut. Mapping complet des 14 sous-actions.
+- **Page placeholder** (`m/saisie/[category]/[action]/page.tsx`) : Placeholder "Formulaire à venir (A6.6)" avec bouton retour. Sera remplacé en A6.6a/b/c.
+- **Liens de bascule** : Lien "📱 Mode terrain" ajouté dans la Sidebar desktop et le drawer MobileHeader. Lien "Mode bureau" dans la barre du haut du layout mobile.
+- Pas de `console.log`, pas de `FarmSelector` sur mobile, pas de formulaires (A6.6), pas de barre de sync fonctionnelle (A6.7)
+- Build vérifié : `npm run build` passe sans erreur
+
+---
+
 ## [2026-03-10 16:00] — A6.4 : Moteur de synchronisation côté client
 
 **Type :** `feature`

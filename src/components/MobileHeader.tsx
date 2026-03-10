@@ -286,6 +286,19 @@ export default function MobileHeader({ userEmail, organization, orgSlug }: Mobil
           })}
         </nav>
 
+        {/* Lien Mode terrain */}
+        <div className="px-3 pb-1">
+          <Link
+            href={h('/m/saisie')}
+            onClick={() => setDrawerOpen(false)}
+            className="flex items-center gap-2 px-3 py-2.5 rounded-lg text-sm"
+            style={{ color: '#A8BFA9' }}
+          >
+            <span className="text-base leading-none w-5 text-center flex-shrink-0">📱</span>
+            <span>Mode terrain</span>
+          </Link>
+        </div>
+
         {/* Pied : email + déconnexion */}
         <div className="px-3 py-3" style={{ borderTop: '1px solid rgba(255,255,255,0.1)' }}>
           {userEmail && (

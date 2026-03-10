@@ -15,13 +15,19 @@ function createAdminClient() {
   )
 }
 
+/** Détecte un User-Agent mobile (smartphones/tablettes) */
+function isMobileUserAgent(userAgent: string | null): boolean {
+  if (!userAgent) return false
+  return /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(userAgent)
+}
+
 /**
  * Proxy d'authentification + résolution du slug d'organisation (Next.js 16).
  *
  * Logique :
  * 1. Page /login → publique (passe-travers)
  * 2. Vérifie l'authentification Supabase (getUser via cookies)
- * 3. / (racine) → redirect vers /{orgSlug}/dashboard
+ * 3. / (racine) → redirect vers /{orgSlug}/dashboard (ou /m/saisie si mobile)
  * 4. /{slug}/... → vérifie que le slug existe et que l'utilisateur est membre
  *
  * Les requêtes DB utilisent le client admin (service_role) car auth.uid()
@@ -57,15 +63,7 @@ export async function proxy(request: NextRequest) {
 
   // IMPORTANT : getUser() peut rafraîchir le token et appeler setAll.
   // Tous les redirects doivent préserver les cookies de `response`.
-  const { data: { user }, error: userError } = await supabase.auth.getUser()
-
-  // --- DEBUG TEMPORAIRE (à retirer après diagnostic) ---
-  console.log('[PROXY]', {
-    path: pathname,
-    hasUser: !!user,
-    userId: user?.id?.slice(0, 8) || null,
-    userError: userError?.message || null,
-  })
+  const { data: { user } } = await supabase.auth.getUser()
 
   /** Crée un redirect qui préserve les cookies écrits par setAll (token refresh) */
   function redirectTo(url: URL) {
@@ -97,10 +95,13 @@ export async function proxy(request: NextRequest) {
   }
 
   // Redirection de la racine vers la première organisation de l'utilisateur
+  // Sur mobile → /m/saisie, sur desktop → /dashboard
   if (pathname === '/') {
     const orgSlug = await resolveFirstOrgSlug(admin, user.id)
     if (!orgSlug) return redirectTo(new URL('/login', request.url))
-    return redirectTo(new URL(`/${orgSlug}/dashboard`, request.url))
+    const ua = request.headers.get('user-agent')
+    const landing = isMobileUserAgent(ua) ? 'm/saisie' : 'dashboard'
+    return redirectTo(new URL(`/${orgSlug}/${landing}`, request.url))
   }
 
   // Vérification du slug d'organisation dans le path
