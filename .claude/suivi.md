@@ -2,6 +2,28 @@
 
 ---
 
+## [2026-03-10 22:00] — A6.6c : Formulaires mobiles Transfo + Stock + Produits (7 formulaires)
+
+**Type :** `feature`
+**Fichiers concernés :** `src/components/mobile/forms/TransformationMobileForm.tsx`, `src/components/mobile/forms/TronconnageForm.tsx`, `src/components/mobile/forms/SechageForm.tsx`, `src/components/mobile/forms/TriageForm.tsx`, `src/components/mobile/forms/AchatForm.tsx`, `src/components/mobile/forms/VenteForm.tsx`, `src/components/mobile/forms/ProductionLotForm.tsx`, `src/lib/validation/produits.ts`, `src/lib/sync/dispatch.ts`, `src/app/[orgSlug]/(mobile)/m/saisie/transfo/page.tsx`, `src/app/[orgSlug]/(mobile)/m/saisie/transfo/tronconnage/page.tsx`, `src/app/[orgSlug]/(mobile)/m/saisie/transfo/sechage/page.tsx`, `src/app/[orgSlug]/(mobile)/m/saisie/transfo/triage/page.tsx`, `src/app/[orgSlug]/(mobile)/m/saisie/stock/page.tsx`, `src/app/[orgSlug]/(mobile)/m/saisie/stock/achat/page.tsx`, `src/app/[orgSlug]/(mobile)/m/saisie/stock/vente/page.tsx`, `src/app/[orgSlug]/(mobile)/m/saisie/produits/page.tsx`, `src/app/[orgSlug]/(mobile)/m/saisie/produits/production/page.tsx`
+
+### Description
+Implémentation des 7 derniers formulaires mobiles (A6.6c) : Transformation (3), Stock (2) et Produits (1 simplifié). Même pattern A6.6a/A6.6b. Factorisation des 3 formulaires transfo dans un composant partagé paramétré. Mise à jour du dispatch serveur pour supporter le payload mobile simplifié (production_lots sans ingrédients).
+
+### Détails techniques
+- **TransformationMobileForm** : composant partagé paramétré par config (table, schéma Zod, états plante). Toggle Entrée/Sortie avec boutons style identique à CueilletteForm. Gère 3 cas : état implicite (tronçonnage), état conditionnel (séchage/triage), pas d'état.
+- **TronconnageForm** : cuttings — wrapper fin. État plante IMPLICITE (entrée=frais, sortie=tronconnee). Pas de sélecteur d'état. Validation `cuttingSchema`.
+- **SechageForm** : dryings — wrapper fin. État conditionnel : entrée=frais|tronconnee, sortie=sechee|tronconnee_sechee. Réinit état quand type change. Validation `dryingSchema` (superRefine type↔etat_plante).
+- **TriageForm** : sortings — wrapper fin. État conditionnel : entrée=sechee|tronconnee_sechee, sortie=sechee_triee|tronconnee_sechee_triee. Validation `sortingSchema`.
+- **AchatForm** : stock_purchases — variété, partie_plante, etat_plante (6 états), date, poids, fournisseur, n°lot, certif_ab, prix, commentaire. Validation `purchaseSchema`.
+- **VenteForm** : stock_direct_sales — variété, partie_plante, etat_plante, date, poids, destinataire, commentaire. PAS de vérif stock (côté serveur à la sync). Validation `directSaleSchema`.
+- **ProductionLotForm** : production_lots — version SIMPLIFIÉE mobile. Recette (actives uniquement via `useCachedRecipes`), nb_unités, date, temps, commentaire. Mode toujours "produit". Pas de modification d'ingrédients. Validation `mobileProductionLotSchema` (nouveau schéma ajouté dans produits.ts).
+- **dispatch.ts** : `dispatchProductionLot` mis à jour pour supporter le payload mobile sans ingrédients. Quand `payload.ingredients` est absent, charge les `recipe_ingredients` depuis la base, calcule `poids_g = nb_unites × poids_sachet_g × pourcentage` par ingrédient. Calcule aussi `poids_total_g` automatiquement.
+- **Routes** : 9 pages créées — 3 index catégorie (transfo, stock, produits) + 6 pages formulaire. Même pattern que semis/parcelle (routes statiques prioritaires).
+- Build passe sans erreur. Pas de console.log. Font-size >= 16px sur tous les boutons toggle.
+
+---
+
 ## [2026-03-10 20:30] — A6.6b : Formulaires mobiles Parcelle (6 formulaires)
 
 **Type :** `feature`

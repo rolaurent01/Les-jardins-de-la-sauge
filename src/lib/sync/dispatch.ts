@@ -239,17 +239,50 @@ async function dispatchProductionLot({ farm_id, user_id, uuid_client, payload }:
   const ddmStr = ddm.toISOString().split('T')[0]
 
   // Préparer les ingrédients au format JSONB
-  const ingredients = payload.ingredients as Array<Record<string, unknown>>
-  const ingredientsJsonb = ingredients.map((ing) => ({
-    variety_id: (ing.variety_id as string) ?? null,
-    external_material_id: (ing.external_material_id as string) ?? null,
-    etat_plante: (ing.etat_plante as string) ?? null,
-    partie_plante: (ing.partie_plante as string) ?? null,
-    pourcentage: ing.pourcentage as number,
-    poids_g: ing.poids_g as number,
-    annee_recolte: (ing.annee_recolte as number) ?? null,
-    fournisseur: (ing.fournisseur as string) ?? null,
-  }))
+  // Mobile simplifié : pas d'ingrédients dans le payload → charger depuis la recette
+  let ingredientsJsonb: Array<Record<string, unknown>>
+
+  const rawIngredients = payload.ingredients as Array<Record<string, unknown>> | undefined
+
+  if (rawIngredients && rawIngredients.length > 0) {
+    // Bureau : ingrédients fournis dans le payload
+    ingredientsJsonb = rawIngredients.map((ing) => ({
+      variety_id: (ing.variety_id as string) ?? null,
+      external_material_id: (ing.external_material_id as string) ?? null,
+      etat_plante: (ing.etat_plante as string) ?? null,
+      partie_plante: (ing.partie_plante as string) ?? null,
+      pourcentage: ing.pourcentage as number,
+      poids_g: ing.poids_g as number,
+      annee_recolte: (ing.annee_recolte as number) ?? null,
+      fournisseur: (ing.fournisseur as string) ?? null,
+    }))
+  } else {
+    // Mobile simplifié : charger les ingrédients depuis la recette en base
+    const nbUnites = payload.nb_unites as number
+    const poidsTotalG = nbUnites * recipe.poids_sachet_g
+
+    const { data: recipeIngredients, error: ingError } = await admin
+      .from('recipe_ingredients')
+      .select('variety_id, external_material_id, etat_plante, partie_plante, pourcentage, ordre')
+      .eq('recipe_id', recipe.id)
+      .order('ordre', { ascending: true })
+
+    if (ingError) throw new Error(`Erreur chargement ingrédients recette : ${ingError.message}`)
+    if (!recipeIngredients || recipeIngredients.length === 0) {
+      throw new Error('La recette n\'a pas d\'ingrédients')
+    }
+
+    ingredientsJsonb = recipeIngredients.map((ing: Record<string, unknown>) => ({
+      variety_id: (ing.variety_id as string) ?? null,
+      external_material_id: (ing.external_material_id as string) ?? null,
+      etat_plante: (ing.etat_plante as string) ?? null,
+      partie_plante: (ing.partie_plante as string) ?? null,
+      pourcentage: ing.pourcentage as number,
+      poids_g: Math.round((poidsTotalG * (ing.pourcentage as number)) * 100) / 100,
+      annee_recolte: null,
+      fournisseur: null,
+    }))
+  }
 
   // Idempotence : vérifier si le uuid_client existe déjà
   const { data: existingLot } = await admin
@@ -269,7 +302,9 @@ async function dispatchProductionLot({ farm_id, user_id, uuid_client, payload }:
     p_date_production: payload.date_production as string,
     p_ddm: ddmStr,
     p_nb_unites: (payload.nb_unites as number) ?? null,
-    p_poids_total_g: (payload.poids_total_g as number) ?? null,
+    p_poids_total_g: (payload.poids_total_g as number) ?? (
+      payload.nb_unites ? (payload.nb_unites as number) * recipe.poids_sachet_g : null
+    ),
     p_temps_min: (payload.temps_min as number) ?? null,
     p_commentaire: (payload.commentaire as string) ?? null,
     p_created_by: user_id,

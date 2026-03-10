@@ -175,6 +175,16 @@ export const productionLotSchema = z
     }
   })
 
+// ---- Lot de production mobile (simplifié — pas d'ingrédients) ----
+
+export const mobileProductionLotSchema = z.object({
+  recipe_id: z.string().uuid('Recette invalide'),
+  nb_unites: positiveInt,
+  date_production: dateNotInFuture,
+  temps_min: positiveInt.optional().nullable(),
+  commentaire: z.string().max(1000).optional().nullable(),
+})
+
 // ---- Conditionnement ----
 
 export const conditionnerSchema = z.object({
