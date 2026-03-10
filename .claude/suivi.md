@@ -2,6 +2,34 @@
 
 ---
 
+## [2026-03-10 16:00] — A6.4 : Moteur de synchronisation côté client
+
+**Type :** `feature`
+**Fichiers concernés :** `src/lib/utils/uuid.ts`, `src/lib/offline/sync-service.ts`, `src/hooks/useSyncQueue.ts`
+
+### Description
+Implémentation du moteur de sync client qui orchestre le cycle de vie complet des saisies offline : pending → syncing → synced → archivé 7j → supprimé.
+
+### Détails techniques
+- **`src/lib/utils/uuid.ts`** : Générateur UUID v4 avec `crypto.randomUUID()` + fallback `crypto.getRandomValues()`
+- **`src/lib/offline/sync-service.ts`** — Service principal (fonctions pures, pas de hook React) :
+  - `addToSyncQueue()` : ajoute une saisie en IndexedDB avec status 'pending', retourne immédiatement le uuid_client
+  - `processSyncQueue()` : envoie les 'pending' un par un via POST /api/sync, gère le cycle pending→syncing→synced/error, max 5 tentatives
+  - `purgeOldArchives()` : supprime les 'synced' de plus de 7 jours (jamais les pending/syncing/error)
+  - `runAudit()` : vérifie les 'synced' par lots de 200 via POST /api/sync/audit, repasse les 'missing' en 'pending'
+  - `getSyncQueueStatus()` : compteurs par status (toutes fermes confondues)
+- **`src/hooks/useSyncQueue.ts`** — Hook React orchestrateur :
+  - Timer 30s quand online pour `processSyncQueue()`
+  - Sync immédiat au retour online après offline (via `wasOffline`)
+  - Purge auto (archives 7j + checkAndPurgeIfNeeded) après chaque cycle
+  - `forceSync()` : sync + audit + purge en une action
+  - `addEntry()` : wrapper pour ajouter une saisie
+  - Rafraîchissement storageEstimate toutes les 60s
+  - Cleanup des intervalles au unmount
+- Build vérifié : `npm run build` passe sans erreur
+
+---
+
 ## [2026-03-10 14:30] — A6.3 : Endpoints serveur de synchronisation mobile
 
 **Type :** `feature`
