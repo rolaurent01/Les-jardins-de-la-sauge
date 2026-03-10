@@ -3,6 +3,7 @@ import { createClient, createAdminClient } from '@/lib/supabase/server'
 import { isPlatformAdmin } from '@/lib/admin/is-platform-admin'
 import Sidebar from '@/components/Sidebar'
 import MobileHeader from '@/components/MobileHeader'
+import ImpersonationBanner from '@/components/admin/ImpersonationBanner'
 
 /**
  * Layout bureau — wraps toutes les pages authentifiées.
@@ -63,6 +64,18 @@ export default async function DashboardLayout({
   // Vérifier si l'utilisateur est super admin plateforme
   const isAdmin = user ? await isPlatformAdmin(user.id) : false
 
+  // Vérifier le mode impersonation
+  const impersonateFarmId = cookieStore.get('impersonate_farm_id')?.value
+  let impersonationFarmName: string | null = null
+  if (impersonateFarmId && isAdmin) {
+    const { data: impFarm } = await admin
+      .from('farms')
+      .select('nom')
+      .eq('id', impersonateFarmId)
+      .single()
+    impersonationFarmName = impFarm?.nom ?? null
+  }
+
   return (
     <div className="flex h-screen overflow-hidden" style={{ backgroundColor: '#F9F8F6' }}>
       {/* Sidebar — cachée sur mobile, visible à partir de md */}
@@ -79,6 +92,14 @@ export default async function DashboardLayout({
 
       {/* Zone de contenu principale */}
       <main className="flex-1 overflow-y-auto flex flex-col min-w-0">
+        {/* Bandeau d'impersonation — visible sur TOUTES les pages */}
+        {impersonationFarmName && (
+          <ImpersonationBanner
+            farmName={impersonationFarmName}
+            orgSlug={orgSlug}
+          />
+        )}
+
         {/* Barre top mobile — visible uniquement sur mobile */}
         <div className="md:hidden flex-shrink-0">
           <MobileHeader

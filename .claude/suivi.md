@@ -2,6 +2,29 @@
 
 ---
 
+## [2026-03-10 26:00] — A7.2 : Outils d'administration plateforme (Logs, Outils, Impersonation, Clôture)
+
+**Type :** `feature`
+**Fichiers concernés :** `src/app/[orgSlug]/(dashboard)/admin/logs/actions.ts`, `src/app/[orgSlug]/(dashboard)/admin/logs/page.tsx`, `src/components/admin/LogsClient.tsx`, `src/app/[orgSlug]/(dashboard)/admin/outils/actions.ts`, `src/app/[orgSlug]/(dashboard)/admin/outils/page.tsx`, `src/components/admin/OutilsClient.tsx`, `src/components/admin/ImpersonationBanner.tsx`, `src/components/admin/AdminNav.tsx`, `src/lib/context.ts`, `src/app/[orgSlug]/(dashboard)/layout.tsx`
+
+### Description
+Implémentation complète de A7.2 : les outils d'administration plateforme. Remplace les placeholders "Logs" et "Outils" dans AdminNav par de vraies pages fonctionnelles.
+
+### Détails techniques
+- **Page Logs** : fetchLogs avec filtres (niveau, source, période, recherche texte), pagination 50/page, compteurs par niveau, expansion au clic pour détail + metadata JSON, purge des anciens logs (défaut 90j) avec double confirmation
+- **Page Outils — 4 sections** :
+  1. Recalcul production_summary via RPC `recalculate_production_summary()` avec double confirmation et mesure de durée
+  2. État des backups (5 derniers logs source=backup) + bouton lancer backup manuel via POST /api/backup
+  3. Impersonation : select organisation → ferme, set cookie `impersonate_farm_id`, redirect vers dashboard de la ferme
+  4. Clôture de saison : chargement des plantings actifs par ferme/année, toggle garder/arracher par planting, arrachage auto des annuelles, création d'uprootings au 31/12
+- **Impersonation dans getContext()** : le cookie `impersonate_farm_id` est prioritaire sur `active_farm_id` si l'utilisateur est platform_admin. Sinon ignoré silencieusement.
+- **Bandeau d'impersonation** : bandeau rouge fixe en haut du layout dashboard, visible sur TOUTES les pages, avec bouton "Arrêter l'impersonation"
+- **AdminNav** : suppression du code disabled, tous les onglets sont maintenant des liens actifs
+- Toutes les actions vérifient `isPlatformAdmin` (défense en profondeur)
+- `npm run build` passe sans erreur
+
+---
+
 ## [2026-03-10 25:00] — A7.1 : Espace d'administration plateforme
 
 **Type :** `feature`

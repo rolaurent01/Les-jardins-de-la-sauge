@@ -7,8 +7,8 @@ const TABS = [
   { label: 'Organisations', href: '/admin/organisations' },
   { label: 'Fermes',        href: '/admin/fermes' },
   { label: 'Utilisateurs',  href: '/admin/utilisateurs' },
-  { label: 'Logs',          href: '/admin/logs',   disabled: true },
-  { label: 'Outils',        href: '/admin/outils', disabled: true },
+  { label: 'Logs',          href: '/admin/logs' },
+  { label: 'Outils',        href: '/admin/outils' },
 ]
 
 export default function AdminNav({ orgSlug }: { orgSlug: string }) {
@@ -25,24 +25,6 @@ export default function AdminNav({ orgSlug }: { orgSlug: string }) {
       {TABS.map(tab => {
         const fullHref = `/${orgSlug}${tab.href}`
         const isActive = pathname.startsWith(fullHref)
-
-        if (tab.disabled) {
-          return (
-            <span
-              key={tab.href}
-              className="rounded-md"
-              style={{
-                padding: '6px 14px',
-                fontSize: '13px',
-                fontWeight: 500,
-                color: '#9CA3AF',
-                cursor: 'default',
-              }}
-            >
-              {tab.label}
-            </span>
-          )
-        }
 
         return (
           <Link

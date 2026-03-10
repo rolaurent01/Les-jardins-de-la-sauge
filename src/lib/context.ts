@@ -1,4 +1,5 @@
 import { createClient, createAdminClient } from '@/lib/supabase/server'
+import { isPlatformAdmin } from '@/lib/admin/is-platform-admin'
 import { cookies } from 'next/headers'
 
 /**
@@ -10,11 +11,14 @@ export type AppContext = {
   farmId: string
   organizationId: string
   orgSlug: string
+  /** Vrai si le contexte est résolu via impersonation admin */
+  isImpersonating?: boolean
 }
 
 /**
  * Résout le contexte applicatif courant depuis la session et le cookie active_farm_id.
- * Priorise le cookie, puis la première ferme de la première organisation.
+ * Si le cookie impersonate_farm_id est présent ET l'utilisateur est platform_admin,
+ * ce cookie est prioritaire (mode impersonation).
  *
  * getUser() utilise le client SSR (cookies). Les requêtes DB utilisent le client admin
  * car auth.uid() peut être NULL dans le contexte PostgREST (limitation @supabase/ssr).
@@ -30,6 +34,18 @@ export async function getContext(): Promise<AppContext> {
 
   const admin = createAdminClient()
   const cookieStore = await cookies()
+
+  // Impersonation : prioritaire si l'utilisateur est platform_admin
+  const impersonateFarmId = cookieStore.get('impersonate_farm_id')?.value
+  if (impersonateFarmId) {
+    const isAdmin = await isPlatformAdmin(user.id)
+    if (isAdmin) {
+      const ctx = await resolveImpersonatedFarmContext(admin, user.id, impersonateFarmId)
+      if (ctx) return ctx
+    }
+    // Si pas admin → on ignore le cookie d'impersonation silencieusement
+  }
+
   const activeFarmId = cookieStore.get('active_farm_id')?.value
 
   // Tentative avec le cookie active_farm_id
@@ -40,6 +56,32 @@ export async function getContext(): Promise<AppContext> {
 
   // Fallback : première ferme via membership
   return resolveFirstFarmContext(admin, user.id)
+}
+
+/** Résout le contexte d'impersonation (pas de vérification membership, admin bypass) */
+async function resolveImpersonatedFarmContext(
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  supabase: any,
+  userId: string,
+  farmId: string,
+): Promise<AppContext | null> {
+  const { data: farm } = await supabase
+    .from('farms')
+    .select('id, organization_id, organizations(slug)')
+    .eq('id', farmId)
+    .single()
+
+  if (!farm) return null
+
+  const orgSlug = (farm.organizations as { slug: string } | null)?.slug ?? ''
+
+  return {
+    userId,
+    farmId: farm.id,
+    organizationId: farm.organization_id,
+    orgSlug,
+    isImpersonating: true,
+  }
 }
 
 /** Résout le contexte depuis un farm_id donné (vérifié par RLS) */
