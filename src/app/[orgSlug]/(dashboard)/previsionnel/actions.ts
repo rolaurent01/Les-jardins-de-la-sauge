@@ -7,6 +7,15 @@ import { buildPath } from '@/lib/utils/path'
 import { forecastSchema } from '@/lib/validation/previsionnel'
 import type { ActionResult, ForecastWithVariety } from '@/lib/types'
 
+// ---- Types retour ----
+
+export type RealisedData = {
+  /** Total cueilli (g) par variety_id — source : harvests */
+  cueilliParVariete: Record<string, number>
+  /** Stock (g) par clé "variety_id:etat_plante" — source : v_stock */
+  stockParVarieteEtat: Record<string, number>
+}
+
 // ---- Requêtes ----
 
 /** Récupère tous les forecasts de la ferme courante pour une année donnée */
@@ -25,14 +34,19 @@ export async function fetchForecasts(annee: number): Promise<ForecastWithVariety
 
   const rows = (data ?? []) as unknown as ForecastWithVariety[]
 
-  // Tri par famille puis nom_vernaculaire
+  // Tri : groupé par variété (famille → nom), puis par etat_plante
+  const etatOrder: Record<string, number> = {
+    frais: 0, tronconnee: 1, sechee: 2,
+    tronconnee_sechee: 3, sechee_triee: 4, tronconnee_sechee_triee: 5,
+  }
   rows.sort((a, b) => {
     const famA = a.varieties?.famille ?? 'zzz'
     const famB = b.varieties?.famille ?? 'zzz'
     if (famA !== famB) return famA.localeCompare(famB, 'fr')
     const nomA = a.varieties?.nom_vernaculaire ?? ''
     const nomB = b.varieties?.nom_vernaculaire ?? ''
-    return nomA.localeCompare(nomB, 'fr')
+    if (nomA !== nomB) return nomA.localeCompare(nomB, 'fr')
+    return (etatOrder[a.etat_plante ?? ''] ?? 99) - (etatOrder[b.etat_plante ?? ''] ?? 99)
   })
 
   return rows
@@ -86,30 +100,51 @@ export async function fetchVarietiesForForecast(): Promise<
   return (data ?? []).filter(v => !hiddenIds.has(v.id))
 }
 
-/** Récupère le total cueilli par variété pour une année (depuis harvests) */
-export async function fetchRealisedByVariety(annee: number): Promise<Record<string, number>> {
+/**
+ * Récupère les données réalisées pour le prévisionnel :
+ * - cueilliParVariete : total cueilli (g) par variété depuis harvests
+ * - stockParVarieteEtat : stock actuel (g) par variété × état depuis v_stock
+ */
+export async function fetchRealisedData(annee: number): Promise<RealisedData> {
   const supabase = await createClient()
   const { farmId } = await getContext()
 
   const startDate = `${annee}-01-01`
   const endDate = `${annee}-12-31`
 
-  const { data, error } = await supabase
-    .from('harvests')
-    .select('variety_id, poids_g')
-    .eq('farm_id', farmId)
-    .gte('date', startDate)
-    .lte('date', endDate)
-    .is('deleted_at', null)
+  // Requêtes en parallèle
+  const [harvestsResult, stockResult] = await Promise.all([
+    supabase
+      .from('harvests')
+      .select('variety_id, poids_g')
+      .eq('farm_id', farmId)
+      .gte('date', startDate)
+      .lte('date', endDate)
+      .is('deleted_at', null),
+    supabase
+      .from('v_stock')
+      .select('variety_id, etat_plante, stock_g')
+      .eq('farm_id', farmId),
+  ])
 
-  if (error) throw new Error(`Erreur chargement réalisé : ${error.message}`)
+  if (harvestsResult.error) throw new Error(`Erreur chargement récoltes : ${harvestsResult.error.message}`)
+  if (stockResult.error) throw new Error(`Erreur chargement stock : ${stockResult.error.message}`)
 
-  const result: Record<string, number> = {}
-  for (const h of data ?? []) {
-    result[h.variety_id] = (result[h.variety_id] ?? 0) + (h.poids_g ?? 0)
+  // Agréger le cueilli par variété
+  const cueilliParVariete: Record<string, number> = {}
+  for (const h of harvestsResult.data ?? []) {
+    cueilliParVariete[h.variety_id] = (cueilliParVariete[h.variety_id] ?? 0) + (h.poids_g ?? 0)
   }
 
-  return result
+  // Agréger le stock par variété × état
+  const stockParVarieteEtat: Record<string, number> = {}
+  for (const s of stockResult.data ?? []) {
+    if (!s.etat_plante) continue
+    const key = `${s.variety_id}:${s.etat_plante}`
+    stockParVarieteEtat[key] = (stockParVarieteEtat[key] ?? 0) + (s.stock_g ?? 0)
+  }
+
+  return { cueilliParVariete, stockParVarieteEtat }
 }
 
 // ---- Actions ----
@@ -120,7 +155,7 @@ export async function upsertForecast(
     variety_id: string
     annee: number
     quantite_prevue_g: number
-    etat_plante?: string | null
+    etat_plante: string
     partie_plante?: string | null
     commentaire?: string | null
   },
@@ -142,7 +177,7 @@ export async function upsertForecast(
         variety_id: parsed.data.variety_id,
         annee: parsed.data.annee,
         quantite_prevue_g: parsed.data.quantite_prevue_g,
-        etat_plante: (parsed.data.etat_plante ?? null) as string,
+        etat_plante: parsed.data.etat_plante,
         partie_plante: parsed.data.partie_plante ?? null,
         commentaire: parsed.data.commentaire ?? null,
         created_by: userId,
@@ -176,7 +211,7 @@ export async function deleteForecast(forecastId: string): Promise<ActionResult> 
   return { success: true }
 }
 
-/** Copie les forecasts d'une année source vers une année cible */
+/** Copie les forecasts d'une année source vers une année cible (avec etat_plante) */
 export async function copyForecastsFromYear(
   sourceYear: number,
   targetYear: number,
@@ -207,7 +242,7 @@ export async function copyForecastsFromYear(
     if (delError) return { error: `Erreur suppression existants : ${delError.message}` }
   }
 
-  // Récupérer les forecasts source
+  // Récupérer les forecasts source (avec etat_plante)
   const { data: sources, error: srcError } = await supabase
     .from('forecasts')
     .select('variety_id, etat_plante, partie_plante, quantite_prevue_g, commentaire')
@@ -217,7 +252,7 @@ export async function copyForecastsFromYear(
   if (srcError) return { error: `Erreur lecture source : ${srcError.message}` }
   if (!sources || sources.length === 0) return { error: `Aucun objectif trouvé pour ${sourceYear}` }
 
-  // Insérer les copies
+  // Insérer les copies avec etat_plante
   const copies = sources.map(s => ({
     farm_id: farmId,
     annee: targetYear,

@@ -1,4 +1,4 @@
-import { fetchForecasts, fetchForecastYears, fetchVarietiesForForecast, fetchRealisedByVariety } from './actions'
+import { fetchForecasts, fetchForecastYears, fetchVarietiesForForecast, fetchRealisedData } from './actions'
 import PrevisionnelClient from '@/components/previsionnel/PrevisionnelClient'
 
 export const metadata = { title: 'Prévisionnel — LJS' }
@@ -7,11 +7,11 @@ export default async function PrevisionnelPage() {
   try {
     const currentYear = new Date().getFullYear()
 
-    const [forecasts, years, varieties, realised] = await Promise.all([
+    const [forecasts, years, varieties, realisedData] = await Promise.all([
       fetchForecasts(currentYear),
       fetchForecastYears(),
       fetchVarietiesForForecast(),
-      fetchRealisedByVariety(currentYear),
+      fetchRealisedData(currentYear),
     ])
 
     return (
@@ -20,7 +20,7 @@ export default async function PrevisionnelPage() {
         initialYears={years}
         initialYear={currentYear}
         allVarieties={varieties}
-        initialRealised={realised}
+        initialRealisedData={realisedData}
       />
     )
   } catch (err) {

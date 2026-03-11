@@ -2,10 +2,17 @@
 
 import { useState, useCallback, useTransition, useRef } from 'react'
 import type { ForecastWithVariety } from '@/lib/types'
+import type { RealisedData } from '@/app/[orgSlug]/(dashboard)/previsionnel/actions'
+import {
+  ETATS_PLANTE,
+  ETAT_PLANTE_LABELS,
+  ETAT_PLANTE_COLORS,
+  type EtatPlanteValue,
+} from '@/lib/constants/etat-plante'
 import {
   fetchForecasts,
   fetchForecastYears,
-  fetchRealisedByVariety,
+  fetchRealisedData,
   upsertForecast,
   deleteForecast,
   copyForecastsFromYear,
@@ -37,10 +44,25 @@ function computePercent(realised: number, objective: number): number {
 
 /** Couleur de la barre de progression selon le pourcentage */
 function progressColor(pct: number): string {
-  if (pct > 100) return '#3B82F6'  // bleu
-  if (pct >= 80) return '#22C55E'  // vert
-  if (pct >= 40) return '#F59E0B'  // orange
-  return '#EF4444'                  // rouge
+  if (pct > 100) return '#3B82F6'
+  if (pct >= 80) return '#22C55E'
+  if (pct >= 40) return '#F59E0B'
+  return '#EF4444'
+}
+
+/** Récupère le réalisé pour un forecast selon son état */
+function getRealisedForForecast(
+  forecast: ForecastWithVariety,
+  realisedData: RealisedData,
+): number {
+  if (forecast.etat_plante === 'frais') {
+    return realisedData.cueilliParVariete[forecast.variety_id] ?? 0
+  }
+  if (forecast.etat_plante) {
+    const key = `${forecast.variety_id}:${forecast.etat_plante}`
+    return realisedData.stockParVarieteEtat[key] ?? 0
+  }
+  return 0
 }
 
 /* ---------------------------------------------------------------
@@ -59,7 +81,7 @@ type Props = {
   initialYears: number[]
   initialYear: number
   allVarieties: VarietyOption[]
-  initialRealised: Record<string, number>
+  initialRealisedData: RealisedData
 }
 
 /* ---------------------------------------------------------------
@@ -71,12 +93,12 @@ export default function PrevisionnelClient({
   initialYears,
   initialYear,
   allVarieties,
-  initialRealised,
+  initialRealisedData,
 }: Props) {
   const [forecasts, setForecasts] = useState(initialForecasts)
   const [years, setYears] = useState(initialYears)
   const [selectedYear, setSelectedYear] = useState(initialYear)
-  const [realised, setRealised] = useState(initialRealised)
+  const [realisedData, setRealisedData] = useState(initialRealisedData)
   const [search, setSearch] = useState('')
   const [familyFilter, setFamilyFilter] = useState<string>('all')
   const [isPending, startTransition] = useTransition()
@@ -86,8 +108,8 @@ export default function PrevisionnelClient({
   const [copyConfirm, setCopyConfirm] = useState<{ source: number; overwrite: boolean } | null>(null)
   const [copyError, setCopyError] = useState<string | null>(null)
 
-  // Ajout de variété
-  const [showAddSelect, setShowAddSelect] = useState(false)
+  // Ajout d'objectif
+  const [showAddForm, setShowAddForm] = useState(false)
 
   /* ---- Familles disponibles ---- */
   const families = Array.from(
@@ -103,14 +125,47 @@ export default function PrevisionnelClient({
     return true
   })
 
-  /* ---- Variétés disponibles pour ajout (non déjà dans les forecasts) ---- */
-  const forecastVarietyIds = new Set(forecasts.map(f => f.variety_id))
-  const availableVarieties = allVarieties.filter(v => !forecastVarietyIds.has(v.id))
+  /* ---- Résumé — uniquement les objectifs "frais" ---- */
+  const fraisForecasts = filtered.filter(f => f.etat_plante === 'frais')
+  const totalPrevuFrais = fraisForecasts.reduce((sum, f) => sum + (f.quantite_prevue_g ?? 0), 0)
+  const totalRealiseFrais = fraisForecasts.reduce(
+    (sum, f) => sum + (realisedData.cueilliParVariete[f.variety_id] ?? 0),
+    0,
+  )
 
-  /* ---- Résumé ---- */
-  const totalPrevu = filtered.reduce((sum, f) => sum + (f.quantite_prevue_g ?? 0), 0)
-  const totalRealise = filtered.reduce((sum, f) => sum + (realised[f.variety_id] ?? 0), 0)
-  const globalPercent = totalPrevu > 0 ? Math.round((totalRealise / totalPrevu) * 100) : 0
+  /** Recharge les données après un changement d'année */
+  const reloadYear = useCallback((year: number) => {
+    startTransition(async () => {
+      try {
+        const [newForecasts, newRealised] = await Promise.all([
+          fetchForecasts(year),
+          fetchRealisedData(year),
+        ])
+        setForecasts(newForecasts)
+        setRealisedData(newRealised)
+      } catch {
+        // Silencieux
+      }
+    })
+  }, [])
+
+  /** Recharge après copie (inclut les années) */
+  const reloadAfterCopy = useCallback(() => {
+    startTransition(async () => {
+      try {
+        const [newForecasts, newRealised, newYears] = await Promise.all([
+          fetchForecasts(selectedYear),
+          fetchRealisedData(selectedYear),
+          fetchForecastYears(),
+        ])
+        setForecasts(newForecasts)
+        setRealisedData(newRealised)
+        setYears(newYears)
+      } catch {
+        // Silencieux
+      }
+    })
+  }, [selectedYear])
 
   return (
     <div className="p-6 max-w-5xl mx-auto">
@@ -129,18 +184,7 @@ export default function PrevisionnelClient({
             active={y === selectedYear}
             onClick={() => {
               setSelectedYear(y)
-              startTransition(async () => {
-                try {
-                  const [newForecasts, newRealised] = await Promise.all([
-                    fetchForecasts(y),
-                    fetchRealisedByVariety(y),
-                  ])
-                  setForecasts(newForecasts)
-                  setRealised(newRealised)
-                } catch {
-                  // Erreur silencieuse — les données restent inchangées
-                }
-              })
+              reloadYear(y)
             }}
           />
         ))}
@@ -189,21 +233,7 @@ export default function PrevisionnelClient({
             }
             setCopyConfirm(null)
             setCopySource(null)
-            // Recharger
-            startTransition(async () => {
-              try {
-                const [newForecasts, newRealised, newYears] = await Promise.all([
-                  fetchForecasts(selectedYear),
-                  fetchRealisedByVariety(selectedYear),
-                  fetchForecastYears(),
-                ])
-                setForecasts(newForecasts)
-                setRealised(newRealised)
-                setYears(newYears)
-              } catch {
-                // Silencieux
-              }
-            })
+            reloadAfterCopy()
           }}
           onCancel={() => { setCopyConfirm(null); setCopyError(null) }}
         />
@@ -236,7 +266,7 @@ export default function PrevisionnelClient({
           <thead>
             <tr className="bg-gray-50 border-b border-gray-200">
               <th className="text-left px-4 py-2.5 font-medium text-gray-600">Variété</th>
-              <th className="text-left px-3 py-2.5 font-medium text-gray-600">Famille</th>
+              <th className="text-left px-3 py-2.5 font-medium text-gray-600">État</th>
               <th className="text-right px-3 py-2.5 font-medium text-gray-600">Objectif (g)</th>
               <th className="text-right px-3 py-2.5 font-medium text-gray-600">Réalisé</th>
               <th className="text-center px-3 py-2.5 font-medium text-gray-600 w-[140px]">Avancement</th>
@@ -248,57 +278,66 @@ export default function PrevisionnelClient({
               <tr>
                 <td colSpan={6} className="px-4 py-8 text-center text-gray-400">
                   {forecasts.length === 0
-                    ? 'Aucun objectif défini pour cette année. Ajoutez une variété pour commencer.'
+                    ? 'Aucun objectif défini pour cette année. Ajoutez un objectif pour commencer.'
                     : 'Aucun résultat pour cette recherche.'}
                 </td>
               </tr>
             )}
-            {filtered.map(f => (
-              <ForecastRow
-                key={f.id}
-                forecast={f}
-                realisedG={realised[f.variety_id] ?? 0}
-                year={selectedYear}
-                onUpdate={(newQty) => {
-                  setForecasts(prev =>
-                    prev.map(fc =>
-                      fc.id === f.id ? { ...fc, quantite_prevue_g: newQty } : fc,
-                    ),
-                  )
-                }}
-                onUpdateComment={(comment) => {
-                  setForecasts(prev =>
-                    prev.map(fc =>
-                      fc.id === f.id ? { ...fc, commentaire: comment } : fc,
-                    ),
-                  )
-                }}
-                onDelete={() => {
-                  setForecasts(prev => prev.filter(fc => fc.id !== f.id))
-                }}
-              />
-            ))}
+            {filtered.map((f, idx) => {
+              // Déterminer si c'est la première ligne de cette variété (pour afficher le nom)
+              const prevForecast = idx > 0 ? filtered[idx - 1] : null
+              const isFirstOfVariety = !prevForecast || prevForecast.variety_id !== f.variety_id
+
+              return (
+                <ForecastRow
+                  key={f.id}
+                  forecast={f}
+                  realisedG={getRealisedForForecast(f, realisedData)}
+                  year={selectedYear}
+                  isFirstOfVariety={isFirstOfVariety}
+                  onUpdate={(newQty) => {
+                    setForecasts(prev =>
+                      prev.map(fc =>
+                        fc.id === f.id ? { ...fc, quantite_prevue_g: newQty } : fc,
+                      ),
+                    )
+                  }}
+                  onUpdateComment={(comment) => {
+                    setForecasts(prev =>
+                      prev.map(fc =>
+                        fc.id === f.id ? { ...fc, commentaire: comment } : fc,
+                      ),
+                    )
+                  }}
+                  onDelete={() => {
+                    setForecasts(prev => prev.filter(fc => fc.id !== f.id))
+                  }}
+                />
+              )
+            })}
           </tbody>
         </table>
       </div>
 
       {/* ── Bouton Ajouter ── */}
       <div className="mt-3">
-        {showAddSelect ? (
-          <AddVarietySelect
-            varieties={availableVarieties}
+        {showAddForm ? (
+          <AddForecastForm
+            varieties={allVarieties}
+            existingForecasts={forecasts}
             year={selectedYear}
-            onAdd={async (varietyId) => {
+            onAdd={async (varietyId, etatPlante, qty) => {
               const variety = allVarieties.find(v => v.id === varietyId)
-              if (!variety) return
+              if (!variety) return { error: 'Variété introuvable' }
 
               const result = await upsertForecast({
                 variety_id: varietyId,
                 annee: selectedYear,
-                quantite_prevue_g: 0,
+                quantite_prevue_g: qty,
+                etat_plante: etatPlante,
               })
 
-              if ('error' in result) return
+              if ('error' in result) return result
 
               // Ajouter localement
               const newForecast: ForecastWithVariety = {
@@ -306,9 +345,9 @@ export default function PrevisionnelClient({
                 farm_id: '',
                 annee: selectedYear,
                 variety_id: varietyId,
-                etat_plante: null,
+                etat_plante: etatPlante,
                 partie_plante: null,
-                quantite_prevue_g: 0,
+                quantite_prevue_g: qty,
                 commentaire: null,
                 created_by: null,
                 updated_by: null,
@@ -320,17 +359,35 @@ export default function PrevisionnelClient({
                   famille: variety.famille,
                 },
               }
-              setForecasts(prev => [...prev, newForecast])
-              setShowAddSelect(false)
+              setForecasts(prev => {
+                const updated = [...prev, newForecast]
+                // Retrier par variété puis état
+                const etatOrder: Record<string, number> = {
+                  frais: 0, tronconnee: 1, sechee: 2,
+                  tronconnee_sechee: 3, sechee_triee: 4, tronconnee_sechee_triee: 5,
+                }
+                updated.sort((a, b) => {
+                  const famA = a.varieties?.famille ?? 'zzz'
+                  const famB = b.varieties?.famille ?? 'zzz'
+                  if (famA !== famB) return famA.localeCompare(famB, 'fr')
+                  const nomA = a.varieties?.nom_vernaculaire ?? ''
+                  const nomB = b.varieties?.nom_vernaculaire ?? ''
+                  if (nomA !== nomB) return nomA.localeCompare(nomB, 'fr')
+                  return (etatOrder[a.etat_plante ?? ''] ?? 99) - (etatOrder[b.etat_plante ?? ''] ?? 99)
+                })
+                return updated
+              })
+
+              return { success: true }
             }}
-            onCancel={() => setShowAddSelect(false)}
+            onClose={() => setShowAddForm(false)}
           />
         ) : (
           <button
             className="text-sm px-3 py-1.5 rounded-md border border-dashed border-gray-300 text-gray-500 hover:border-gray-400 hover:text-gray-700 transition-colors"
-            onClick={() => setShowAddSelect(true)}
+            onClick={() => setShowAddForm(true)}
           >
-            + Ajouter une variété
+            + Ajouter un objectif
           </button>
         )}
       </div>
@@ -339,17 +396,24 @@ export default function PrevisionnelClient({
       {filtered.length > 0 && (
         <div className="mt-6 px-4 py-3 bg-gray-50 rounded-lg border border-gray-200 flex flex-wrap items-center gap-6 text-sm text-gray-600">
           <span>
-            <strong className="text-gray-800">{filtered.length}</strong> variété{filtered.length > 1 ? 's' : ''} avec objectif
+            <strong className="text-gray-800">{filtered.length}</strong> objectif{filtered.length > 1 ? 's' : ''} défini{filtered.length > 1 ? 's' : ''}
           </span>
-          <span>
-            Total prévu : <strong className="text-gray-800">{formatWeight(totalPrevu)}</strong>
-          </span>
-          <span>
-            Réalisé : <strong className="text-gray-800">{formatWeight(totalRealise)}</strong>
-          </span>
-          <span>
-            Avancement : <strong style={{ color: progressColor(globalPercent) }}>{globalPercent}%</strong>
-          </span>
+          {totalPrevuFrais > 0 && (
+            <>
+              <span>
+                Récolte : <strong className="text-gray-800">{formatWeight(totalPrevuFrais)}</strong> prévus
+              </span>
+              <span>
+                Réalisé : <strong className="text-gray-800">{formatWeight(totalRealiseFrais)}</strong>
+              </span>
+              <span>
+                Avancement :{' '}
+                <strong style={{ color: progressColor(computePercent(totalRealiseFrais, totalPrevuFrais)) }}>
+                  {computePercent(totalRealiseFrais, totalPrevuFrais)}%
+                </strong>
+              </span>
+            </>
+          )}
         </div>
       )}
 
@@ -366,6 +430,21 @@ export default function PrevisionnelClient({
 /* ---------------------------------------------------------------
    Sous-composants
 --------------------------------------------------------------- */
+
+/** Badge d'état plante */
+function EtatBadge({ etat }: { etat: string }) {
+  const label = ETAT_PLANTE_LABELS[etat as EtatPlanteValue] ?? etat
+  const color = ETAT_PLANTE_COLORS[etat as EtatPlanteValue] ?? '#6B7280'
+
+  return (
+    <span
+      className="inline-flex items-center text-xs font-medium px-2 py-0.5 rounded-full"
+      style={{ backgroundColor: `${color}18`, color, border: `1px solid ${color}40` }}
+    >
+      {label}
+    </span>
+  )
+}
 
 /** Bouton année */
 function YearButton({ year, active, onClick }: { year: number; active: boolean; onClick: () => void }) {
@@ -384,11 +463,12 @@ function YearButton({ year, active, onClick }: { year: number; active: boolean; 
   )
 }
 
-/** Ligne du tableau — un forecast */
+/** Ligne du tableau — un forecast (variété × état) */
 function ForecastRow({
   forecast,
   realisedG,
   year,
+  isFirstOfVariety,
   onUpdate,
   onUpdateComment,
   onDelete,
@@ -396,6 +476,7 @@ function ForecastRow({
   forecast: ForecastWithVariety
   realisedG: number
   year: number
+  isFirstOfVariety: boolean
   onUpdate: (qty: number) => void
   onUpdateComment: (comment: string | null) => void
   onDelete: () => void
@@ -425,7 +506,7 @@ function ForecastRow({
       variety_id: forecast.variety_id,
       annee: year,
       quantite_prevue_g: num,
-      etat_plante: forecast.etat_plante,
+      etat_plante: forecast.etat_plante ?? 'frais',
       partie_plante: forecast.partie_plante,
       commentaire: forecast.commentaire,
     })
@@ -448,7 +529,7 @@ function ForecastRow({
       variety_id: forecast.variety_id,
       annee: year,
       quantite_prevue_g: forecast.quantite_prevue_g ?? 0,
-      etat_plante: forecast.etat_plante,
+      etat_plante: forecast.etat_plante ?? 'frais',
       partie_plante: forecast.partie_plante,
       commentaire: comment,
     })
@@ -465,14 +546,26 @@ function ForecastRow({
       <tr className="border-b border-gray-100 hover:bg-gray-50/50 transition-colors">
         {/* Variété */}
         <td className="px-4 py-2.5">
-          <div className="font-medium text-gray-800">{forecast.varieties?.nom_vernaculaire ?? '—'}</div>
-          {forecast.varieties?.nom_latin && (
-            <div className="text-xs text-gray-400 italic">{forecast.varieties.nom_latin}</div>
+          {isFirstOfVariety ? (
+            <>
+              <div className="font-medium text-gray-800">{forecast.varieties?.nom_vernaculaire ?? '—'}</div>
+              {forecast.varieties?.nom_latin && (
+                <div className="text-xs text-gray-400 italic">{forecast.varieties.nom_latin}</div>
+              )}
+            </>
+          ) : (
+            <span className="text-gray-300">↳</span>
           )}
         </td>
 
-        {/* Famille */}
-        <td className="px-3 py-2.5 text-gray-500">{forecast.varieties?.famille ?? '—'}</td>
+        {/* État */}
+        <td className="px-3 py-2.5">
+          {forecast.etat_plante ? (
+            <EtatBadge etat={forecast.etat_plante} />
+          ) : (
+            <span className="text-xs text-gray-300">—</span>
+          )}
+        </td>
 
         {/* Objectif */}
         <td className="px-3 py-2.5">
@@ -586,74 +679,179 @@ function ForecastRow({
   )
 }
 
-/** Select pour ajouter une variété */
-function AddVarietySelect({
+/** Formulaire d'ajout d'objectif (variété + état + quantité) */
+function AddForecastForm({
   varieties,
+  existingForecasts,
   year,
   onAdd,
-  onCancel,
+  onClose,
 }: {
   varieties: VarietyOption[]
+  existingForecasts: ForecastWithVariety[]
   year: number
-  onAdd: (varietyId: string) => void
-  onCancel: () => void
+  onAdd: (varietyId: string, etatPlante: EtatPlanteValue, qty: number) => Promise<{ error?: string; success?: boolean }>
+  onClose: () => void
 }) {
-  const [search, setSearch] = useState('')
-  const normalizedSearch = normalize(search)
+  const [selectedVariety, setSelectedVariety] = useState('')
+  const [selectedEtat, setSelectedEtat] = useState<EtatPlanteValue>('frais')
+  const [qty, setQty] = useState('')
+  const [varietySearch, setVarietySearch] = useState('')
+  const [error, setError] = useState<string | null>(null)
+  const [saving, setSaving] = useState(false)
 
-  const filtered = varieties.filter(v =>
+  const normalizedSearch = normalize(varietySearch)
+  const filteredVarieties = varieties.filter(v =>
     normalize(v.nom_vernaculaire).includes(normalizedSearch),
   )
 
   // Grouper par famille
   const grouped = new Map<string, VarietyOption[]>()
-  for (const v of filtered) {
+  for (const v of filteredVarieties) {
     const key = v.famille ?? 'Sans famille'
     if (!grouped.has(key)) grouped.set(key, [])
     grouped.get(key)!.push(v)
   }
 
+  // Vérifier si le couple variété × état existe déjà
+  const isDuplicate = existingForecasts.some(
+    f => f.variety_id === selectedVariety && f.etat_plante === selectedEtat,
+  )
+
+  const handleSubmit = async () => {
+    if (!selectedVariety) {
+      setError('Sélectionnez une variété')
+      return
+    }
+    if (isDuplicate) {
+      setError('Cet objectif existe déjà pour cette variété et cet état')
+      return
+    }
+    const numQty = parseFloat(qty)
+    if (isNaN(numQty) || numQty < 0) {
+      setError('Quantité invalide')
+      return
+    }
+
+    setSaving(true)
+    setError(null)
+    const result = await onAdd(selectedVariety, selectedEtat, numQty)
+    setSaving(false)
+
+    if (result.error) {
+      setError(result.error)
+      return
+    }
+
+    // Réinitialiser le formulaire (garder ouvert pour ajouts multiples)
+    setSelectedVariety('')
+    setSelectedEtat('frais')
+    setQty('')
+    setError(null)
+  }
+
   return (
-    <div className="border border-gray-300 rounded-lg p-3 bg-white shadow-sm max-w-md">
-      <div className="flex items-center gap-2 mb-2">
+    <div className="border border-gray-300 rounded-lg p-4 bg-white shadow-sm max-w-lg">
+      <div className="flex items-center justify-between mb-3">
+        <h3 className="text-sm font-medium text-gray-700">Ajouter un objectif</h3>
+        <button
+          className="text-sm text-gray-400 hover:text-gray-600"
+          onClick={onClose}
+        >
+          Fermer
+        </button>
+      </div>
+
+      {/* Variété */}
+      <div className="mb-3">
+        <label className="block text-xs font-medium text-gray-500 mb-1">Variété</label>
         <input
           type="text"
           placeholder="Rechercher une variété..."
-          className="flex-1 text-sm border border-gray-200 rounded-md px-2.5 py-1.5"
-          value={search}
-          onChange={e => setSearch(e.target.value)}
-          autoFocus
+          className="w-full text-sm border border-gray-200 rounded-md px-2.5 py-1.5 mb-1"
+          value={varietySearch}
+          onChange={e => setVarietySearch(e.target.value)}
         />
-        <button
-          className="text-sm text-gray-400 hover:text-gray-600"
-          onClick={onCancel}
+        <select
+          className="w-full text-sm border border-gray-300 rounded-md px-2.5 py-1.5"
+          value={selectedVariety}
+          onChange={e => { setSelectedVariety(e.target.value); setError(null) }}
+          size={5}
         >
-          Annuler
-        </button>
+          {Array.from(grouped.entries())
+            .sort(([a], [b]) => a.localeCompare(b, 'fr'))
+            .map(([famille, vars]) => (
+              <optgroup key={famille} label={famille}>
+                {vars.map(v => (
+                  <option key={v.id} value={v.id}>
+                    {v.nom_vernaculaire}
+                    {v.nom_latin ? ` (${v.nom_latin})` : ''}
+                  </option>
+                ))}
+              </optgroup>
+            ))}
+        </select>
       </div>
-      <div className="max-h-[300px] overflow-y-auto">
-        {filtered.length === 0 && (
-          <p className="text-sm text-gray-400 py-2 text-center">Aucune variété disponible</p>
-        )}
-        {Array.from(grouped.entries())
-          .sort(([a], [b]) => a.localeCompare(b, 'fr'))
-          .map(([famille, vars]) => (
-            <div key={famille}>
-              <p className="text-xs font-medium text-gray-400 px-2 py-1 mt-1">{famille}</p>
-              {vars.map(v => (
-                <button
-                  key={v.id}
-                  className="w-full text-left text-sm px-2 py-1.5 rounded hover:bg-gray-100 transition-colors"
-                  onClick={() => onAdd(v.id)}
-                >
-                  <span className="text-gray-800">{v.nom_vernaculaire}</span>
-                  {v.nom_latin && (
-                    <span className="text-xs text-gray-400 ml-2 italic">{v.nom_latin}</span>
-                  )}
-                </button>
-              ))}
-            </div>
+
+      {/* État plante */}
+      <div className="mb-3">
+        <label className="block text-xs font-medium text-gray-500 mb-1">État plante</label>
+        <select
+          className="w-full text-sm border border-gray-300 rounded-md px-2.5 py-1.5"
+          value={selectedEtat}
+          onChange={e => { setSelectedEtat(e.target.value as EtatPlanteValue); setError(null) }}
+        >
+          {ETATS_PLANTE.map(etat => (
+            <option key={etat} value={etat}>
+              {ETAT_PLANTE_LABELS[etat]}
+            </option>
           ))}
+        </select>
+      </div>
+
+      {/* Quantité */}
+      <div className="mb-3">
+        <label className="block text-xs font-medium text-gray-500 mb-1">Objectif (g)</label>
+        <input
+          type="number"
+          min={0}
+          step={100}
+          placeholder="Ex: 50000"
+          className="w-full text-sm border border-gray-300 rounded-md px-2.5 py-1.5"
+          value={qty}
+          onChange={e => setQty(e.target.value)}
+          onKeyDown={e => { if (e.key === 'Enter') handleSubmit() }}
+        />
+      </div>
+
+      {/* Avertissement doublon */}
+      {isDuplicate && selectedVariety && (
+        <p className="text-xs text-amber-600 mb-2">
+          Cet objectif existe déjà pour cette variété et cet état.
+        </p>
+      )}
+
+      {/* Erreur */}
+      {error && !isDuplicate && (
+        <p className="text-xs text-red-500 mb-2">{error}</p>
+      )}
+
+      {/* Actions */}
+      <div className="flex items-center gap-2">
+        <button
+          className="text-sm px-4 py-1.5 rounded-md text-white disabled:opacity-50"
+          style={{ backgroundColor: 'var(--color-primary)' }}
+          disabled={saving || !selectedVariety || isDuplicate}
+          onClick={handleSubmit}
+        >
+          {saving ? 'Enregistrement...' : 'Ajouter'}
+        </button>
+        <button
+          className="text-sm px-3 py-1.5 rounded-md border border-gray-300 text-gray-600"
+          onClick={onClose}
+        >
+          Fermer
+        </button>
       </div>
     </div>
   )

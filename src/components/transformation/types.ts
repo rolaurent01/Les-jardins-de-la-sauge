@@ -1,14 +1,7 @@
 import type { TransformationType } from '@/lib/types'
 
-/** Labels FR pour les etats plante — badges et selecteurs */
-export const ETAT_PLANTE_LABELS: Record<string, string> = {
-  frais: 'Frais',
-  tronconnee: 'Tronconnee',
-  sechee: 'Sechee',
-  tronconnee_sechee: 'Tronc. sechee',
-  sechee_triee: 'Sechee triee',
-  tronconnee_sechee_triee: 'Tronc. sechee triee',
-}
+/** Re-export des constantes partagées pour compatibilité */
+export { ETAT_PLANTE_LABELS, ETAT_PLANTE_COLORS } from '@/lib/constants/etat-plante'
 
 /** Configuration par module — passee en props aux composants partages */
 export type TransformationModuleConfig = {

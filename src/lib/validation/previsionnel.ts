@@ -17,7 +17,7 @@ export const forecastSchema = z.object({
   variety_id: z.string().uuid('Variété invalide'),
   annee: z.number().int('L\'année doit être un entier').min(2020, 'Année minimum : 2020').max(2100, 'Année maximum : 2100'),
   quantite_prevue_g: z.number().min(0, 'La quantité doit être positive ou nulle'),
-  etat_plante: z.enum(ETATS_PLANTE).nullable().optional(),
+  etat_plante: z.enum(ETATS_PLANTE, { message: 'État plante obligatoire' }),
   partie_plante: z.enum(PARTIES_PLANTE).nullable().optional(),
   commentaire: z.string().max(1000, 'Maximum 1000 caractères').nullable().optional(),
 })
