@@ -2,6 +2,25 @@
 
 ---
 
+## [2026-03-11 10:00] — Page "Mes variétés" — sélection des variétés actives par ferme
+
+**Type :** `feature`
+**Fichiers concernés :** `src/app/[orgSlug]/(dashboard)/referentiel/mes-varietes/actions.ts`, `src/app/[orgSlug]/(dashboard)/referentiel/mes-varietes/page.tsx`, `src/components/referentiel/MesVarietesClient.tsx`, `src/components/Sidebar.tsx`, `src/lib/supabase/types.ts`
+
+### Description
+Implémentation de la page "Mes variétés" dans le Référentiel bureau. Permet à chaque ferme de sélectionner les variétés qu'elle utilise parmi le catalogue partagé via une interface à checkboxes.
+
+### Détails techniques
+- **Server Actions** : fetchVarietiesWithSettings, hasExistingSettings, toggleVariety, bulkSetVarieties, updateSeuilAlerte, resetFarmSettings
+- **Mode onboarding** : détection automatique (aucun farm_variety_settings → première visite). L'utilisateur coche ses variétés puis valide en masse via bulkSetVarieties
+- **Mode normal** : toggle individuel immédiat (optimistic UI), seuil d'alerte stock par variété (sauvegarde au blur), bouton réinitialiser avec confirmation
+- **Interface** : variétés groupées par famille (alphabétique, "Sans famille" en dernier), recherche insensible casse/accents, filtre par famille, compteurs par famille et global, boutons sélectionner/désélectionner tout
+- **Sidebar** : lien "Mes variétés" ajouté sous "Variétés" dans la section Référentiel
+- **Types Supabase** : correction farm_variety_settings (actif → hidden) pour correspondre au schéma réel de la migration 011
+- **Dropdowns existants** : vérifiés, tous filtrent déjà par farm_variety_settings.hidden = true (parcelles, semis, produits, offline reference-data)
+
+---
+
 ## [2026-03-11 03:30] — Admin organisations : affichage des membres au survol
 
 **Type :** `feature`

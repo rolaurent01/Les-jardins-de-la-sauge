@@ -177,9 +177,10 @@ const NAV: NavSection[] = [
     label: 'Référentiel',
     emoji: '⚙️',
     children: [
-      { label: 'Variétés',                 href: '/referentiel/varietes'  },
-      { label: 'Sites & Parcelles',        href: '/referentiel/sites'     },
-      { label: 'Produits complémentaires', href: '/referentiel/materiaux' },
+      { label: 'Variétés',                 href: '/referentiel/varietes'      },
+      { label: 'Mes variétés',             href: '/referentiel/mes-varietes'  },
+      { label: 'Sites & Parcelles',        href: '/referentiel/sites'         },
+      { label: 'Produits complémentaires', href: '/referentiel/materiaux'     },
     ],
   },
   {

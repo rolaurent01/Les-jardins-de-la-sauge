@@ -244,31 +244,22 @@ export type Database = {
           id: string
           farm_id: string
           variety_id: string
+          hidden: boolean
           seuil_alerte_g: number | null
-          actif: boolean
-          notes: string | null
-          created_at: string
-          updated_at: string
         }
         Insert: {
           id?: string
           farm_id: string
           variety_id: string
+          hidden?: boolean
           seuil_alerte_g?: number | null
-          actif?: boolean
-          notes?: string | null
-          created_at?: string
-          updated_at?: string
         }
         Update: {
           id?: string
           farm_id?: string
           variety_id?: string
+          hidden?: boolean
           seuil_alerte_g?: number | null
-          actif?: boolean
-          notes?: string | null
-          created_at?: string
-          updated_at?: string
         }
         Relationships: [
           {
