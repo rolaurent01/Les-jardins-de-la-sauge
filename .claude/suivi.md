@@ -2,6 +2,24 @@
 
 ---
 
+## [2026-03-12 03:00] — Fix "Load failed" Safari iOS — credentials manquants sur fetch
+
+**Type :** `bugfix`
+**Fichiers concernés :** `src/lib/offline/sync-service.ts`, `src/lib/offline/cache-loader.ts`
+
+### Cause racine
+Les 3 fetch client-side vers les API internes (`/api/sync`, `/api/sync/audit`, `/api/offline/reference-data`) n'avaient pas `credentials: 'same-origin'`. Sur Safari iOS, sans credentials explicites, les cookies de session Supabase ne sont pas envoyés → le serveur retourne 401 ou échoue → Safari affiche l'erreur générique "Load failed".
+
+### Corrections
+- `sync-service.ts` : ajout `credentials: 'same-origin'` sur `sendToServer()` et `sendAuditBatch()`
+- `cache-loader.ts` : ajout `credentials: 'same-origin'` sur `loadReferenceData()`
+
+### Résultat
+- `npm run build` OK
+- Tous les fetch offline/mobile envoient désormais les cookies de session
+
+---
+
 ## [2026-03-12 02:30] — Fix sync "farm_id doit être un UUID valide" + debug sync queue
 
 **Type :** `bugfix`

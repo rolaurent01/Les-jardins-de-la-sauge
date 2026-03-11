@@ -11,7 +11,9 @@ import { getOfflineContext, updateLastSyncedAt } from './context-offline'
  * 4. Met à jour le timestamp lastSyncedAt
  */
 export async function loadReferenceData(farmId: string): Promise<void> {
-  const response = await fetch(`/api/offline/reference-data?farmId=${encodeURIComponent(farmId)}`)
+  const response = await fetch(`/api/offline/reference-data?farmId=${encodeURIComponent(farmId)}`, {
+    credentials: 'same-origin',
+  })
 
   if (!response.ok) {
     const text = await response.text()

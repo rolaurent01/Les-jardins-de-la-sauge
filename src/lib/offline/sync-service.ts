@@ -238,6 +238,7 @@ interface ServerSyncResponse {
 async function sendToServer(entry: SyncQueueEntry): Promise<ServerSyncResponse> {
   const response = await fetch('/api/sync', {
     method: 'POST',
+    credentials: 'same-origin',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({
       uuid_client: entry.uuid_client,
@@ -263,6 +264,7 @@ async function sendAuditBatch(
 ): Promise<ServerAuditResponse> {
   const response = await fetch('/api/sync/audit', {
     method: 'POST',
+    credentials: 'same-origin',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ uuid_clients: uuidClients, farm_id: farmId }),
   })
