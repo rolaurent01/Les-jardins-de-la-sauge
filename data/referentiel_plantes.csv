@@ -1,0 +1,93 @@
+nom_vernaculaire;nom_latin;famille;cycle;usage;notes_nettoyage
+Absinthe;;Astéracées;v;PAM;Nom latin à compléter : Artemisia absinthium ?
+Achillée;;Astéracées;v;PAM;Nom latin à compléter : Achillea millefolium ?
+Agastache anisée;Agastache foeniculum;Lamiacées;p;PAM;
+Agastache rugosa;Agastache rugosa;Lamiacées;p;PAM;Aussi appelée 'Menthe coréenne' dans les Excel
+Ail des ours;;Amaryllidacées;v;PAM/SAUVAGE;Nom latin à compléter : Allium ursinum ? Cueillette sauvage ?
+Alchémille;Alchemilla vulgaris;Rosacées;v;PAM;
+Aneth;Anethum graveolens;Apiacées;a;PAM;
+Aneth semences;Anethum graveolens;Apiacées;a;SEMENCE;Graines d'aneth — même plante que Aneth ou achat externe ?
+Angélique;Angelica archangelica;Apiacées;b;PAM;Doublon Excel : 'Angéliques'
+Anis vert;Pimpinella anisum;Apiacées;a;PAM;
+Anis vert semences;Pimpinella anisum;Apiacées;a;SEMENCE;Graines d'anis vert — même plante que Anis vert ou achat externe ?
+Arnica;Arnica acaulis;Astéracées;v;PAM;
+Artémisia annua;Artemisia annua;Astéracées;a;PAM;
+Aubépine;;Rosacées;p;PAM/SAUVAGE;Nom latin à compléter : Crataegus monogyna ?
+Basilic cannelle;Ocimum basilicum;Lamiacées;a;PAM;
+Basilic citron;Ocimum basilicum;Lamiacées;a;PAM;
+Basilic grand vert;Ocimum basilicum var. genovese;Lamiacées;a;PAM;Doublons Excel : 'Basilic grd vert', 'Basilic Grand vert genovese', 'Basilic loki' — même variété ou variétés distinctes ?
+Basilic thaï;Ocimum basilicum var. thyrsiflora;Lamiacées;a;PAM;
+Basilic tulsi;Ocimum sanctum;Lamiacées;a;PAM;
+Bleuet;Centaurea cyanus;Astéracées;a;FLEUR;Doublon Excel : 'Bleuets'
+Bouillon blanc;Verbascum thapsus;Scrophulariacées;b;PAM;
+Bourrache;Borago officinalis;Boraginacées;a;PAM;
+Bruyère;;Éricacées;;PAM/SAUVAGE;Nom latin à compléter : Calluna vulgaris ?
+Calendula;Calendula officinalis;Astéracées;a;FLEUR/PAM;Doublons Excel : 'Souci des jardins', 'Soucis des jardins', 'Calendulas'
+Camomille matricaire;Matricaria recutita;Astéracées;a;PAM;Doublon Excel : 'Matricaire' — c'est la même plante
+Camomille romaine;Chamaemelum nobile;Astéracées;p;PAM;Latin Excel 'Anthemis nobilis' = synonyme
+Capucine;;Tropaéolacées;a;FLEUR;
+Carvi;;Apiacées;v;PAM;Nom latin à compléter : Carum carvi ?
+Cassis Andega;Ribes nigrum Andega;Grossulariacées;p;FRUIT;
+Cassis Noir de Bourgogne;Ribes nigrum Noir de Bourgogne;Grossulariacées;p;FRUIT;
+Chardon marie;;Astéracées;a;PAM;Nom latin à compléter : Silybum marianum ?
+Chicorée;Cichorium intybus;Astéracées;v;PAM;
+Coquelicot;Papaver rhoeas;Papavéracées;a;FLEUR;
+Coriandre;Coriandrum sativum;Apiacées;a;PAM;
+Coucou;;Primulacées;v;PAM/SAUVAGE;Nom latin à compléter : Primula veris ?
+Estragon;Artemisia dracunculus;Lamiacées;p;PAM;Aussi 'Estragon russe' (var. inodora) dans Excel — même variété ou 2 variétés ?
+Fenouil;Foeniculum vulgare;Apiacées;a;PAM;
+Fenouil semences;Foeniculum vulgare;Apiacées;a;SEMENCE;Graines de fenouil utilisées en tisane — même plante que Fenouil ou achat externe ?
+Fraisier Charlotte;Fragaria × Charlotte;Rosacées;v;FRUIT;
+Fraisier Cirafine;Fragaria × Cirafine;Rosacées;v;FRUIT;
+Fraisier Gariguette;Fragaria × Gariguette;Rosacées;v;FRUIT;
+Framboisier Héritage;Rubus idaeus Heritage;Rosacées;p;FRUIT;Remontant
+Framboisier Meco;Rubus idaeus Meco;Rosacées;p;FRUIT;Non remontant
+Framboisier Schoenemann;Rubus idaeus Schoenemann;Rosacées;p;FRUIT;Non remontant
+Framboisier Topla;Rubus idaeus Topla;Rosacées;p;FRUIT;Non remontant
+Frêne;;Oléacées;;PAM/SAUVAGE;Nom latin à compléter : Fraxinus excelsior ? Feuilles
+Groseillier Junifer;Ribes rubrum Junifer;Grossulariacées;p;FRUIT;
+Guimauve;Althaea officinalis;Malvacées;b;PAM;
+Géranium rosat;Pelargonium graveolens;Géraniacées;p;PAM;
+Hysope;Hyssopus officinalis;Lamiacées;p;PAM;
+Hélichryse;Helichrysum italicum;Astéracées;v;PAM;Doublon Excel : 'Hélychrise'
+Jeune pousse de sapin;;;;SAUVAGE;Cueillette sauvage — pas cultivé
+Lavande vraie;Lavandula angustifolia;Lamiacées;p;PAM;Doublon Excel : 'Lavande' = même plante
+Lierre terrestre;;Lamiacées;v;PAM/SAUVAGE;Nom latin à compléter : Glechoma hederacea ?
+Livèche;Levisticum officinale;Apiacées;p;PAM;
+Lotier corniculé;Lotus corniculatus;Fabacées;a;PAM;
+Marjolaine;Origanum majorana;Lamiacées;v;PAM;
+Mauve;Malva sylvestris var. mauritania;Malvacées;a;PAM;Doublons Excel : 'Mauve de Mauritanie', 'Mauve Mauritanie'
+Menthe africaine;;Lamiacées;p;PAM;Nom latin à compléter
+Menthe bergamote;Mentha piperita ssp. citrata;Lamiacées;v;PAM;
+Menthe gingembre;;Lamiacées;v;PAM;Nom latin à compléter
+Menthe marocaine;Mentha spicata;Lamiacées;v;PAM;Doublon possible avec 'Menthe verte' — même nom latin Mentha spicata
+Menthe poivrée;Mentha piperita;Lamiacées;v;PAM;
+Menthe verte;Mentha spicata;Lamiacées;v;PAM;Doublon possible avec 'Menthe marocaine' — même nom latin Mentha spicata
+Monarde;Monarda didyma;Lamiacées;v;PAM;
+Mélilot;Melilotus officinalis;Fabacées;a;PAM;
+Mélisse;Melissa officinalis;Lamiacées;v;PAM;
+Origan;Origanum vulgare;Lamiacées;v;PAM;Doublons Excel : 'Origan grec', 'Origan vulgaire' — 1 ou 2 variétés ?
+Ortie;;Urticacées;v;PAM/SAUVAGE;Nom latin à compléter : Urtica dioica ?
+Pavot de Californie;Eschscholzia californica;Papavéracées;a;PAM;
+Pensée sauvage;Viola tricolor;Violacées;a;PAM;
+Perilla pourpre;;Lamiacées;a;PAM;Nom latin à compléter : Perilla frutescens ?
+Reine des prés;;Rosacées;v;PAM/SAUVAGE;Nom latin à compléter : Filipendula ulmaria ?
+Romarin;Rosmarinus officinalis;Lamiacées;p;PAM;
+Ronce;;Rosacées;v;PAM/SAUVAGE;Nom latin à compléter : Rubus sp. ? Feuilles utilisées
+Rose;;Rosacées;p;FLEUR;Nom latin à compléter — quelle variété ?
+Sarriette;Satureja montana;Lamiacées;p;PAM;Doublons Excel : 'Sariette', 'Sarriette annuelle' — vivace et annuelle sont 2 espèces ?
+Sauge officinale;Salvia officinalis;Lamiacées;p;PAM;Doublons Excel : 'Sauge', 'Sauge off', 'Sauge officinala'
+Sauge sclarée;Salvia sclarea;Lamiacées;p;PAM;
+Serpolet;Thymus serpyllum;Lamiacées;p;PAM;
+Sureau;;Adoxacées;p;PAM/SAUVAGE;Nom latin à compléter : Sambucus nigra ?
+Tagète Lucida;;Astéracées;a;PAM;Nom latin à compléter : Tagetes lucida ?
+Tagète citron;Tagetes tenuifolia;Astéracées;a;PAM;
+Tagète minuta;Tagetes minuta;Astéracées;a;PAM;
+Thym citron;Thymus citriodorus;Lamiacées;p;PAM;Doublon Excel : 'Thym citronné'
+Thym vulgaire;Thymus vulgaris;Lamiacées;v;PAM;Doublon Excel : 'Thym'
+Valériane officinale;Valeriana officinalis;Valérianacées;v;PAM;
+Verveine Argentine;;Verbénacées;p;PAM;Nom latin à compléter — Aloysia polystachya ? Ou même plante que Verveine citronnée ?
+Verveine citronnée;Aloysia citrodora;Verbénacées;p;PAM;Doublons Excel : 'Verveine', 'Verveine odorante' — c'est la même plante ?
+Verveine officinale;;Verbénacées;a;PAM;Nom latin à compléter : Verbena officinalis ?
+Échinacée pourpre;Echinacea purpurea;Astéracées;b;PAM;
+Œillet de poète;;Caryophyllacées;a;FLEUR;Nom latin à compléter : Dianthus barbatus ?

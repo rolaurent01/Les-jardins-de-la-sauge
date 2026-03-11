@@ -2,6 +2,36 @@
 
 ---
 
+## [2026-03-11 14:00] — ✅ Migration 026 : Seed référentiel LJS
+
+**Type :** `migration`
+
+### Fichiers créés/modifiés
+- `supabase/migrations/026_seed_referentiel.sql` — seed complet du référentiel LJS
+- `data/referentiel_plantes.csv` — copie CSV plantes (source)
+- `data/referentiel_terrains.csv` — copie CSV terrains (source)
+- `data/referentiel_recettes.csv` — copie CSV recettes (source)
+
+### Contenu de la migration
+- **90 variétés** (92 CSV − 4 fusions + 2 ajouts : Origan grec, Framboisier feuille)
+  - Fusions : Menthe marocaine→Menthe verte, Matricaire→Camomille matricaire, Estragon russe→Estragon
+  - Semences fusionnées : Aneth/Fenouil/Anis vert avec parties_utilisees étendu
+  - Origan renommé Origan vulgaire, Origan grec ajouté
+  - Cassis avec feuille ajouté dans parties_utilisees
+- **2 matériaux externes** : Sel de Guérande, Sucre blond de canne
+- **2 sites** : La Sauge, Le Combet
+- **7 parcelles** : SAU-P, SAU-S, COM-J1 à COM-J5
+- **118 rangs** (33+4+14+18+13+16+20), tous 20m × 0.8m
+- **21 recettes** avec ingrédients : 11 tisanes, 5 aromates, 4 sels, 1 sucre
+- Catégorie 'Aromate' ajoutée (fallback sur 'Mélange aromate')
+- Tous les pourcentages vérifient Σ = 1.0
+- Idempotent (ON CONFLICT DO NOTHING + RETURNING INTO pour ingrédients)
+
+### Build
+- `npm run build` ✅
+
+---
+
 ## [2026-03-11 12:00] — ✅ Phase A complète — Socle de données
 
 **Type :** `milestone`
