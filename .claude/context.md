@@ -701,6 +701,9 @@ CREATE TABLE seedlings (
   nb_godets INTEGER,
   nb_mortes_godet INTEGER DEFAULT 0,
 
+  -- ===== STATUT LIFECYCLE =====
+  statut TEXT NOT NULL DEFAULT 'semis' CHECK (statut IN ('semis', 'leve', 'repiquage', 'pret', 'en_plantation', 'epuise')),
+
   -- ===== COMMUN AUX 2 PROCESSUS =====
   nb_donnees INTEGER DEFAULT 0,
   nb_plants_obtenus INTEGER,
@@ -735,6 +738,25 @@ Perte étape godet = (nb_mortes_godet + nb_donnees) / nb_godets
 Perte globale = 1 - (nb_plants_obtenus / nb_plants_caissette)
 Ex: 50 caissette → 45 godets (5 mortes) → 35 plantées (5 mortes + 5 données) = 30% perte
 ```
+
+**Cycle de vie du semis — 6 statuts** :
+
+Le statut d'un semis est calculé en logique applicative (fonction `computeSeedlingStatut()`, pas de trigger) et recalculé automatiquement à chaque mutation sur `seedlings` ou `plantings` liés.
+
+| Statut | Condition de passage |
+|--------|---------------------|
+| `semis` | État initial à la création |
+| `leve` | `date_levee` renseignée |
+| `repiquage` | `date_repiquage` renseignée (process caissette/godet uniquement) |
+| `pret` | `nb_plants_obtenus` renseigné et > 0 |
+| `en_plantation` | Au moins 1 planting lié, `plants_restants > 0` |
+| `epuise` | `plants_restants = 0` |
+
+> **Plants restants** (calculé, jamais stocké) : `plants_restants = nb_plants_obtenus - SUM(plantings.nb_plants WHERE seedling_id = X AND deleted_at IS NULL AND actif = true)`. Affiché dans le sélecteur de semis du formulaire plantation.
+
+> **Recalcul automatique** : le statut est recalculé après chaque `createSeedling`, `updateSeedling`, `restoreSeedling`, `createPlanting`, `updatePlanting`, `archivePlanting`, `restorePlanting`. Côté sync mobile, `dispatchSeedling` calcule le statut initial, `dispatchPlanting` recalcule après insert, `dispatchUprooting` recalcule les seedlings liés.
+
+> **UX bureau** : les semis sont affichés en fiches avec un timeline/stepper visuel (4 étapes pour mini-motte, 5 pour caissette/godet). Le formulaire est un accordéon progressif ouvert sur la section du statut courant. Filtres par statut avec compteurs.
 
 ### 5.3 Module Parcelles (étapes 2 à 6)
 
@@ -799,6 +821,8 @@ CREATE TABLE plantings (
 > **Calcul de surface** : `surface_m2 = longueur_m × largeur_m` — calculé, pas stocké.
 
 > **Calcul de rendement par saison** : `rendement_kg_m2 = total_cueilli_g(variety, annee) / surface_m2 / 1000` — calculé depuis `harvests` et `plantings` pour la même variété et année.
+
+> **Lien semis → plantation** : si `seedling_id` est renseigné, `nb_plants` ne peut pas dépasser `plants_restants` du semis lié (validation applicative, bloquante). Après création d'un planting avec `seedling_id` → recalcul automatique du statut du semis. Après suppression/archivage d'un planting avec `seedling_id` → recalcul du statut (le semis peut repasser de `epuise` à `en_plantation` ou `pret`). Le sélecteur de semis dans le formulaire plantation affiche la variété, le n° de caisse, le stock dispo/total, et grise les semis épuisés.
 
 > **Avertissement rang déjà planté** : à la création d'une plantation, si le rang sélectionné a déjà un ou plusieurs `plantings` actifs (`actif = true`), afficher un avertissement : « ⚠️ Ce rang a déjà une plantation active : [variété, date]. Continuer quand même ? » L'utilisateur peut confirmer (cas légitime : 2 variétés sur un même rang) ou annuler (erreur de saisie). Pas de blocage, juste un warning.
 
@@ -1531,6 +1555,8 @@ Pour garantir l'intégrité des données, chaque formulaire doit avoir des valid
 | Production → Stock | Vérifier que le stock est suffisant **dans l'état spécifié** pour chaque ingrédient AVANT de valider |
 | Plantation → Dimensions | Pré-remplies depuis le rang (`longueur_m` et `largeur_m`), modifiables. Avertissement si la somme des `longueur_m` des plantings actifs dépasse la longueur du rang. |
 | Plantation → Rang | Avertissement si le rang a déjà un planting actif. Pas de blocage. |
+| Plantation → Semis | Si `seedling_id` choisi, vérifier que `nb_plants ≤ plants_restants`. Bloquer si dépassement. |
+| Semis → Statut | Recalculé automatiquement à chaque mutation (pas de saisie manuelle du statut). |
 | Plantation → Rang occulté | Avertissement si le rang a une occultation active (`date_fin IS NULL`). Pas de blocage. |
 | Occultation → Engrais vert | `engrais_vert_nom` et `engrais_vert_fournisseur` obligatoires si méthode = engrais_vert |
 | Occultation → Paille/Foin | `fournisseur` obligatoire si méthode = paille ou foin |
@@ -2029,6 +2055,10 @@ app-ljs/
 | **Sécurité multi-tenant offline** | **farm_id dans chaque payload sync, validé server-side via getContext(). Cache IndexedDB scopé par ferme active. Aucune donnée cross-tenant en local.** |
 | **Super admin** | **Interface `/admin` séparée. Impersonation (`impersonate_farm_id` + bandeau rouge). Merge variétés. Super data cross-tenant via `service_role`. Consultation `app_logs`.** |
 | **Super data** | **Agrégation à la volée via `service_role` (bypass RLS). Pas de table d'agrégation dédiée pour le cross-tenant.** |
+| **Statut semis** | **6 valeurs : semis, leve, repiquage, pret, en_plantation, epuise. Calculé en logique applicative (`computeSeedlingStatut`), pas de trigger. Le statut avance automatiquement quand les champs sont remplis (date_levee, date_repiquage, nb_plants_obtenus) et quand des plantings sont créés/supprimés.** |
+| **Plants restants (semis)** | **Calculé : `nb_plants_obtenus - somme des nb_plants des plantings liés actifs`. Jamais stocké. Affiché dans le sélecteur de semis du formulaire plantation. Bloquant si dépassement.** |
+| **UX Suivi semis** | **Fiches avec timeline/stepper visuel (4 étapes mini-motte, 5 étapes caissette/godet). Formulaire progressif en accordéon ouvert sur l'étape courante. Remplace le tableau plat.** |
+| **Lien semis → plantation** | **Le sélecteur de semis dans le formulaire plantation affiche les plants disponibles par semis. Filtré par variété. Les semis épuisés sont grisés. Le statut du semis est mis à jour automatiquement après chaque plantation.** |
 | **Numérotation lots** | **Scopée par `farm_id` : `UNIQUE(farm_id, lot_interne)`, `UNIQUE(farm_id, numero_lot)`. Chaque ferme a sa propre séquence.** |
 | **Phase A0.9** | **Migration multi-tenant à exécuter AVANT de continuer A2.4. 2 jours : SQL + refactoring Server Actions existantes + bootstrap orga LJS.** |
 | **Branding par organisation** | **Couleur primaire + secondaire + logo + nom affiché. Stocké sur la table `organizations`. Palette LJS par défaut si non personnalisé.** |

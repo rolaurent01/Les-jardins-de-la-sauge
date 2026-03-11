@@ -1,5 +1,6 @@
 import { createAdminClient } from '@/lib/supabase/server'
 import { generateSeedLotNumber } from '@/lib/utils/lots'
+import { computeSeedlingStatut } from '@/lib/utils/seedling-statut'
 import type { SyncTable } from '@/lib/validation/sync'
 
 /** Résultat d'un dispatch de sync réussi */
@@ -416,9 +417,20 @@ async function dispatchSeedling({ farm_id, user_id, uuid_client, payload }: Disp
     nb_mortes_godet: (payload.nb_mortes_godet as number) ?? 0,
   }
 
+  // Calculer le statut initial
+  const statut = computeSeedlingStatut(
+    {
+      processus: (payload.processus as 'mini_motte' | 'caissette_godet'),
+      date_levee: (payload.date_levee as string | null) ?? null,
+      date_repiquage: (payload.date_repiquage as string | null) ?? null,
+      nb_plants_obtenus: (payload.nb_plants_obtenus as number | null) ?? null,
+    },
+    0, // pas de plantings à la création
+  )
+
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const { data, error } = await (admin.from('seedlings') as any)
-    .insert({ ...normalized, uuid_client, farm_id, created_by: user_id })
+    .insert({ ...normalized, statut, uuid_client, farm_id, created_by: user_id })
     .select('id')
     .single()
 
@@ -466,6 +478,13 @@ async function dispatchPlanting({ farm_id, user_id, uuid_client, payload }: Disp
     .single()
 
   if (error) throw new Error(error.message)
+
+  // Recalculer le statut du seedling lié
+  const seedlingId = (payload.seedling_id as string | null) ?? null
+  if (seedlingId) {
+    await recalculateSeedlingStatutSync(admin, seedlingId)
+  }
+
   return { server_id: data.id }
 }
 
@@ -511,5 +530,67 @@ async function dispatchUprooting({ farm_id, user_id, uuid_client, payload }: Dis
   // Erreur non bloquante : l'arrachage est déjà enregistré
   await query
 
+  // Recalculer le statut des seedlings liés aux plantings désactivés
+  const { data: affectedPlantings } = await admin
+    .from('plantings')
+    .select('seedling_id')
+    .eq('row_id', rowId)
+    .not('seedling_id', 'is', null)
+
+  const seedlingIds = new Set(
+    (affectedPlantings ?? [])
+      .map((p: { seedling_id: string | null }) => p.seedling_id)
+      .filter(Boolean) as string[]
+  )
+  for (const sid of seedlingIds) {
+    await recalculateSeedlingStatutSync(admin, sid)
+  }
+
   return { server_id: data.id }
+}
+
+// ─────────────────────────────────────────────────────────────
+// Helpers
+// ─────────────────────────────────────────────────────────────
+
+/**
+ * Recalcule le statut d'un seedling via admin client.
+ * Version inline pour dispatch.ts (évite l'import circulaire avec server actions).
+ */
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+async function recalculateSeedlingStatutSync(admin: any, seedlingId: string): Promise<void> {
+  const { data: seedling } = await admin
+    .from('seedlings')
+    .select('processus, date_levee, date_repiquage, nb_plants_obtenus')
+    .eq('id', seedlingId)
+    .single()
+
+  if (!seedling) return
+
+  // Calculer la somme des plants plantés
+  const { data: plantings } = await admin
+    .from('plantings')
+    .select('nb_plants')
+    .eq('seedling_id', seedlingId)
+    .eq('actif', true)
+    .is('deleted_at', null)
+
+  const plantsPlantes = (plantings ?? []).reduce(
+    (sum: number, p: { nb_plants: number | null }) => sum + ((p.nb_plants as number) ?? 0), 0,
+  )
+
+  const newStatut = computeSeedlingStatut(
+    {
+      processus: seedling.processus as 'mini_motte' | 'caissette_godet',
+      date_levee: seedling.date_levee,
+      date_repiquage: seedling.date_repiquage,
+      nb_plants_obtenus: seedling.nb_plants_obtenus,
+    },
+    plantsPlantes,
+  )
+
+  await admin
+    .from('seedlings')
+    .update({ statut: newStatut })
+    .eq('id', seedlingId)
 }

@@ -2,6 +2,82 @@
 
 ---
 
+## [2026-03-11 02:00] — Mise à jour documentation : cycle de vie semis → plantation
+
+**Type :** `docs`
+**Fichiers concernés :** `.claude/context.md`
+
+### Description
+Mise à jour des specs pour refléter l'évolution semis → plantation implémentée : statut lifecycle à 6 valeurs, plants restants calculés, lien traçabilité semis → plantation, et nouvelle UX en fiches.
+
+### Détails techniques
+- **context.md §5.2** : ajout colonne `statut` dans le CREATE TABLE `seedlings` + bloc explicatif complet (6 statuts, conditions de passage, plants_restants calculé, recalcul automatique, UX fiches timeline)
+- **context.md §5.3** : ajout note « Lien semis → plantation » sur la table `plantings` (validation nb_plants ≤ plants_restants, recalcul statut après mutation, sélecteur enrichi)
+- **context.md §8.1** : 2 nouvelles lignes de validation (Plantation → Semis : vérif stock plants, Semis → Statut : recalcul auto)
+- **context.md §13** : 4 nouvelles décisions (Statut semis, Plants restants, UX Suivi semis, Lien semis → plantation)
+
+---
+
+## [2026-03-11 01:00] — Évolution Semis → Plantation : statut lifecycle, timeline UX, sélecteur enrichi
+
+**Type :** `feature`
+**Fichiers concernés :**
+- `supabase/migrations/024_seedling_statut.sql`
+- `src/lib/types.ts`, `src/lib/supabase/types.ts`
+- `src/lib/utils/seedling-statut.ts` (nouveau)
+- `src/app/[orgSlug]/(dashboard)/semis/suivi/actions.ts`
+- `src/app/[orgSlug]/(dashboard)/parcelles/plantations/actions.ts`
+- `src/components/semis/SemisClient.tsx`
+- `src/components/semis/SemisSlideOver.tsx`
+- `src/components/parcelles/PlantationSlideOver.tsx`
+- `src/components/mobile/forms/PlantationForm.tsx`
+- `src/lib/sync/dispatch.ts`
+- `src/lib/offline/db.ts`, `src/lib/offline/cache-loader.ts`
+- `src/app/api/offline/reference-data/route.ts`
+- `src/hooks/useCachedData.ts`
+
+### Description
+Implémentation complète de l'évolution Semis → Plantation consolidant la chaîne sachet → semis → plantation → rang avec un cycle de vie à 6 statuts et un suivi des plants restants.
+
+### Détails techniques
+
+**SQL & types :**
+- Migration 024 : ajout colonne `statut` sur `seedlings` (semis, leve, repiquage, pret, en_plantation, epuise), CHECK constraint, DEFAULT 'semis'
+- `SeedlingStatut` type + `SEEDLING_STATUT_LABELS` dans types.ts
+- `computeSeedlingStatut()` + `computePlantsRestants()` fonctions pures dans `seedling-statut.ts`
+- `plants_restants` calculé dynamiquement (pas stocké) : `nb_plants_obtenus - SUM(plantings.nb_plants WHERE actif AND NOT deleted)`
+
+**Recalcul automatique du statut :**
+- `recalculateSeedlingStatut()` exportée depuis semis/suivi/actions.ts
+- Appelée après : createSeedling, updateSeedling, restoreSeedling, createPlanting, updatePlanting, archivePlanting, restorePlanting
+- dispatch.ts : `dispatchSeedling` calcule le statut initial, `dispatchPlanting` recalcule après insert, `dispatchUprooting` recalcule les seedlings liés
+
+**UX bureau — SemisClient.tsx :**
+- Remplacement table plate → fiches avec timeline/stepper visuel (4 étapes mini-motte, 5 caissette/godet)
+- Badge statut coloré, compteurs plants plantés/restants
+- Filtres par statut avec compteurs, filtre processus, recherche
+
+**UX bureau — SemisSlideOver.tsx :**
+- Formulaire progressif en sections accordéon (Identité, Levée, Repiquage, Résultats)
+- En édition : seule la section du statut courant est ouverte, bouton "Voir/modifier tous les champs"
+- En création : toutes les sections ouvertes
+- Badge statut + info plants dans l'en-tête
+
+**UX bureau — PlantationSlideOver.tsx :**
+- Sélecteur semis enrichi : variété, n° caisse, stock dispo/total, options épuisées désactivées
+- Fiche récap `SeedlingInfoCard` sous le select : processus, date semis, sachet, statut badge, jauge de stock
+
+**Mobile + offline :**
+- `CachedSeedling` dans Dexie DB v2 (id, processus, statut, variety_name, plants_restants...)
+- `loadSeedlings()` dans reference-data route avec batch query plants_restants
+- `useCachedSeedlings()` hook réactif
+- Sélecteur semis dans PlantationForm mobile (filtre les épuisés)
+- `seedling_id` dans le payload mobile
+
+- `npm run build` passe sans erreur
+
+---
+
 ## [2026-03-10 26:00] — A7.2 : Outils d'administration plateforme (Logs, Outils, Impersonation, Clôture)
 
 **Type :** `feature`

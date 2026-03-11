@@ -9,6 +9,7 @@ import {
   type CachedRow,
   type CachedRecipe,
   type CachedSeedLot,
+  type CachedSeedling,
   type CachedExternalMaterial,
 } from '@/lib/offline/db'
 
@@ -55,6 +56,15 @@ export function useCachedSeedLots() {
   return {
     seedLots: (seedLots ?? []) as CachedSeedLot[],
     isLoading: seedLots === undefined,
+  }
+}
+
+/** Cache des semis enrichis pour le sélecteur plantation */
+export function useCachedSeedlings() {
+  const seedlings = useLiveQuery(() => offlineDb.seedlings.toArray())
+  return {
+    seedlings: (seedlings ?? []) as CachedSeedling[],
+    isLoading: seedlings === undefined,
   }
 }
 

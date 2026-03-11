@@ -743,6 +743,7 @@ export type Database = {
           seed_lot_id: string | null
           variety_id: string | null
           processus: 'caissette_godet' | 'mini_motte' | null
+          statut: string
           numero_caisse: string | null
           nb_mottes: number | null
           nb_mortes_mottes: number
@@ -772,6 +773,7 @@ export type Database = {
           seed_lot_id?: string | null
           variety_id?: string | null
           processus?: 'caissette_godet' | 'mini_motte' | null
+          statut?: string
           numero_caisse?: string | null
           nb_mottes?: number | null
           nb_mortes_mottes?: number
@@ -801,6 +803,7 @@ export type Database = {
           seed_lot_id?: string | null
           variety_id?: string | null
           processus?: 'caissette_godet' | 'mini_motte' | null
+          statut?: string
           numero_caisse?: string | null
           nb_mottes?: number | null
           nb_mortes_mottes?: number

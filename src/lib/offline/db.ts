@@ -69,6 +69,21 @@ export interface CachedExternalMaterial {
   unite: string
 }
 
+/** Cache semis enrichis pour le sélecteur plantation mobile */
+export interface CachedSeedling {
+  id: string
+  processus: string
+  statut: string
+  numero_caisse: string | null
+  nb_plants_obtenus: number | null
+  date_semis: string
+  variety_id: string | null
+  variety_name: string | null
+  seed_lot_interne: string | null
+  plants_plantes: number
+  plants_restants: number | null
+}
+
 /** File d'attente de sync (structure créée ici, logique en A6.4) */
 export interface SyncQueueEntry {
   id?: number // auto-increment Dexie
@@ -91,6 +106,7 @@ export interface ReferenceDataResponse {
   rows: CachedRow[]
   recipes: CachedRecipe[]
   seedLots: CachedSeedLot[]
+  seedlings: CachedSeedling[]
   externalMaterials: CachedExternalMaterial[]
   timestamp: string // ISO
 }
@@ -105,6 +121,7 @@ class OfflineDatabase extends Dexie {
   rows!: Table<CachedRow>
   recipes!: Table<CachedRecipe>
   seedLots!: Table<CachedSeedLot>
+  seedlings!: Table<CachedSeedling>
   externalMaterials!: Table<CachedExternalMaterial>
   syncQueue!: Table<SyncQueueEntry>
 
@@ -118,6 +135,18 @@ class OfflineDatabase extends Dexie {
       rows: 'id, parcel_id',
       recipes: 'id',
       seedLots: 'id, variety_id',
+      externalMaterials: 'id',
+      syncQueue: '++id, uuid_client, status, farm_id, created_at',
+    })
+    this.version(2).stores({
+      context: 'key',
+      varieties: 'id, nom_vernaculaire',
+      sites: 'id',
+      parcels: 'id, site_id',
+      rows: 'id, parcel_id',
+      recipes: 'id',
+      seedLots: 'id, variety_id',
+      seedlings: 'id, variety_id, statut',
       externalMaterials: 'id',
       syncQueue: '++id, uuid_client, status, farm_id, created_at',
     })

@@ -50,7 +50,7 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
   }
 
   // Charger toutes les données de référence en parallèle
-  const [varieties, sites, parcels, rows, recipes, seedLots, externalMaterials] =
+  const [varieties, sites, parcels, rows, recipes, seedLots, seedlings, externalMaterials] =
     await Promise.all([
       loadVarieties(admin, farmId),
       loadSites(admin, farmId),
@@ -58,6 +58,7 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
       loadRows(admin, farmId),
       loadRecipes(admin, farmId),
       loadSeedLots(admin, farmId),
+      loadSeedlings(admin, farmId),
       loadExternalMaterials(admin, farmId),
     ])
 
@@ -68,6 +69,7 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
     rows,
     recipes,
     seedLots,
+    seedlings,
     externalMaterials,
     timestamp: new Date().toISOString(),
   }
@@ -177,6 +179,68 @@ async function loadSeedLots(admin: any, farmId: string) {
 
   if (error) throw new Error(`Erreur chargement sachets de graines : ${error.message}`)
   return data ?? []
+}
+
+/**
+ * Semis enrichis avec plants_restants pour le sélecteur plantation mobile.
+ * Ne charge que les semis non-supprimés ayant des plants obtenus (pret, en_plantation).
+ */
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+async function loadSeedlings(admin: any, farmId: string) {
+  const { data: seedlings, error } = await admin
+    .from('seedlings')
+    .select('id, processus, statut, numero_caisse, nb_plants_obtenus, date_semis, variety_id, varieties(nom_vernaculaire), seed_lots(lot_interne)')
+    .eq('farm_id', farmId)
+    .is('deleted_at', null)
+    .order('date_semis', { ascending: false })
+
+  if (error) throw new Error(`Erreur chargement semis : ${error.message}`)
+
+  const seedlingRows = (seedlings ?? []) as Array<{
+    id: string; processus: string; statut: string; numero_caisse: string | null
+    nb_plants_obtenus: number | null; date_semis: string; variety_id: string | null
+    varieties: { nom_vernaculaire: string } | null
+    seed_lots: { lot_interne: string } | null
+  }>
+
+  // Charger les plants plantés en batch
+  const ids = seedlingRows.map(s => s.id)
+  let plantingsBySeeedling: Record<string, number> = {}
+
+  if (ids.length > 0) {
+    const { data: plantings } = await admin
+      .from('plantings')
+      .select('seedling_id, nb_plants')
+      .in('seedling_id', ids)
+      .eq('actif', true)
+      .is('deleted_at', null)
+
+    for (const p of (plantings ?? []) as { seedling_id: string; nb_plants: number | null }[]) {
+      if (p.seedling_id) {
+        plantingsBySeeedling[p.seedling_id] = (plantingsBySeeedling[p.seedling_id] ?? 0) + (p.nb_plants ?? 0)
+      }
+    }
+  }
+
+  return seedlingRows.map(s => {
+    const plantsPlantes = plantingsBySeeedling[s.id] ?? 0
+    const plantsRestants = s.nb_plants_obtenus != null
+      ? Math.max(0, s.nb_plants_obtenus - plantsPlantes)
+      : null
+    return {
+      id: s.id,
+      processus: s.processus,
+      statut: s.statut,
+      numero_caisse: s.numero_caisse,
+      nb_plants_obtenus: s.nb_plants_obtenus,
+      date_semis: s.date_semis,
+      variety_id: s.variety_id,
+      variety_name: s.varieties?.nom_vernaculaire ?? null,
+      seed_lot_interne: s.seed_lots?.lot_interne ?? null,
+      plants_plantes: plantsPlantes,
+      plants_restants: plantsRestants,
+    }
+  })
 }
 
 /**

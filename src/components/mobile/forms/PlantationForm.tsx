@@ -9,7 +9,7 @@ import MobileInput from '@/components/mobile/fields/MobileInput'
 import MobileTimerInput from '@/components/mobile/fields/MobileTimerInput'
 import MobileTextarea from '@/components/mobile/fields/MobileTextarea'
 import MobileCheckbox from '@/components/mobile/fields/MobileCheckbox'
-import { useCachedVarieties } from '@/hooks/useCachedData'
+import { useCachedVarieties, useCachedSeedlings } from '@/hooks/useCachedData'
 import { mobilePlantingSchema } from '@/lib/validation/parcelles'
 
 function todayISO(): string {
@@ -38,6 +38,7 @@ function initialState() {
   return {
     row_id: '',
     variety_id: '',
+    seedling_id: '',
     annee: new Date().getFullYear().toString(),
     date_plantation: todayISO(),
     lune: '',
@@ -60,6 +61,7 @@ interface PlantationFormProps {
 export default function PlantationForm({ orgSlug }: PlantationFormProps) {
   const { addEntry, farmId } = useMobileSync()
   const { varieties, isLoading: varietiesLoading } = useCachedVarieties()
+  const { seedlings, isLoading: seedlingsLoading } = useCachedSeedlings()
 
   const [form, setForm] = useState(initialState)
   const [errors, setErrors] = useState<Record<string, string>>({})
@@ -86,6 +88,7 @@ export default function PlantationForm({ orgSlug }: PlantationFormProps) {
     const payload = {
       row_id: form.row_id,
       variety_id: form.variety_id,
+      seedling_id: form.seedling_id || null,
       annee: form.annee ? parseInt(form.annee, 10) : undefined,
       date_plantation: form.date_plantation,
       lune: form.lune || null,
@@ -139,6 +142,18 @@ export default function PlantationForm({ orgSlug }: PlantationFormProps) {
     label: v.nom_vernaculaire,
   }))
 
+  const seedlingOptions = seedlings
+    .filter(s => s.plants_restants === null || s.plants_restants > 0)
+    .map((s) => {
+      const stockLabel = s.plants_restants != null
+        ? `${s.plants_restants} dispo`
+        : `${s.nb_plants_obtenus ?? '?'} obtenus`
+      return {
+        value: s.id,
+        label: `${s.variety_name ?? '?'}${s.numero_caisse ? ` [${s.numero_caisse}]` : ''} — ${stockLabel}`,
+      }
+    })
+
   return (
     <MobileFormLayout
       title="Plantation"
@@ -163,6 +178,15 @@ export default function PlantationForm({ orgSlug }: PlantationFormProps) {
         options={varietyOptions}
         placeholder={varietiesLoading ? 'Chargement…' : 'Sélectionner une variété'}
         error={errors.variety_id}
+      />
+
+      <MobileSelect
+        label="Semis d'origine"
+        value={form.seedling_id}
+        onChange={(v) => set('seedling_id', v)}
+        options={seedlingOptions}
+        placeholder={seedlingsLoading ? 'Chargement…' : '(optionnel)'}
+        error={errors.seedling_id}
       />
 
       <MobileInput

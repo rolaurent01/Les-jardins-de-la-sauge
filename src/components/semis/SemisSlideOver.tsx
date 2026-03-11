@@ -1,7 +1,9 @@
 'use client'
 
 import { useState, useTransition, useEffect, useRef } from 'react'
-import type { SeedlingWithRelations, Variety, ActionResult, Processus, Seedling } from '@/lib/types'
+import type { Variety, ActionResult, Processus, Seedling, SeedlingStatut } from '@/lib/types'
+import { SEEDLING_STATUT_LABELS } from '@/lib/types'
+import type { SeedlingWithPlantsInfo } from '@/app/[orgSlug]/(dashboard)/semis/suivi/actions'
 import {
   computeSeedlingLossRate,
   type MiniMotteLossStats,
@@ -10,9 +12,26 @@ import {
 import QuickAddVariety from '@/components/varieties/QuickAddVariety'
 import type { SeedLotForSelect } from './SemisClient'
 
+/** Sections du formulaire progressif */
+type Section = 'identite' | 'levee' | 'repiquage' | 'resultats'
+
+/** Détermine la section à ouvrir selon le statut */
+function sectionForStatut(statut: SeedlingStatut | undefined, processus: Processus): Section {
+  if (!statut) return 'identite'
+  switch (statut) {
+    case 'semis':         return 'identite'
+    case 'leve':          return 'levee'
+    case 'repiquage':     return processus === 'caissette_godet' ? 'repiquage' : 'levee'
+    case 'pret':
+    case 'en_plantation':
+    case 'epuise':        return 'resultats'
+    default:              return 'identite'
+  }
+}
+
 type Props = {
   open:      boolean
-  seedling:  SeedlingWithRelations | null  // null = création
+  seedling:  SeedlingWithPlantsInfo | null  // null = création
   seedLots:  SeedLotForSelect[]
   varieties: Pick<Variety, 'id' | 'nom_vernaculaire' | 'nom_latin'>[]
   onClose:   () => void
@@ -33,6 +52,8 @@ export default function SemisSlideOver({
   const [error, setError]            = useState<string | null>(null)
   const firstFieldRef                = useRef<HTMLSelectElement>(null)
 
+  const isEdit = seedling !== null
+
   /* Liste locale des variétés — s'enrichit si on crée via QuickAddVariety */
   const [varieties, setVarieties]           = useState(initialVarieties)
   const [selectedVarietyId, setVarietyId]   = useState(seedling?.variety_id ?? '')
@@ -50,6 +71,15 @@ export default function SemisSlideOver({
   const [nbMortesG,      setNbMortesG]      = useState(seedling?.nb_mortes_godet ?? 0)
   const [nbDonnees,      setNbDonnees]      = useState(seedling?.nb_donnees ?? 0)
   const [nbObtenus,      setNbObtenus]      = useState<number | null>(seedling?.nb_plants_obtenus ?? null)
+
+  /* Sections ouvertes — en création toutes ouvertes, en édition la section du statut */
+  const [openSections, setOpenSections] = useState<Set<Section>>(() => {
+    if (!seedling) return new Set(['identite', 'levee', 'repiquage', 'resultats'])
+    const target = sectionForStatut(seedling.statut, seedling.processus)
+    return new Set([target])
+  })
+
+  const [showAll, setShowAll] = useState(!isEdit)
 
   /* Resync si les variétés initiales changent */
   useEffect(() => {
@@ -70,6 +100,15 @@ export default function SemisSlideOver({
     setNbDonnees(seedling?.nb_donnees ?? 0)
     setNbObtenus(seedling?.nb_plants_obtenus ?? null)
     setError(null)
+
+    if (!seedling) {
+      setOpenSections(new Set(['identite', 'levee', 'repiquage', 'resultats']))
+      setShowAll(true)
+    } else {
+      const target = sectionForStatut(seedling.statut, seedling.processus)
+      setOpenSections(new Set([target]))
+      setShowAll(false)
+    }
   }, [seedling])
 
   /* Focus le premier champ à l'ouverture */
@@ -101,15 +140,32 @@ export default function SemisSlideOver({
     setVarietyId(variety.id)
   }
 
+  function toggleSection(section: Section) {
+    setOpenSections(prev => {
+      const next = new Set(prev)
+      if (next.has(section)) next.delete(section)
+      else next.add(section)
+      return next
+    })
+  }
+
+  function handleShowAll() {
+    setShowAll(true)
+    setOpenSections(new Set(['identite', 'levee', 'repiquage', 'resultats']))
+  }
+
+  function isSectionOpen(section: Section): boolean {
+    return showAll || openSections.has(section)
+  }
+
   function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault()
     setError(null)
 
     const fd = new FormData(e.currentTarget)
-    // Synchroniser les champs contrôlés dans le FormData
     fd.set('variety_id', selectedVarietyId)
     fd.set('processus', processus)
-    fd.set('seed_lot_id', selectedSeedLotId) // '' devient null dans parseSeedlingForm
+    fd.set('seed_lot_id', selectedSeedLotId)
 
     startTransition(async () => {
       const result = await onSubmit(fd)
@@ -125,7 +181,7 @@ export default function SemisSlideOver({
   const previewSeedling: Seedling = {
     id: '',               uuid_client: null,    seed_lot_id: null,
     farm_id: '',          variety_id: null,     processus,
-    numero_caisse: null,
+    numero_caisse: null,  statut: 'semis',
     nb_mottes: nbMottes,              nb_mortes_mottes: nbMortesMottes,
     nb_caissettes: null,
     nb_plants_caissette: nbPlantsC,   nb_mortes_caissette: nbMortesC,
@@ -138,11 +194,27 @@ export default function SemisSlideOver({
     created_by: null,     updated_by: null,     created_at: '',
   }
 
-  /* Récapitulatif visible uniquement si nb_plants_obtenus est renseigné */
   const showSummary = nbObtenus != null
   const lossStats   = showSummary ? computeSeedlingLossRate(previewSeedling) : null
 
-  const isEdit = seedling !== null
+  /* Indicateur de statut dans l'en-tête en mode édition */
+  const statutBadge = isEdit && seedling ? (
+    <span
+      className="ml-2 inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-semibold"
+      style={{ backgroundColor: STATUT_COLORS[seedling.statut].bg, color: STATUT_COLORS[seedling.statut].color }}
+    >
+      {SEEDLING_STATUT_LABELS[seedling.statut]}
+    </span>
+  ) : null
+
+  /* Plants restants en mode édition */
+  const plantsInfo = isEdit && seedling && seedling.plants_restants != null ? (
+    <div className="text-xs mt-1" style={{ color: '#6B7B6C' }}>
+      {seedling.plants_plantes} planté{seedling.plants_plantes !== 1 ? 's' : ''}
+      {' · '}
+      {seedling.plants_restants} restant{seedling.plants_restants !== 1 ? 's' : ''}
+    </div>
+  ) : null
 
   return (
     <>
@@ -179,9 +251,13 @@ export default function SemisSlideOver({
           className="flex items-center justify-between px-6 py-4 flex-shrink-0"
           style={{ borderBottom: '1px solid #D8E0D9' }}
         >
-          <h2 className="text-base font-semibold" style={{ color: '#2C3E2D' }}>
-            {isEdit ? 'Modifier le semis' : 'Nouveau semis'}
-          </h2>
+          <div>
+            <h2 className="text-base font-semibold inline-flex items-center" style={{ color: '#2C3E2D' }}>
+              {isEdit ? 'Modifier le semis' : 'Nouveau semis'}
+              {statutBadge}
+            </h2>
+            {plantsInfo}
+          </div>
           <button
             onClick={onClose}
             disabled={isPending}
@@ -195,359 +271,439 @@ export default function SemisSlideOver({
 
         {/* Formulaire */}
         <form onSubmit={handleSubmit} className="flex-1 overflow-y-auto flex flex-col">
-          <div className="px-6 py-5 space-y-5 flex-1">
+          <div className="px-6 py-5 space-y-1 flex-1">
 
-            {/* ===== Sélecteur de processus ===== */}
-            <div>
-              <label className="block text-sm font-medium mb-2" style={{ color: '#2C3E2D' }}>
-                Processus <span style={{ color: '#BC6C25' }}>*</span>
-              </label>
-              <div
-                className="flex rounded-lg overflow-hidden border"
-                style={{ borderColor: '#D8E0D9' }}
-              >
-                <ProcessBtn
-                  active={processus === 'mini_motte'}
-                  onClick={() => setProcessus('mini_motte')}
-                  disabled={isPending}
-                >
-                  🌿 Mini-mottes
-                </ProcessBtn>
-                <ProcessBtn
-                  active={processus === 'caissette_godet'}
-                  onClick={() => setProcessus('caissette_godet')}
-                  disabled={isPending}
-                >
-                  🥬 Caissette/Godet
-                </ProcessBtn>
-              </div>
-            </div>
+            {/* ===== Section 1 : Identité (semis) ===== */}
+            <SectionHeader
+              label="Identité du semis"
+              section="identite"
+              isOpen={isSectionOpen('identite')}
+              onToggle={toggleSection}
+              statut={isEdit ? seedling?.statut : undefined}
+              activeStatuts={['semis']}
+            />
+            {isSectionOpen('identite') && (
+              <div className="space-y-4 pb-4">
+                {/* Sélecteur de processus */}
+                <div>
+                  <label className="block text-sm font-medium mb-2" style={{ color: '#2C3E2D' }}>
+                    Processus <span style={{ color: '#BC6C25' }}>*</span>
+                  </label>
+                  <div
+                    className="flex rounded-lg overflow-hidden border"
+                    style={{ borderColor: '#D8E0D9' }}
+                  >
+                    <ProcessBtn
+                      active={processus === 'mini_motte'}
+                      onClick={() => setProcessus('mini_motte')}
+                      disabled={isPending}
+                    >
+                      Mini-mottes
+                    </ProcessBtn>
+                    <ProcessBtn
+                      active={processus === 'caissette_godet'}
+                      onClick={() => setProcessus('caissette_godet')}
+                      disabled={isPending}
+                    >
+                      Caissette/Godet
+                    </ProcessBtn>
+                  </div>
+                </div>
 
-            {/* ===== Variété ===== */}
-            <div>
-              <div className="flex items-center justify-between mb-1.5">
-                <label className="text-sm font-medium" style={{ color: '#2C3E2D' }}>
-                  Variété <span style={{ color: '#BC6C25' }}>*</span>
-                </label>
-                <QuickAddVariety
-                  existingVarieties={varieties as Variety[]}
-                  onCreated={handleVarietyCreated}
-                />
-              </div>
-              <select
-                ref={firstFieldRef}
-                name="variety_id"
-                required
-                value={selectedVarietyId}
-                onChange={e => setVarietyId(e.target.value)}
-                disabled={isPending}
-                style={inputStyle}
-                onFocus={focusStyle}
-                onBlur={blurStyle}
-              >
-                <option value="">— Sélectionner une variété</option>
-                {varieties.map(v => (
-                  <option key={v.id} value={v.id}>
-                    {v.nom_vernaculaire}
-                    {v.nom_latin ? ` — ${v.nom_latin}` : ''}
-                  </option>
-                ))}
-              </select>
-            </div>
-
-            {/* ===== Sachet source ===== */}
-            <Field label="Sachet source">
-              <select
-                name="seed_lot_id"
-                value={selectedSeedLotId}
-                onChange={e => setSeedLotId(e.target.value)}
-                disabled={isPending}
-                style={inputStyle}
-                onFocus={focusStyle}
-                onBlur={blurStyle}
-              >
-                <option value="">Aucun</option>
-                {seedLots.map(sl => (
-                  <option key={sl.id} value={sl.id}>
-                    {sl.lot_interne}
-                    {sl.varieties?.nom_vernaculaire ? ` — ${sl.varieties.nom_vernaculaire}` : ''}
-                  </option>
-                ))}
-              </select>
-            </Field>
-
-            {/* ===== Date semis + Poids graines ===== */}
-            <div className="grid grid-cols-2 gap-4">
-              <Field label="Date de semis" required>
-                <input
-                  name="date_semis"
-                  type="date"
-                  required
-                  defaultValue={seedling?.date_semis ?? ''}
-                  disabled={isPending}
-                  style={inputStyle}
-                  onFocus={focusStyle}
-                  onBlur={blurStyle}
-                />
-              </Field>
-              <Field label="Poids graines (g)">
-                <input
-                  name="poids_graines_utilise_g"
-                  type="number"
-                  min="0"
-                  step="0.01"
-                  defaultValue={seedling?.poids_graines_utilise_g ?? ''}
-                  disabled={isPending}
-                  placeholder="ex : 1.5"
-                  style={inputStyle}
-                  onFocus={focusStyle}
-                  onBlur={blurStyle}
-                />
-              </Field>
-            </div>
-
-            {/* ===== Date de levée ===== */}
-            <Field label="Date de levée">
-              <input
-                name="date_levee"
-                type="date"
-                defaultValue={seedling?.date_levee ?? ''}
-                disabled={isPending}
-                style={inputStyle}
-                onFocus={focusStyle}
-                onBlur={blurStyle}
-              />
-            </Field>
-
-            {/* ===== Champs spécifiques Mini-motte ===== */}
-            {processus === 'mini_motte' && (
-              <>
-                <Separator label="Mini-mottes" />
-
-                <Field label="N° de caisse">
-                  <input
-                    name="numero_caisse"
-                    type="text"
-                    defaultValue={seedling?.numero_caisse ?? ''}
+                {/* Variété */}
+                <div>
+                  <div className="flex items-center justify-between mb-1.5">
+                    <label className="text-sm font-medium" style={{ color: '#2C3E2D' }}>
+                      Variété <span style={{ color: '#BC6C25' }}>*</span>
+                    </label>
+                    <QuickAddVariety
+                      existingVarieties={varieties as Variety[]}
+                      onCreated={handleVarietyCreated}
+                    />
+                  </div>
+                  <select
+                    ref={firstFieldRef}
+                    name="variety_id"
+                    required
+                    value={selectedVarietyId}
+                    onChange={e => setVarietyId(e.target.value)}
                     disabled={isPending}
-                    placeholder="ex : A"
+                    style={inputStyle}
+                    onFocus={focusStyle}
+                    onBlur={blurStyle}
+                  >
+                    <option value="">— Sélectionner une variété</option>
+                    {varieties.map(v => (
+                      <option key={v.id} value={v.id}>
+                        {v.nom_vernaculaire}
+                        {v.nom_latin ? ` — ${v.nom_latin}` : ''}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                {/* Sachet source */}
+                <Field label="Sachet source">
+                  <select
+                    name="seed_lot_id"
+                    value={selectedSeedLotId}
+                    onChange={e => setSeedLotId(e.target.value)}
+                    disabled={isPending}
+                    style={inputStyle}
+                    onFocus={focusStyle}
+                    onBlur={blurStyle}
+                  >
+                    <option value="">Aucun</option>
+                    {seedLots.map(sl => (
+                      <option key={sl.id} value={sl.id}>
+                        {sl.lot_interne}
+                        {sl.varieties?.nom_vernaculaire ? ` — ${sl.varieties.nom_vernaculaire}` : ''}
+                      </option>
+                    ))}
+                  </select>
+                </Field>
+
+                {/* Date semis + Poids graines */}
+                <div className="grid grid-cols-2 gap-4">
+                  <Field label="Date de semis" required>
+                    <input
+                      name="date_semis"
+                      type="date"
+                      required
+                      defaultValue={seedling?.date_semis ?? ''}
+                      disabled={isPending}
+                      style={inputStyle}
+                      onFocus={focusStyle}
+                      onBlur={blurStyle}
+                    />
+                  </Field>
+                  <Field label="Poids graines (g)">
+                    <input
+                      name="poids_graines_utilise_g"
+                      type="number"
+                      min="0"
+                      step="0.01"
+                      defaultValue={seedling?.poids_graines_utilise_g ?? ''}
+                      disabled={isPending}
+                      placeholder="ex : 1.5"
+                      style={inputStyle}
+                      onFocus={focusStyle}
+                      onBlur={blurStyle}
+                    />
+                  </Field>
+                </div>
+
+                {/* N° de caisse (mini-motte uniquement) */}
+                {processus === 'mini_motte' && (
+                  <Field label="N° de caisse">
+                    <input
+                      name="numero_caisse"
+                      type="text"
+                      defaultValue={seedling?.numero_caisse ?? ''}
+                      disabled={isPending}
+                      placeholder="ex : A"
+                      style={inputStyle}
+                      onFocus={focusStyle}
+                      onBlur={blurStyle}
+                    />
+                  </Field>
+                )}
+
+                {/* Temps semis */}
+                <Field label="Temps semis (min)">
+                  <input
+                    name="temps_semis_min"
+                    type="number"
+                    min="0"
+                    defaultValue={seedling?.temps_semis_min ?? ''}
+                    disabled={isPending}
+                    style={inputStyle}
+                    onFocus={focusStyle}
+                    onBlur={blurStyle}
+                  />
+                </Field>
+              </div>
+            )}
+
+            {/* ===== Section 2 : Levée ===== */}
+            <SectionHeader
+              label={processus === 'mini_motte' ? 'Levée & comptage mottes' : 'Levée'}
+              section="levee"
+              isOpen={isSectionOpen('levee')}
+              onToggle={toggleSection}
+              statut={isEdit ? seedling?.statut : undefined}
+              activeStatuts={['leve']}
+            />
+            {isSectionOpen('levee') && (
+              <div className="space-y-4 pb-4">
+                <Field label="Date de levée">
+                  <input
+                    name="date_levee"
+                    type="date"
+                    defaultValue={seedling?.date_levee ?? ''}
+                    disabled={isPending}
                     style={inputStyle}
                     onFocus={focusStyle}
                     onBlur={blurStyle}
                   />
                 </Field>
 
-                <div className="grid grid-cols-2 gap-4">
-                  <Field label="Nombre de mottes" required>
-                    <input
-                      name="nb_mottes"
-                      type="number"
-                      min="1"
-                      required
-                      value={nbMottes ?? ''}
-                      onChange={e => setNbMottes(e.target.value ? parseInt(e.target.value, 10) : null)}
-                      disabled={isPending}
-                      placeholder="ex : 98"
-                      style={inputStyle}
-                      onFocus={focusStyle}
-                      onBlur={blurStyle}
-                    />
-                  </Field>
-                  <Field label="Mortes avant plantation">
-                    <input
-                      name="nb_mortes_mottes"
-                      type="number"
-                      min="0"
-                      value={nbMortesMottes}
-                      onChange={e => setNbMortesMottes(e.target.value ? parseInt(e.target.value, 10) : 0)}
-                      disabled={isPending}
-                      style={inputStyle}
-                      onFocus={focusStyle}
-                      onBlur={blurStyle}
-                    />
-                  </Field>
-                </div>
-              </>
+                {/* Champs mini-motte */}
+                {processus === 'mini_motte' && (
+                  <div className="grid grid-cols-2 gap-4">
+                    <Field label="Nombre de mottes" required>
+                      <input
+                        name="nb_mottes"
+                        type="number"
+                        min="1"
+                        required
+                        value={nbMottes ?? ''}
+                        onChange={e => setNbMottes(e.target.value ? parseInt(e.target.value, 10) : null)}
+                        disabled={isPending}
+                        placeholder="ex : 98"
+                        style={inputStyle}
+                        onFocus={focusStyle}
+                        onBlur={blurStyle}
+                      />
+                    </Field>
+                    <Field label="Mortes avant plantation">
+                      <input
+                        name="nb_mortes_mottes"
+                        type="number"
+                        min="0"
+                        value={nbMortesMottes}
+                        onChange={e => setNbMortesMottes(e.target.value ? parseInt(e.target.value, 10) : 0)}
+                        disabled={isPending}
+                        style={inputStyle}
+                        onFocus={focusStyle}
+                        onBlur={blurStyle}
+                      />
+                    </Field>
+                  </div>
+                )}
+
+                {/* Champs caissette (étape caissette) */}
+                {processus === 'caissette_godet' && (
+                  <>
+                    <div className="grid grid-cols-2 gap-4">
+                      <Field label="Nombre de caissettes" required>
+                        <input
+                          name="nb_caissettes"
+                          type="number"
+                          min="1"
+                          required
+                          defaultValue={seedling?.nb_caissettes ?? ''}
+                          disabled={isPending}
+                          placeholder="ex : 5"
+                          style={inputStyle}
+                          onFocus={focusStyle}
+                          onBlur={blurStyle}
+                        />
+                      </Field>
+                      <Field label="Plants en caissette" required>
+                        <input
+                          name="nb_plants_caissette"
+                          type="number"
+                          min="1"
+                          required
+                          value={nbPlantsC ?? ''}
+                          onChange={e => setNbPlantsC(e.target.value ? parseInt(e.target.value, 10) : null)}
+                          disabled={isPending}
+                          placeholder="ex : 50"
+                          style={inputStyle}
+                          onFocus={focusStyle}
+                          onBlur={blurStyle}
+                        />
+                      </Field>
+                    </div>
+                    <Field label="Mortes en caissette">
+                      <input
+                        name="nb_mortes_caissette"
+                        type="number"
+                        min="0"
+                        value={nbMortesC}
+                        onChange={e => setNbMortesC(e.target.value ? parseInt(e.target.value, 10) : 0)}
+                        disabled={isPending}
+                        style={inputStyle}
+                        onFocus={focusStyle}
+                        onBlur={blurStyle}
+                      />
+                    </Field>
+                  </>
+                )}
+              </div>
             )}
 
-            {/* ===== Champs spécifiques Caissette/Godet ===== */}
+            {/* ===== Section 3 : Repiquage (caissette_godet uniquement) ===== */}
             {processus === 'caissette_godet' && (
               <>
-                <Separator label="Caissette/Godet" />
+                <SectionHeader
+                  label="Repiquage en godet"
+                  section="repiquage"
+                  isOpen={isSectionOpen('repiquage')}
+                  onToggle={toggleSection}
+                  statut={isEdit ? seedling?.statut : undefined}
+                  activeStatuts={['repiquage']}
+                />
+                {isSectionOpen('repiquage') && (
+                  <div className="space-y-4 pb-4">
+                    <Field label="Date de repiquage">
+                      <input
+                        name="date_repiquage"
+                        type="date"
+                        defaultValue={seedling?.date_repiquage ?? ''}
+                        disabled={isPending}
+                        style={inputStyle}
+                        onFocus={focusStyle}
+                        onBlur={blurStyle}
+                      />
+                    </Field>
 
-                <div className="grid grid-cols-2 gap-4">
-                  <Field label="Nombre de caissettes" required>
-                    <input
-                      name="nb_caissettes"
-                      type="number"
-                      min="1"
-                      required
-                      defaultValue={seedling?.nb_caissettes ?? ''}
-                      disabled={isPending}
-                      placeholder="ex : 5"
-                      style={inputStyle}
-                      onFocus={focusStyle}
-                      onBlur={blurStyle}
-                    />
-                  </Field>
-                  <Field label="Plants en caissette" required>
-                    <input
-                      name="nb_plants_caissette"
-                      type="number"
-                      min="1"
-                      required
-                      value={nbPlantsC ?? ''}
-                      onChange={e => setNbPlantsC(e.target.value ? parseInt(e.target.value, 10) : null)}
-                      disabled={isPending}
-                      placeholder="ex : 50"
-                      style={inputStyle}
-                      onFocus={focusStyle}
-                      onBlur={blurStyle}
-                    />
-                  </Field>
-                </div>
+                    <div className="grid grid-cols-2 gap-4">
+                      <Field label="Nombre de godets">
+                        <input
+                          name="nb_godets"
+                          type="number"
+                          min="0"
+                          value={nbGodets ?? ''}
+                          onChange={e => setNbGodets(e.target.value ? parseInt(e.target.value, 10) : null)}
+                          disabled={isPending}
+                          placeholder="ex : 45"
+                          style={inputStyle}
+                          onFocus={focusStyle}
+                          onBlur={blurStyle}
+                        />
+                      </Field>
+                      <Field label="Mortes en godet">
+                        <input
+                          name="nb_mortes_godet"
+                          type="number"
+                          min="0"
+                          value={nbMortesG}
+                          onChange={e => setNbMortesG(e.target.value ? parseInt(e.target.value, 10) : 0)}
+                          disabled={isPending}
+                          style={inputStyle}
+                          onFocus={focusStyle}
+                          onBlur={blurStyle}
+                        />
+                      </Field>
+                    </div>
 
-                <div className="grid grid-cols-2 gap-4">
-                  <Field label="Mortes en caissette">
-                    <input
-                      name="nb_mortes_caissette"
-                      type="number"
-                      min="0"
-                      value={nbMortesC}
-                      onChange={e => setNbMortesC(e.target.value ? parseInt(e.target.value, 10) : 0)}
-                      disabled={isPending}
-                      style={inputStyle}
-                      onFocus={focusStyle}
-                      onBlur={blurStyle}
-                    />
-                  </Field>
-                  <Field label="Date de repiquage">
-                    <input
-                      name="date_repiquage"
-                      type="date"
-                      defaultValue={seedling?.date_repiquage ?? ''}
-                      disabled={isPending}
-                      style={inputStyle}
-                      onFocus={focusStyle}
-                      onBlur={blurStyle}
-                    />
-                  </Field>
-                </div>
-
-                <div className="grid grid-cols-2 gap-4">
-                  <Field label="Nombre de godets">
-                    <input
-                      name="nb_godets"
-                      type="number"
-                      min="0"
-                      value={nbGodets ?? ''}
-                      onChange={e => setNbGodets(e.target.value ? parseInt(e.target.value, 10) : null)}
-                      disabled={isPending}
-                      placeholder="ex : 45"
-                      style={inputStyle}
-                      onFocus={focusStyle}
-                      onBlur={blurStyle}
-                    />
-                  </Field>
-                  <Field label="Mortes en godet">
-                    <input
-                      name="nb_mortes_godet"
-                      type="number"
-                      min="0"
-                      value={nbMortesG}
-                      onChange={e => setNbMortesG(e.target.value ? parseInt(e.target.value, 10) : 0)}
-                      disabled={isPending}
-                      style={inputStyle}
-                      onFocus={focusStyle}
-                      onBlur={blurStyle}
-                    />
-                  </Field>
-                </div>
+                    <Field label="Temps repiquage (min)">
+                      <input
+                        name="temps_repiquage_min"
+                        type="number"
+                        min="0"
+                        defaultValue={seedling?.temps_repiquage_min ?? ''}
+                        disabled={isPending}
+                        style={inputStyle}
+                        onFocus={focusStyle}
+                        onBlur={blurStyle}
+                      />
+                    </Field>
+                  </div>
+                )}
               </>
             )}
 
-            {/* ===== Champs communs fin ===== */}
-            <Separator label="Résultats" />
+            {/* ===== Section 4 : Résultats ===== */}
+            <SectionHeader
+              label="Résultats & plantation"
+              section="resultats"
+              isOpen={isSectionOpen('resultats')}
+              onToggle={toggleSection}
+              statut={isEdit ? seedling?.statut : undefined}
+              activeStatuts={['pret', 'en_plantation', 'epuise']}
+            />
+            {isSectionOpen('resultats') && (
+              <div className="space-y-4 pb-4">
+                <div className="grid grid-cols-2 gap-4">
+                  <Field label="Plants donnés">
+                    <input
+                      name="nb_donnees"
+                      type="number"
+                      min="0"
+                      value={nbDonnees}
+                      onChange={e => setNbDonnees(e.target.value ? parseInt(e.target.value, 10) : 0)}
+                      disabled={isPending}
+                      style={inputStyle}
+                      onFocus={focusStyle}
+                      onBlur={blurStyle}
+                    />
+                  </Field>
+                  <Field label="Plants obtenus (plantés)">
+                    <input
+                      name="nb_plants_obtenus"
+                      type="number"
+                      min="0"
+                      value={nbObtenus ?? ''}
+                      onChange={e => setNbObtenus(e.target.value ? parseInt(e.target.value, 10) : null)}
+                      disabled={isPending}
+                      placeholder="ex : 75"
+                      style={inputStyle}
+                      onFocus={focusStyle}
+                      onBlur={blurStyle}
+                    />
+                  </Field>
+                </div>
 
-            <div className="grid grid-cols-2 gap-4">
-              <Field label="Plants donnés">
-                <input
-                  name="nb_donnees"
-                  type="number"
-                  min="0"
-                  value={nbDonnees}
-                  onChange={e => setNbDonnees(e.target.value ? parseInt(e.target.value, 10) : 0)}
+                {/* Temps repiquage pour mini-motte (pas de section repiquage) */}
+                {processus === 'mini_motte' && (
+                  <Field label="Temps repiquage (min)">
+                    <input
+                      name="temps_repiquage_min"
+                      type="number"
+                      min="0"
+                      defaultValue={seedling?.temps_repiquage_min ?? ''}
+                      disabled={isPending}
+                      style={inputStyle}
+                      onFocus={focusStyle}
+                      onBlur={blurStyle}
+                    />
+                  </Field>
+                )}
+
+                {/* Récapitulatif de perte */}
+                {showSummary && lossStats && (
+                  <LossSummary processus={processus} stats={lossStats} />
+                )}
+              </div>
+            )}
+
+            {/* ===== Commentaire (toujours visible) ===== */}
+            <div className="pt-3">
+              <Field label="Commentaire">
+                <textarea
+                  name="commentaire"
+                  rows={3}
+                  defaultValue={seedling?.commentaire ?? ''}
                   disabled={isPending}
-                  style={inputStyle}
-                  onFocus={focusStyle}
-                  onBlur={blurStyle}
-                />
-              </Field>
-              <Field label="Plants obtenus (plantés)">
-                <input
-                  name="nb_plants_obtenus"
-                  type="number"
-                  min="0"
-                  value={nbObtenus ?? ''}
-                  onChange={e => setNbObtenus(e.target.value ? parseInt(e.target.value, 10) : null)}
-                  disabled={isPending}
-                  placeholder="ex : 75"
-                  style={inputStyle}
+                  placeholder="Observations, conditions de semis…"
+                  style={{ ...inputStyle, resize: 'vertical', minHeight: '80px' }}
                   onFocus={focusStyle}
                   onBlur={blurStyle}
                 />
               </Field>
             </div>
 
-            <div className="grid grid-cols-2 gap-4">
-              <Field label="Temps semis (min)">
-                <input
-                  name="temps_semis_min"
-                  type="number"
-                  min="0"
-                  defaultValue={seedling?.temps_semis_min ?? ''}
-                  disabled={isPending}
-                  style={inputStyle}
-                  onFocus={focusStyle}
-                  onBlur={blurStyle}
-                />
-              </Field>
-              <Field label="Temps repiquage (min)">
-                <input
-                  name="temps_repiquage_min"
-                  type="number"
-                  min="0"
-                  defaultValue={seedling?.temps_repiquage_min ?? ''}
-                  disabled={isPending}
-                  style={inputStyle}
-                  onFocus={focusStyle}
-                  onBlur={blurStyle}
-                />
-              </Field>
-            </div>
-
-            <Field label="Commentaire">
-              <textarea
-                name="commentaire"
-                rows={3}
-                defaultValue={seedling?.commentaire ?? ''}
-                disabled={isPending}
-                placeholder="Observations, conditions de semis…"
-                style={{ ...inputStyle, resize: 'vertical', minHeight: '80px' }}
-                onFocus={focusStyle}
-                onBlur={blurStyle}
-              />
-            </Field>
-
-            {/* ===== Récapitulatif de perte ===== */}
-            {showSummary && lossStats && (
-              <LossSummary processus={processus} stats={lossStats} />
+            {/* Bouton "Voir tous les champs" en mode édition */}
+            {isEdit && !showAll && (
+              <div className="pt-3">
+                <button
+                  type="button"
+                  onClick={handleShowAll}
+                  className="w-full text-center py-2 rounded-lg text-sm border transition-colors"
+                  style={{ borderColor: '#D8E0D9', color: 'var(--color-primary)' }}
+                >
+                  Voir / modifier tous les champs
+                </button>
+              </div>
             )}
 
             {/* Erreur */}
             {error && (
               <div
-                className="text-sm px-3 py-2.5 rounded-lg"
+                className="text-sm px-3 py-2.5 rounded-lg mt-3"
                 style={{
                   backgroundColor: '#FDF3E8',
                   color:           '#BC6C25',
@@ -591,6 +747,63 @@ export default function SemisSlideOver({
         </form>
       </div>
     </>
+  )
+}
+
+/* ---- En-tête de section accordéon ---- */
+
+function SectionHeader({
+  label,
+  section,
+  isOpen,
+  onToggle,
+  statut,
+  activeStatuts,
+}: {
+  label: string
+  section: Section
+  isOpen: boolean
+  onToggle: (s: Section) => void
+  statut?: SeedlingStatut
+  activeStatuts: SeedlingStatut[]
+}) {
+  const isActive = statut != null && activeStatuts.includes(statut)
+
+  return (
+    <button
+      type="button"
+      onClick={() => onToggle(section)}
+      className="w-full flex items-center gap-3 py-2.5 group"
+    >
+      {/* Indicateur actif */}
+      <div
+        className="rounded-full flex-shrink-0"
+        style={{
+          width: 8, height: 8,
+          backgroundColor: isActive ? 'var(--color-primary)' : 'transparent',
+          border: isActive ? 'none' : '2px solid #D8E0D9',
+        }}
+      />
+
+      <span
+        className="text-xs font-semibold uppercase tracking-wider flex-1 text-left"
+        style={{ color: isActive ? 'var(--color-primary)' : '#9CA89D' }}
+      >
+        {label}
+      </span>
+
+      {/* Chevron */}
+      <svg
+        width="16" height="16" viewBox="0 0 16 16" fill="none"
+        style={{
+          color: '#9CA89D',
+          transform: isOpen ? 'rotate(180deg)' : 'rotate(0deg)',
+          transition: 'transform 0.2s ease',
+        }}
+      >
+        <path d="M4 6L8 10L12 6" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+      </svg>
+    </button>
   )
 }
 
@@ -647,12 +860,22 @@ function CaissetteSummary({ stats }: { stats: CaissetteGodetLossStats }) {
   )
 }
 
-/** Couleurs selon le taux de perte (vert < 20%, orange 20-40%, rouge > 40%) */
 function perteColors(pct: number | null): { bg: string; color: string } {
   if (pct == null) return { bg: '#F5F2ED', color: '#9CA89D' }
   if (pct < 20)   return { bg: '#DCFCE7', color: '#166534' }
   if (pct < 40)   return { bg: '#FEF3C7', color: '#92400E' }
   return           { bg: '#FEE2E2', color: '#991B1B' }
+}
+
+/* ---- Couleurs de badge pour le statut en en-tête ---- */
+
+const STATUT_COLORS: Record<SeedlingStatut, { bg: string; color: string }> = {
+  semis:          { bg: '#F5F2ED', color: '#6B7B6C' },
+  leve:           { bg: '#DCFCE7', color: '#166534' },
+  repiquage:      { bg: '#DBEAFE', color: '#1E40AF' },
+  pret:           { bg: '#D1FAE5', color: '#065F46' },
+  en_plantation:  { bg: '#FEF3C7', color: '#92400E' },
+  epuise:         { bg: '#F5F2ED', color: '#9CA89D' },
 }
 
 /* ---- Sous-composants utilitaires ---- */
@@ -681,17 +904,6 @@ function ProcessBtn({
     >
       {children}
     </button>
-  )
-}
-
-function Separator({ label }: { label: string }) {
-  return (
-    <div className="flex items-center gap-3 py-1">
-      <span className="text-xs font-semibold uppercase tracking-wider" style={{ color: '#9CA89D' }}>
-        {label}
-      </span>
-      <div className="flex-1 h-px" style={{ backgroundColor: '#D8E0D9' }} />
-    </div>
   )
 }
 

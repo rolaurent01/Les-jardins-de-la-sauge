@@ -138,6 +138,19 @@ export type ActionResult<T = unknown> =
 /** Processus de semis disponibles */
 export type Processus = 'caissette_godet' | 'mini_motte'
 
+/** Statut du cycle de vie d'un semis (migration 024) */
+export type SeedlingStatut = 'semis' | 'leve' | 'repiquage' | 'pret' | 'en_plantation' | 'epuise'
+
+/** Labels FR pour les statuts de semis */
+export const SEEDLING_STATUT_LABELS: Record<SeedlingStatut, string> = {
+  semis:          'Semé',
+  leve:           'Levé',
+  repiquage:      'En repiquage',
+  pret:           'Prêt à planter',
+  en_plantation:  'En plantation',
+  epuise:         'Épuisé',
+}
+
 /** Sachet de graines acheté — table seed_lots */
 export type SeedLot = {
   id: string
@@ -172,6 +185,7 @@ export type Seedling = {
   seed_lot_id: string | null
   variety_id: string | null
   processus: Processus
+  statut: SeedlingStatut
 
   // ===== PROCESS 1 : MINI-MOTTES =====
   numero_caisse: string | null
@@ -298,7 +312,7 @@ export type PlantingWithRelations = Planting & {
         parcels: Pick<Parcel, 'id' | 'nom'> | null
       })
     | null
-  seedlings: Pick<Seedling, 'id' | 'processus'> | null
+  seedlings: Pick<Seedling, 'id' | 'processus' | 'statut' | 'numero_caisse'> | null
 }
 
 // ---- Suivi de rang ----

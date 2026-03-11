@@ -1,7 +1,8 @@
 'use client'
 
 import { useState, useTransition, useEffect, useRef } from 'react'
-import type { PlantingWithRelations, RowWithParcel, Variety, ActionResult } from '@/lib/types'
+import type { PlantingWithRelations, RowWithParcel, Variety, ActionResult, SeedlingStatut } from '@/lib/types'
+import { SEEDLING_STATUT_LABELS } from '@/lib/types'
 import type { SeedlingForSelect, RowWarnings } from '@/app/[orgSlug]/(dashboard)/parcelles/plantations/actions'
 import { fetchRowWarnings } from '@/app/[orgSlug]/(dashboard)/parcelles/plantations/actions'
 import QuickAddVariety from '@/components/varieties/QuickAddVariety'
@@ -74,6 +75,7 @@ export default function PlantationSlideOver({
   const [varieties, setVarieties] = useState(initialVarieties)
   const [selectedRowId, setSelectedRowId] = useState(planting?.row_id ?? '')
   const [selectedVarietyId, setSelectedVarietyId] = useState(planting?.variety_id ?? '')
+  const [selectedSeedlingId, setSelectedSeedlingId] = useState(planting?.seedling_id ?? '')
   const [originMode, setOriginMode] = useState<'semis' | 'fournisseur'>(
     planting?.seedling_id ? 'semis' : 'fournisseur',
   )
@@ -93,6 +95,7 @@ export default function PlantationSlideOver({
   useEffect(() => {
     setSelectedRowId(planting?.row_id ?? '')
     setSelectedVarietyId(planting?.variety_id ?? '')
+    setSelectedSeedlingId(planting?.seedling_id ?? '')
     setOriginMode(planting?.seedling_id ? 'semis' : 'fournisseur')
     setLongueurM(planting?.longueur_m?.toString() ?? '')
     setLargeurM(planting?.largeur_m?.toString() ?? '')
@@ -160,6 +163,7 @@ export default function PlantationSlideOver({
     // Nettoyer les champs de l'origine non sélectionnée
     if (originMode === 'semis') {
       fd.delete('fournisseur')
+      fd.set('seedling_id', selectedSeedlingId)
     } else {
       fd.delete('seedling_id')
     }
@@ -353,21 +357,43 @@ export default function PlantationSlideOver({
               </div>
 
               {originMode === 'semis' ? (
-                <select
-                  name="seedling_id"
-                  defaultValue={planting?.seedling_id ?? ''}
-                  disabled={isPending}
-                  style={inputStyle}
-                  onFocus={focusStyle}
-                  onBlur={blurStyle}
-                >
-                  <option value="">— Semis d&apos;origine (optionnel)</option>
-                  {seedlings.map(s => (
-                    <option key={s.id} value={s.id}>
-                      {s.varieties?.nom_vernaculaire ?? '?'} — {s.numero_caisse ?? '?'} ({s.nb_plants_obtenus ?? 0} plants)
-                    </option>
-                  ))}
-                </select>
+                <>
+                  <select
+                    name="seedling_id"
+                    value={selectedSeedlingId}
+                    onChange={e => setSelectedSeedlingId(e.target.value)}
+                    disabled={isPending}
+                    style={inputStyle}
+                    onFocus={focusStyle}
+                    onBlur={blurStyle}
+                  >
+                    <option value="">— Semis d&apos;origine (optionnel)</option>
+                    {seedlings.map(s => {
+                      const isExhausted = s.plants_restants === 0
+                      const stockLabel = s.plants_restants != null
+                        ? `${s.plants_restants} dispo / ${s.nb_plants_obtenus ?? 0}`
+                        : `${s.nb_plants_obtenus ?? '?'} obtenus`
+                      return (
+                        <option
+                          key={s.id}
+                          value={s.id}
+                          disabled={isExhausted && s.id !== planting?.seedling_id}
+                        >
+                          {s.varieties?.nom_vernaculaire ?? '?'}
+                          {s.numero_caisse ? ` [${s.numero_caisse}]` : ''}
+                          {' — '}
+                          {stockLabel}
+                          {isExhausted ? ' (épuisé)' : ''}
+                        </option>
+                      )
+                    })}
+                  </select>
+
+                  {/* Fiche récap du semis sélectionné */}
+                  <SeedlingInfoCard
+                    seedling={seedlings.find(s => s.id === selectedSeedlingId) ?? null}
+                  />
+                </>
               ) : (
                 <input
                   name="fournisseur"
@@ -710,6 +736,84 @@ function ToggleBtn({
       {children}
     </button>
   )
+}
+
+/** Fiche récapitulative du semis sélectionné */
+function SeedlingInfoCard({ seedling }: { seedling: SeedlingForSelect | null }) {
+  if (!seedling) return null
+
+  const statut = seedling.statut as SeedlingStatut | undefined
+  const statutLabel = statut ? SEEDLING_STATUT_LABELS[statut] : null
+  const statutColors = statut ? STATUT_CHIP_COLORS[statut] : null
+
+  return (
+    <div
+      className="mt-2 rounded-lg px-3 py-2.5 text-xs space-y-1"
+      style={{ backgroundColor: '#F5F2ED', border: '1px solid #E8E3DB' }}
+    >
+      <div className="flex items-center justify-between">
+        <span style={{ color: '#6B7B6C' }}>
+          {seedling.processus === 'mini_motte' ? 'Mini-motte' : 'Caissette/Godet'}
+          {' · Semé le '}
+          {seedling.date_semis ? formatDate(seedling.date_semis) : '?'}
+        </span>
+        {statutLabel && statutColors && (
+          <span
+            className="px-1.5 py-0.5 rounded-full text-[10px] font-semibold"
+            style={{ backgroundColor: statutColors.bg, color: statutColors.color }}
+          >
+            {statutLabel}
+          </span>
+        )}
+      </div>
+
+      {seedling.seed_lots && (
+        <div style={{ color: '#9CA89D' }}>
+          Sachet : {seedling.seed_lots.lot_interne}
+          {seedling.seed_lots.fournisseur ? ` — ${seedling.seed_lots.fournisseur}` : ''}
+        </div>
+      )}
+
+      {/* Jauge de stock */}
+      {seedling.nb_plants_obtenus != null && seedling.plants_restants != null && (
+        <div className="pt-1">
+          <div className="flex items-center justify-between mb-0.5">
+            <span style={{ color: '#6B7B6C' }}>
+              {seedling.plants_plantes} planté{seedling.plants_plantes !== 1 ? 's' : ''}
+              {' · '}
+              <strong>{seedling.plants_restants}</strong> disponible{seedling.plants_restants !== 1 ? 's' : ''}
+            </span>
+            <span style={{ color: '#9CA89D' }}>
+              / {seedling.nb_plants_obtenus}
+            </span>
+          </div>
+          <div
+            className="w-full rounded-full overflow-hidden"
+            style={{ height: 4, backgroundColor: '#D8E0D9' }}
+          >
+            <div
+              className="rounded-full"
+              style={{
+                height: '100%',
+                width: `${Math.min(100, (seedling.plants_plantes / seedling.nb_plants_obtenus) * 100)}%`,
+                backgroundColor: seedling.plants_restants === 0 ? '#9CA89D' : 'var(--color-primary)',
+                transition: 'width 0.3s ease',
+              }}
+            />
+          </div>
+        </div>
+      )}
+    </div>
+  )
+}
+
+const STATUT_CHIP_COLORS: Record<SeedlingStatut, { bg: string; color: string }> = {
+  semis:          { bg: '#F5F2ED', color: '#6B7B6C' },
+  leve:           { bg: '#DCFCE7', color: '#166534' },
+  repiquage:      { bg: '#DBEAFE', color: '#1E40AF' },
+  pret:           { bg: '#D1FAE5', color: '#065F46' },
+  en_plantation:  { bg: '#FEF3C7', color: '#92400E' },
+  epuise:         { bg: '#F5F2ED', color: '#9CA89D' },
 }
 
 /** Bandeau d'avertissement */
