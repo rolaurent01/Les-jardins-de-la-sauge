@@ -27,8 +27,8 @@ export default function LoginPage() {
         {/* Logo */}
         <div className="flex justify-center mb-8">
           <Image
-            src="/logo-ljs.png"
-            alt="Les Jardins de la Sauge"
+            src="/Carnet culture.png"
+            alt="Carnet Culture"
             width={200}
             height={120}
             priority
