@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useState } from 'react'
 import { useParams } from 'next/navigation'
 import { getMobileRoutes } from '@/lib/offline/mobile-routes'
+import type { SyncQueueEntry } from '@/lib/offline/db'
 
 // Types pour les données de diagnostic
 interface SwInfo {
@@ -42,6 +43,7 @@ export default function SwDebugPage() {
   const [warmCacheAt, setWarmCacheAt] = useState<string | null>(null)
   const [fetchResult, setFetchResult] = useState<string | null>(null)
   const [swUrlCheck, setSwUrlCheck] = useState<string | null>(null)
+  const [syncEntries, setSyncEntries] = useState<SyncQueueEntry[]>([])
   const [actionLog, setActionLog] = useState<string[]>([])
 
   const log = useCallback((msg: string) => {
@@ -116,12 +118,23 @@ export default function SwDebugPage() {
     }
   }, [])
 
+  // --- Diagnostic Sync Queue ---
+  const checkSyncQueue = useCallback(async () => {
+    try {
+      const { offlineDb } = await import('@/lib/offline/db')
+      const entries = await offlineDb.syncQueue.orderBy('created_at').reverse().toArray()
+      setSyncEntries(entries)
+    } catch {
+      setSyncEntries([])
+    }
+  }, [])
+
   // --- Chargement initial + refresh ---
   const refreshAll = useCallback(async () => {
     setIsOnline(navigator.onLine)
     setWarmCacheAt(localStorage.getItem('ljs-warm-cache-at'))
-    await Promise.all([checkSw(), checkCaches(), checkIdb()])
-  }, [checkSw, checkCaches, checkIdb])
+    await Promise.all([checkSw(), checkCaches(), checkIdb(), checkSyncQueue()])
+  }, [checkSw, checkCaches, checkIdb, checkSyncQueue])
 
   useEffect(() => {
     refreshAll()
@@ -217,6 +230,57 @@ export default function SwDebugPage() {
     localStorage.removeItem('ljs-warm-cache-at')
     setWarmCacheAt(null)
     log('Flag warm cache supprimé')
+  }
+
+  const handleRetryEntry = async (entry: SyncQueueEntry) => {
+    if (entry.id === undefined) return
+    try {
+      const { offlineDb } = await import('@/lib/offline/db')
+      await offlineDb.syncQueue.update(entry.id, {
+        status: 'pending',
+        tentatives: 0,
+        derniere_erreur: null,
+      })
+      log(`Entrée ${entry.uuid_client.slice(0, 8)}… repassée en pending`)
+      await checkSyncQueue()
+    } catch (err) {
+      log(`Erreur retry: ${err instanceof Error ? err.message : String(err)}`)
+    }
+  }
+
+  const handleDeleteEntry = async (entry: SyncQueueEntry) => {
+    if (entry.id === undefined) return
+    try {
+      const { offlineDb } = await import('@/lib/offline/db')
+      await offlineDb.syncQueue.delete(entry.id)
+      log(`Entrée ${entry.uuid_client.slice(0, 8)}… supprimée`)
+      await Promise.all([checkSyncQueue(), checkIdb()])
+    } catch (err) {
+      log(`Erreur suppression: ${err instanceof Error ? err.message : String(err)}`)
+    }
+  }
+
+  const handleRetryAll = async () => {
+    try {
+      const { offlineDb } = await import('@/lib/offline/db')
+      const errorEntries = await offlineDb.syncQueue
+        .where('status')
+        .equals('error')
+        .toArray()
+      for (const entry of errorEntries) {
+        if (entry.id !== undefined) {
+          await offlineDb.syncQueue.update(entry.id, {
+            status: 'pending',
+            tentatives: 0,
+            derniere_erreur: null,
+          })
+        }
+      }
+      log(`${errorEntries.length} entrées en erreur repassées en pending`)
+      await checkSyncQueue()
+    } catch (err) {
+      log(`Erreur retry all: ${err instanceof Error ? err.message : String(err)}`)
+    }
   }
 
   // --- Rendu ---
@@ -319,6 +383,31 @@ export default function SwDebugPage() {
           value={idbInfo?.lastSyncedAt ?? '—'}
           status={idbInfo?.lastSyncedAt ? 'ok' : 'warn'}
         />
+      </DiagSection>
+
+      {/* Section Sync Queue */}
+      <DiagSection title={`Sync Queue (${syncEntries.length})`}>
+        {syncEntries.length === 0 ? (
+          <p className="text-xs" style={{ color: '#6B7280' }}>Aucune entrée dans la file.</p>
+        ) : (
+          <>
+            {syncEntries.some((e) => e.status === 'error') && (
+              <div className="mb-2">
+                <ActionButton label="Relancer toutes les erreurs" onClick={handleRetryAll} />
+              </div>
+            )}
+            <div className="flex flex-col gap-2">
+              {syncEntries.map((entry) => (
+                <SyncEntryCard
+                  key={entry.uuid_client}
+                  entry={entry}
+                  onRetry={() => handleRetryEntry(entry)}
+                  onDelete={() => handleDeleteEntry(entry)}
+                />
+              ))}
+            </div>
+          </>
+        )}
       </DiagSection>
 
       {/* Actions */}
@@ -427,4 +516,85 @@ function formatTimestamp(ts: number): string {
   const d = new Date(ts)
   const ago = Math.round((Date.now() - ts) / 60000)
   return `${d.toLocaleTimeString('fr-FR')} (il y a ${ago} min)`
+}
+
+const STATUS_COLORS: Record<string, { bg: string; color: string }> = {
+  pending: { bg: '#FEF3C7', color: '#92400E' },
+  syncing: { bg: '#DBEAFE', color: '#1E40AF' },
+  synced: { bg: '#ECFDF5', color: '#065F46' },
+  error: { bg: '#FEE2E2', color: '#991B1B' },
+}
+
+function SyncEntryCard({
+  entry,
+  onRetry,
+  onDelete,
+}: {
+  entry: SyncQueueEntry
+  onRetry: () => void
+  onDelete: () => void
+}) {
+  const statusStyle = STATUS_COLORS[entry.status] ?? STATUS_COLORS.error
+  const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
+  const farmIdValid = UUID_RE.test(entry.farm_id)
+
+  return (
+    <div className="rounded-lg p-2 text-xs" style={{ backgroundColor: '#F9FAFB', border: '1px solid #E5E7EB' }}>
+      <div className="flex items-center justify-between mb-1">
+        <span className="font-semibold">{entry.table_cible}</span>
+        <span
+          className="px-1.5 py-0.5 rounded text-[10px] font-medium"
+          style={{ backgroundColor: statusStyle.bg, color: statusStyle.color }}
+        >
+          {entry.status}
+        </span>
+      </div>
+
+      <div className="font-mono text-[10px] space-y-0.5" style={{ color: '#6B7280' }}>
+        <div>uuid: {entry.uuid_client}</div>
+        <div style={{ color: farmIdValid ? '#6B7280' : '#DC2626' }}>
+          farm_id: {entry.farm_id || '(vide)'} {!farmIdValid && ' !! INVALIDE'}
+        </div>
+        <div>tentatives: {entry.tentatives}</div>
+        <div>created: {entry.created_at}</div>
+        {entry.synced_at && <div>synced: {entry.synced_at}</div>}
+        {entry.derniere_erreur && (
+          <div style={{ color: '#DC2626' }}>erreur: {entry.derniere_erreur}</div>
+        )}
+      </div>
+
+      <details className="mt-1">
+        <summary className="text-[10px] cursor-pointer" style={{ color: '#9CA3AF' }}>payload</summary>
+        <pre
+          className="mt-1 text-[10px] p-1 rounded overflow-x-auto"
+          style={{ backgroundColor: '#F3F4F6', color: '#374151', maxHeight: 120 }}
+        >
+          {JSON.stringify(entry.payload, null, 2)}
+        </pre>
+      </details>
+
+      {(entry.status === 'error' || entry.status === 'pending') && (
+        <div className="flex gap-2 mt-2">
+          {entry.status === 'error' && (
+            <button
+              type="button"
+              onClick={onRetry}
+              className="flex-1 text-[11px] py-1 rounded font-medium"
+              style={{ backgroundColor: '#DBEAFE', color: '#1E40AF', border: 'none' }}
+            >
+              Relancer
+            </button>
+          )}
+          <button
+            type="button"
+            onClick={onDelete}
+            className="flex-1 text-[11px] py-1 rounded font-medium"
+            style={{ backgroundColor: '#FEE2E2', color: '#991B1B', border: 'none' }}
+          >
+            Supprimer
+          </button>
+        </div>
+      )}
+    </div>
+  )
 }

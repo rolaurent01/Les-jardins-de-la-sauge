@@ -164,6 +164,12 @@ export function useSyncQueue(farmId: string | null): UseSyncQueueReturn {
       farm_id: string
       payload: Record<string, unknown>
     }): Promise<string> => {
+      // Garde : rejeter les entrées sans farm_id valide (évite les erreurs de sync)
+      const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
+      if (!UUID_RE.test(params.farm_id)) {
+        throw new Error('farm_id invalide — rechargez la page ou reconnectez-vous.')
+      }
+
       const uuid = await addToSyncQueue(params)
       await refreshStatus()
       return uuid

@@ -81,10 +81,19 @@ export async function proxy(request: NextRequest) {
   // Client admin pour les requêtes DB (bypass RLS, car auth.uid() est NULL dans le proxy)
   const admin = createAdminClient()
 
-  // Initialiser le cookie active_farm_id si absent
+  // Initialiser le cookie active_farm_id si absent.
+  // IMPORTANT : on doit aussi le propager via request.cookies pour que
+  // les server components (layout.tsx) le voient dès cette première requête.
   if (!request.cookies.get('active_farm_id')?.value) {
     const farmId = await resolveFirstFarmId(admin, user.id)
     if (farmId) {
+      // Rendre visible aux server components via le request
+      request.cookies.set('active_farm_id', farmId)
+      const previousCookies = response.cookies.getAll()
+      response = NextResponse.next({ request })
+      previousCookies.forEach((c) => response.cookies.set(c.name, c.value))
+
+      // Persister dans le navigateur pour les requêtes suivantes
       response.cookies.set('active_farm_id', farmId, {
         path: '/',
         httpOnly: true,

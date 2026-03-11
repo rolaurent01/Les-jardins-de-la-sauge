@@ -2,6 +2,33 @@
 
 ---
 
+## [2026-03-12 02:30] — Fix sync "farm_id doit être un UUID valide" + debug sync queue
+
+**Type :** `bugfix`
+**Fichiers concernés :** `src/proxy.ts`, `src/hooks/useSyncQueue.ts`, `src/app/[orgSlug]/(mobile)/m/debug/page.tsx`
+
+### Cause racine identifiée
+Le proxy (`src/proxy.ts`) initialisait le cookie `active_farm_id` via `response.cookies.set()` uniquement, sans le propager via `request.cookies.set()`. Résultat : lors de la **première visite** mobile, le server component `layout.tsx` lisait un cookie vide → `farmId = ''` → les saisies enregistrées dans IndexedDB avaient `farm_id: ''` → le schéma Zod côté `/api/sync` rejetait avec "farm_id doit être un UUID valide".
+
+### Corrections
+1. **`src/proxy.ts`** — Propagation du cookie `active_farm_id` au `request` (visible par les server components dès la première requête). Recréation du `response` avec préservation des cookies Supabase existants.
+
+2. **`src/hooks/useSyncQueue.ts`** — Ajout d'une garde dans `addEntry()` : validation UUID du `farm_id` AVANT insertion en IndexedDB. Lève une erreur explicite si invalide → empêche l'enregistrement d'entrées corrompues.
+
+3. **`src/app/[orgSlug]/(mobile)/m/debug/page.tsx`** — Nouvelle section **Sync Queue** :
+   - Liste toutes les entrées IndexedDB avec : uuid, farm_id (rouge si invalide), table_cible, status (badge coloré), tentatives, erreur, dates
+   - Payload détaillé en `<details>` dépliable
+   - Bouton "Relancer" sur les entrées en erreur (repasse en `pending`, reset tentatives)
+   - Bouton "Supprimer" sur les entrées en erreur ou pending
+   - Bouton "Relancer toutes les erreurs" global
+
+### Résultat
+- `npm run build` OK
+- Les nouvelles saisies ne peuvent plus avoir un farm_id vide
+- Les entrées en erreur existantes peuvent être inspectées et relancées/supprimées depuis /m/debug
+
+---
+
 ## [2026-03-12 01:30] — Fix proxy bloque le SW sur Safari iOS + debug amélioré
 
 **Type :** `bugfix`
