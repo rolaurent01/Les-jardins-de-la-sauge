@@ -5,6 +5,7 @@ import { usePathname } from 'next/navigation'
 import { useState } from 'react'
 import { logout } from '@/app/login/actions'
 import FarmSelector from '@/components/layout/FarmSelector'
+import OrgSwitcher from '@/components/layout/OrgSwitcher'
 
 /* ---------------------------------------------------------------
    Design tokens — couleurs structurelles (non liées au branding)
@@ -201,9 +202,11 @@ type SidebarProps = {
   activeFarmId: string
   orgSlug: string
   isPlatformAdmin?: boolean
+  /** Liste de toutes les organisations — passée uniquement pour les platform_admins */
+  allOrganizations?: { slug: string; nom: string }[]
 }
 
-export default function Sidebar({ userEmail, organization, farms, activeFarmId, orgSlug, isPlatformAdmin = false }: SidebarProps) {
+export default function Sidebar({ userEmail, organization, farms, activeFarmId, orgSlug, isPlatformAdmin = false, allOrganizations }: SidebarProps) {
   const pathname = usePathname()
 
   /** Construit le chemin absolu avec le préfixe orgSlug */
@@ -234,6 +237,11 @@ export default function Sidebar({ userEmail, organization, farms, activeFarmId, 
 
       {/* ── Header ─────────────────────────────── */}
       <BrandHeader organization={organization} />
+
+      {/* ── Sélecteur d'organisation (visible uniquement pour les super admins) ── */}
+      {isPlatformAdmin && allOrganizations && (
+        <OrgSwitcher organizations={allOrganizations} activeOrgSlug={orgSlug} />
+      )}
 
       {/* ── Sélecteur de ferme (visible si ≥ 2 fermes) ── */}
       <FarmSelector farms={farms} activeFarmId={activeFarmId} />

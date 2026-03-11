@@ -211,7 +211,37 @@ export default function OrganisationsClient({
                     </span>
                   </td>
                   <td className="px-4 py-3 text-center">{org.farmsCount} / {org.max_farms}</td>
-                  <td className="px-4 py-3 text-center">{org.usersCount} / {org.max_users}</td>
+                  <td className="px-4 py-3 text-center">
+                    <div className="relative group inline-block">
+                      <span className="cursor-help underline decoration-dotted underline-offset-2" style={{ color: '#4B5563' }}>
+                        {org.usersCount} / {org.max_users}
+                      </span>
+                      {/* Tooltip avec le détail des membres */}
+                      {org.members.length > 0 && (
+                        <div
+                          className="absolute z-50 hidden group-hover:block left-1/2 -translate-x-1/2 top-full mt-1.5 rounded-lg shadow-lg text-left whitespace-nowrap"
+                          style={{ backgroundColor: '#1F2937', padding: '8px 12px', minWidth: '180px' }}
+                        >
+                          {org.members.map((m, i) => (
+                            <div key={i} className="flex items-center justify-between gap-3 text-[11px]" style={{ padding: '2px 0' }}>
+                              <span style={{ color: '#E5E7EB' }}>{m.email}</span>
+                              <span
+                                className="rounded-full flex-shrink-0"
+                                style={{
+                                  padding: '1px 6px',
+                                  fontSize: '10px',
+                                  backgroundColor: m.role === 'owner' ? 'rgba(251,191,36,0.2)' : m.role === 'admin' ? 'rgba(96,165,250,0.2)' : 'rgba(156,163,175,0.2)',
+                                  color: m.role === 'owner' ? '#FCD34D' : m.role === 'admin' ? '#93C5FD' : '#9CA3AF',
+                                }}
+                              >
+                                {m.role}
+                              </span>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  </td>
                   <td className="px-4 py-3 text-right">
                     <div className="flex items-center justify-end gap-2">
                       <button

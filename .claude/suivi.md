@@ -2,6 +2,40 @@
 
 ---
 
+## [2026-03-11 03:30] — Admin organisations : affichage des membres au survol
+
+**Type :** `feature`
+**Fichiers concernés :** `src/app/[orgSlug]/(dashboard)/admin/organisations/actions.ts`, `src/components/admin/OrganisationsClient.tsx`
+
+### Description
+La colonne "Utilisateurs" du tableau des organisations affiche désormais un tooltip au survol avec le détail des membres (email + rôle avec badge coloré owner/admin/member).
+
+### Détails techniques
+- **Type `OrgMember`** ajouté : `{ email: string, role: string }`
+- **`fetchOrganizations`** enrichi : charge les memberships puis résout les emails via `admin.auth.admin.listUsers()`. Le `usersCount` est calculé depuis les memberships réels.
+- **Tooltip CSS** : positionné via `group-hover:block` (Tailwind), fond sombre `#1F2937`, badges colorés par rôle (jaune owner, bleu admin, gris member).
+
+---
+
+## [2026-03-11 03:00] — A7.3 : Super admin multi-org — auto-membership + OrgSwitcher
+
+**Type :** `feature`
+**Fichiers concernés :** `supabase/migrations/025_auto_admin_membership.sql`, `src/components/layout/OrgSwitcher.tsx`, `src/components/Sidebar.tsx`, `src/app/[orgSlug]/(dashboard)/layout.tsx`, `.claude/context.md`, `.claude/plan-action.md`
+
+### Description
+Le super admin (platform_admin) est désormais automatiquement membre (owner) de toutes les organisations. Un sélecteur d'organisation dans la sidebar lui permet de basculer librement entre les orgs sans impersonation.
+
+### Détails techniques
+- **Migration SQL 025** : trigger `fn_auto_admin_membership` sur `AFTER INSERT ON organizations` — crée un membership `owner` pour chaque platform_admin à la création d'une org. Rattrapage inclus pour les orgs existantes (`CROSS JOIN` + `ON CONFLICT DO NOTHING`).
+- **Composant `OrgSwitcher`** : dropdown client-side, même style que `FarmSelector`. Au switch : supprime le cookie `active_farm_id` (pour que le layout résolve la 1ère ferme de la nouvelle org) puis `router.push()` vers `/{orgSlug}/dashboard`. Masqué si une seule org.
+- **Sidebar** : nouveau prop `allOrganizations` passé uniquement si `isPlatformAdmin`. L'OrgSwitcher est affiché entre le BrandHeader et le FarmSelector.
+- **Layout** : charge la liste de toutes les organisations (`admin.from('organizations').select('slug, nom')`) uniquement si l'utilisateur est platform_admin.
+- **Zéro modification** des Server Actions, du proxy, ou de context.ts — les memberships existent nativement donc les RLS sont satisfaites.
+- **context.md** : ajout de la décision dans §3.4 et §13.
+- **plan-action.md** : ajout de la section A7.3.
+
+---
+
 ## [2026-03-11 02:00] — Mise à jour documentation : cycle de vie semis → plantation
 
 **Type :** `docs`

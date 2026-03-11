@@ -64,6 +64,16 @@ export default async function DashboardLayout({
   // Vérifier si l'utilisateur est super admin plateforme
   const isAdmin = user ? await isPlatformAdmin(user.id) : false
 
+  // Charger toutes les organisations si super admin (pour le sélecteur d'org)
+  let allOrganizations: { slug: string; nom: string }[] = []
+  if (isAdmin) {
+    const { data: orgs } = await admin
+      .from('organizations')
+      .select('slug, nom')
+      .order('nom')
+    allOrganizations = orgs ?? []
+  }
+
   // Vérifier le mode impersonation
   const impersonateFarmId = cookieStore.get('impersonate_farm_id')?.value
   let impersonationFarmName: string | null = null
@@ -87,6 +97,7 @@ export default async function DashboardLayout({
           activeFarmId={activeFarmId}
           orgSlug={orgSlug}
           isPlatformAdmin={isAdmin}
+          allOrganizations={allOrganizations}
         />
       </div>
 

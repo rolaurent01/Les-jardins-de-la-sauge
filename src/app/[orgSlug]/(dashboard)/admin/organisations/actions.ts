@@ -25,10 +25,17 @@ function slugify(text: string): string {
     .replace(/^-+|-+$/g, '')
 }
 
-/** Organisation enrichie avec compteurs */
+/** Membre avec email et rôle */
+export type OrgMember = {
+  email: string
+  role: string
+}
+
+/** Organisation enrichie avec compteurs et liste de membres */
 export type OrganizationWithCounts = Organization & {
   farmsCount: number
   usersCount: number
+  members: OrgMember[]
 }
 
 /** Récupère toutes les organisations avec compteurs */
@@ -44,17 +51,32 @@ export async function fetchOrganizations(): Promise<OrganizationWithCounts[]> {
   if (error) throw new Error(`Erreur : ${error.message}`)
   if (!orgs) return []
 
-  // Compteurs en parallèle
+  // Compteurs + membres en parallèle
   const enriched = await Promise.all(
     orgs.map(async (org) => {
-      const [farmsRes, membersRes] = await Promise.all([
+      const [farmsRes, membershipsRes] = await Promise.all([
         admin.from('farms').select('id', { count: 'exact', head: true }).eq('organization_id', org.id),
-        admin.from('memberships').select('id', { count: 'exact', head: true }).eq('organization_id', org.id),
+        admin.from('memberships').select('user_id, role').eq('organization_id', org.id),
       ])
+
+      // Résoudre les emails depuis auth.users
+      const memberships = membershipsRes.data ?? []
+      let members: OrgMember[] = []
+      if (memberships.length > 0) {
+        const userIds = memberships.map(m => m.user_id)
+        const { data: { users } } = await admin.auth.admin.listUsers({ perPage: 1000 })
+        const userMap = new Map(users.map(u => [u.id, u.email ?? '']))
+        members = memberships.map(m => ({
+          email: userMap.get(m.user_id) ?? 'Inconnu',
+          role: m.role,
+        }))
+      }
+
       return {
         ...org,
         farmsCount: farmsRes.count ?? 0,
-        usersCount: membersRes.count ?? 0,
+        usersCount: memberships.length,
+        members,
       } as OrganizationWithCounts
     })
   )

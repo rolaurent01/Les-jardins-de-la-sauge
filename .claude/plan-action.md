@@ -307,6 +307,27 @@ Le mobile est UN TERMINAL DE SAISIE TERRAIN. Le protocole de sync garantit ZÉRO
 - **Espace admin** : accès au recalcul production_summary, consultation des logs (`app_logs`), vérification backup
 - **Page "Mes variétés"** : page bureau Référentiel → Mes variétés. Checkboxes pour sélectionner les variétés actives de la ferme. Impact direct sur le cache mobile (seules les variétés non masquées sont chargées).
 
+### A7.3 — Super admin multi-org (OrgSwitcher)
+**Durée** : 0.5 jour
+
+**Objectif** : permettre au super admin (platform_admin) de naviguer librement entre toutes les organisations sans impersonation.
+
+**Principe** : le super admin est automatiquement membre (owner) de toutes les organisations. Un trigger SQL crée le membership à la création de chaque org. Un sélecteur d'organisation dans la sidebar permet de basculer.
+
+**Livrables** :
+- Migration SQL : trigger `auto_admin_membership` sur `AFTER INSERT ON organizations` + rattrapage des orgs existantes
+- Composant `OrgSwitcher` dans la sidebar (visible uniquement si platform_admin)
+- Au clic : redirection vers `/{orgSlug}/dashboard` + mise à jour du cookie `active_farm_id`
+
+**Fichiers** :
+- `supabase/migrations/025_auto_admin_membership.sql` — trigger + rattrapage
+- `src/components/layout/OrgSwitcher.tsx` — composant sélecteur
+- `src/components/layout/Sidebar.tsx` — intégration du composant
+
+**Zéro modification** des Server Actions, du proxy, ou de context.ts (les memberships existent nativement → RLS satisfaites).
+
+---
+
 **✅ Critère de fin Phase A** : tu vas au terrain avec ton téléphone, tu saisis toutes tes opérations, tu synchronises le soir, et les données sont justes. Le stock reflète la réalité. L'appli est utilisable au quotidien.
 
 ---
