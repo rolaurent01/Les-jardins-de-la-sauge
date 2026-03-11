@@ -264,8 +264,8 @@ export default function RecetteSlideOver({
                 </select>
               </Field>
 
-              {/* N° tisane */}
-              <Field label="N° tisane">
+              {/* Ref Produit */}
+              <Field label="Ref Produit">
                 <input
                   name="numero_tisane"
                   type="text"

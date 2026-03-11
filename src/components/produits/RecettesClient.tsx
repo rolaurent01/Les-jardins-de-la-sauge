@@ -274,7 +274,7 @@ export default function RecettesClient({ initialRecipes, categories, varieties, 
               <tr style={{ backgroundColor: '#F5F2ED', borderBottom: '1px solid #D8E0D9' }}>
                 <Th>Nom</Th>
                 <Th>Categorie</Th>
-                <Th>N° tisane</Th>
+                <Th>Ref Produit</Th>
                 <Th>Poids sachet</Th>
                 <Th>Ingredients</Th>
                 <Th>Statut</Th>
@@ -318,7 +318,7 @@ export default function RecettesClient({ initialRecipes, categories, varieties, 
                       )}
                     </td>
 
-                    {/* N° tisane */}
+                    {/* Ref Produit */}
                     <td className="px-4 py-3" style={{ color: '#2C3E2D' }}>
                       {r.numero_tisane || <Dash />}
                     </td>
