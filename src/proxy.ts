@@ -186,8 +186,8 @@ async function resolveFirstFarmId(
 }
 
 export const config = {
-  // Exclure les assets statiques, les routes API internes et les fichiers PWA
+  // Exclure les assets statiques, les routes API internes, les fichiers PWA et le Service Worker
   matcher: [
-    '/((?!api|_next/static|_next/image|favicon\\.ico|manifest\\.json|icons|.*\\.png|.*\\.ico|.*\\.svg).*)',
+    '/((?!api|_next/static|_next/image|favicon\\.ico|manifest\\.json|icons|serwist|offline|.*\\.png|.*\\.ico|.*\\.svg).*)',
   ],
 }

@@ -41,6 +41,7 @@ export default function SwDebugPage() {
   const [isOnline, setIsOnline] = useState(true)
   const [warmCacheAt, setWarmCacheAt] = useState<string | null>(null)
   const [fetchResult, setFetchResult] = useState<string | null>(null)
+  const [swUrlCheck, setSwUrlCheck] = useState<string | null>(null)
   const [actionLog, setActionLog] = useState<string[]>([])
 
   const log = useCallback((msg: string) => {
@@ -136,6 +137,26 @@ export default function SwDebugPage() {
   }, [refreshAll])
 
   // --- Actions ---
+  const handleCheckSwUrl = async () => {
+    setSwUrlCheck(null)
+    const swUrl = '/serwist/sw.js'
+    try {
+      const res = await fetch(swUrl)
+      const contentType = res.headers.get('content-type') ?? '(absent)'
+      const bodySize = (await res.clone().text()).length
+      const info = `${res.status} ${res.statusText} | Content-Type: ${contentType} | ${bodySize} octets`
+      setSwUrlCheck(info)
+      log(`SW URL check: ${info}`)
+      if (!contentType.includes('javascript')) {
+        log(`PROBLEME: Content-Type n'est pas JavaScript — le proxy redirige probablement vers /login`)
+      }
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err)
+      setSwUrlCheck(`ERREUR: ${msg}`)
+      log(`SW URL check ERREUR: ${msg}`)
+    }
+  }
+
   const handleTestFetch = async () => {
     setFetchResult(null)
     const url = `/${orgSlug}/m/saisie`
@@ -303,13 +324,22 @@ export default function SwDebugPage() {
       {/* Actions */}
       <DiagSection title="Actions">
         <div className="flex flex-col gap-2">
+          <ActionButton label="Vérifier URL SW (/serwist/sw.js)" onClick={handleCheckSwUrl} />
+          {swUrlCheck && (
+            <p className="text-xs px-2 py-1 rounded font-mono" style={{
+              backgroundColor: swUrlCheck.includes('javascript') ? '#ECFDF5' : '#FEF2F2',
+              color: swUrlCheck.includes('javascript') ? '#065F46' : '#991B1B',
+            }}>
+              {swUrlCheck}
+            </p>
+          )}
+          <ActionButton label="Forcer enregistrement SW" onClick={handleForceRegister} />
           <ActionButton label="Tester fetch /m/saisie" onClick={handleTestFetch} />
           {fetchResult && (
             <p className="text-xs px-2 py-1 rounded" style={{ backgroundColor: '#F3F4F6', color: '#374151' }}>
               {fetchResult}
             </p>
           )}
-          <ActionButton label="Forcer enregistrement SW" onClick={handleForceRegister} />
           <ActionButton label="Lancer warm cache" onClick={handleWarmCache} />
           <ActionButton label="Reset flag warm cache (24h)" onClick={handleClearWarmFlag} variant="secondary" />
         </div>

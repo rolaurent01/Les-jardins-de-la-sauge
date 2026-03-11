@@ -2,6 +2,31 @@
 
 ---
 
+## [2026-03-12 01:30] — Fix proxy bloque le SW sur Safari iOS + debug amélioré
+
+**Type :** `bugfix`
+**Fichiers concernés :** `src/proxy.ts`, `src/app/[orgSlug]/(mobile)/m/debug/page.tsx`
+
+### Cause racine identifiée
+Le proxy Next.js (`src/proxy.ts`) interceptait `/serwist/sw.js` et le redirigeait vers `/login` car `/serwist/` n'était pas dans la liste des routes publiques. Safari recevait du HTML au lieu de JavaScript → l'enregistrement du SW échouait silencieusement.
+
+### Corrections
+1. **`src/proxy.ts`** — Ajout de `serwist` et `offline` au matcher d'exclusion du proxy. Ces routes sont désormais publiques (pas d'auth check).
+   - Avant : `/((?!api|_next/static|_next/image|favicon\\.ico|manifest\\.json|icons|.*\\.png|.*\\.ico|.*\\.svg).*)`
+   - Après : ajout de `serwist|offline` dans le pattern
+
+2. **Page debug améliorée** — Nouveau bouton "Vérifier URL SW" qui fetch `/serwist/sw.js` et affiche :
+   - Status HTTP + Content-Type + taille du body
+   - Badge vert si Content-Type contient `javascript`, rouge sinon
+   - Log d'alerte si le proxy redirige (Content-Type HTML au lieu de JS)
+
+### Résultat
+- `npm run build` OK
+- `/serwist/sw.js` ne passe plus par le proxy → retourne du JS avec Content-Type correct
+- `/offline` accessible sans auth pour le fallback offline
+
+---
+
 ## [2026-03-12 01:00] — Page de diagnostic Service Worker (debug Safari iOS)
 
 **Type :** `debug`
