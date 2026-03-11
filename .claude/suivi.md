@@ -2,6 +2,53 @@
 
 ---
 
+## [2026-03-11 23:30] — Suppression fallback INSERT dans tests (migration 028 appliquée)
+
+**Type :** `test`
+**Fichiers concernés :** `src/tests/integration/flow-tests.ts`
+
+### Description
+Migration 028 appliquée en prod. Suppression du code fallback INSERT dans les étapes 4 (harvest) et 8 (production lot) des tests de flux métier. Les tests exigent désormais la RPC — ils échouent si elle n'est pas disponible.
+
+### Résultat
+66/66 tests passent, 1 skippé (sync sans TEST_USER_PASSWORD). RPCs confirmées opérationnelles.
+
+---
+
+## [2026-03-11 23:00] — Fix RPC manquante create_harvest_with_stock (migration 028)
+
+**Type :** `bugfix`
+**Fichiers concernés :** `supabase/migrations/028_fix_missing_rpcs.sql`, `src/tests/integration/flow-tests.ts`
+
+### Description
+Investigation et correction de la RPC `create_harvest_with_stock` absente du schema cache PostgREST. La migration 012 n'avait jamais été appliquée à la base Supabase. La RPC `create_production_lot_with_stock` (migrations 019/021) fonctionnait — le problème initial dans les tests était un format incorrect du paramètre `p_ingredients` (JSON.stringify au lieu d'un tableau JS direct).
+
+### Détails techniques
+- Migration 028 : recrée `create_harvest_with_stock` + toutes les RPCs de production (019/021) par sécurité (CREATE OR REPLACE = idempotent)
+- Inclut `NOTIFY pgrst, 'reload schema'` pour recharger le cache PostgREST
+- ✅ Migration appliquée dans Supabase SQL Editor — fallback INSERT supprimé des tests
+- 66/66 tests passent
+
+---
+
+## [2026-03-11 22:00] — Suite de tests d'intégration (3 niveaux)
+
+**Type :** `test`
+**Fichiers concernés :** `src/tests/integration/run-integration-tests.ts`, `src/tests/integration/rls-tests.ts`, `src/tests/integration/flow-tests.ts`, `src/tests/integration/sync-tests.ts`, `src/tests/integration/cleanup.ts`, `package.json`
+
+### Description
+Création d'une suite de tests d'intégration complète qui teste la vraie base Supabase (pas de mocks). 3 niveaux : RLS (permissions), flux métier complet (graine → produit fini), sync mobile.
+
+### Détails techniques
+- **Niveau 1 — RLS (36 tests)** : vérifie SELECT sur toutes les tables (catalogue, métier, plateforme, restreintes, v_stock). Teste INSERT/UPDATE/SOFT DELETE sur varieties. Confirme la correction de la récursion platform_admins.
+- **Niveau 2 — Flux métier (30 tests)** : cycle complet sachet → semis → plantation → cueillette → tronçonnage → séchage → triage → recette/production → achat → vente → ajustement → arrachage → soft-delete/restore. Vérifie v_stock à chaque étape critique.
+- **Niveau 3 — Sync (15 tests)** : teste POST /api/sync par table, idempotence, validation (farm_id invalide, table inconnue, payload vide, uuid invalide), audit endpoint. Nécessite `npm run dev` + `TEST_USER_PASSWORD`.
+- **Nettoyage robuste** : cleanup try/finally, préfixe `__TEST__`, ordre inverse des FK, inclut production_summary pour éviter blocage FK sur varieties.
+- Script : `npm run test:integration` (ou `TEST_USER_PASSWORD=xxx npm run test:integration` pour les 3 niveaux)
+- **Résultat** : 66/66 tests passés, idempotent, nettoyage complet vérifié.
+
+---
+
 ## [2026-03-11 21:00] — Fix RLS récursion infinie sur platform_admins
 
 **Type :** `bugfix`
