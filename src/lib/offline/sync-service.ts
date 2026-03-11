@@ -89,6 +89,7 @@ export async function processSyncQueue(): Promise<SyncResult> {
         await offlineDb.syncQueue.update(entry.id, {
           status: 'synced',
           synced_at: new Date().toISOString(),
+          derniere_erreur: null,
           payload: { ...entry.payload, server_id: response.server_id },
         })
         result.sent++
@@ -234,12 +235,16 @@ interface ServerSyncResponse {
   error?: string
 }
 
-/** Envoie une entrée au serveur via POST /api/sync */
+/** Envoie une entrée au serveur via POST /api/sync (timeout 10s pour cold start Vercel) */
 async function sendToServer(entry: SyncQueueEntry): Promise<ServerSyncResponse> {
+  const controller = new AbortController()
+  const timeoutId = setTimeout(() => controller.abort(), 10_000)
+
   const response = await fetch('/api/sync', {
     method: 'POST',
     credentials: 'same-origin',
     headers: { 'Content-Type': 'application/json' },
+    signal: controller.signal,
     body: JSON.stringify({
       uuid_client: entry.uuid_client,
       table_cible: entry.table_cible,
@@ -248,6 +253,7 @@ async function sendToServer(entry: SyncQueueEntry): Promise<ServerSyncResponse> 
     }),
   })
 
+  clearTimeout(timeoutId)
   return response.json() as Promise<ServerSyncResponse>
 }
 
@@ -257,17 +263,23 @@ interface ServerAuditResponse {
   total_checked: number
 }
 
-/** Envoie un lot d'UUID au serveur pour vérification */
+/** Envoie un lot d'UUID au serveur pour vérification (timeout 10s) */
 async function sendAuditBatch(
   uuidClients: string[],
   farmId: string,
 ): Promise<ServerAuditResponse> {
+  const controller = new AbortController()
+  const timeoutId = setTimeout(() => controller.abort(), 10_000)
+
   const response = await fetch('/api/sync/audit', {
     method: 'POST',
     credentials: 'same-origin',
     headers: { 'Content-Type': 'application/json' },
+    signal: controller.signal,
     body: JSON.stringify({ uuid_clients: uuidClients, farm_id: farmId }),
   })
+
+  clearTimeout(timeoutId)
 
   if (!response.ok) {
     throw new Error(`Audit HTTP ${response.status}`)

@@ -2,6 +2,20 @@
 
 ---
 
+## [2026-03-12 04:00] — Timeout fetch 10s + clear erreur après sync réussi
+
+**Type :** `amélioration`
+**Fichiers concernés :** `src/lib/offline/sync-service.ts`
+
+### Corrections
+1. **Timeout explicite 10s** sur `sendToServer()` et `sendAuditBatch()` via `AbortController`. Safari iOS a un timeout agressif qui cause "Load failed" lors des cold starts Vercel. Le timeout 10s laisse le temps au serverless de démarrer.
+2. **Clear `derniere_erreur`** quand une sync réussit après un échec précédent — évite d'afficher une erreur obsolète dans la debug page.
+
+### Résultat
+- `npm run build` OK
+
+---
+
 ## [2026-03-12 03:30] — Fix validation UUID bootstrappés rejetés par z.string().uuid()
 
 **Type :** `bugfix`
