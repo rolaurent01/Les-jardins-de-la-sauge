@@ -1,9 +1,10 @@
 'use client'
 
-import { useMemo } from 'react'
+import { useEffect, useMemo } from 'react'
 import { useOfflineCache } from '@/hooks/useOfflineCache'
 import { useOnlineStatus } from '@/hooks/useOnlineStatus'
 import { useSyncQueue } from '@/hooks/useSyncQueue'
+import { warmMobileCache } from '@/lib/offline/warm-cache'
 import { MobileSyncContext, type MobileSyncContextValue } from './MobileSyncContext'
 import MobileSyncUI from './MobileSyncUI'
 
@@ -36,6 +37,14 @@ export default function MobileShell({
 
   const cache = useOfflineCache(farmId, userContext)
   const sync = useSyncQueue(farmId)
+
+  // Warm cache : précacher toutes les pages mobiles en arrière-plan
+  // dès que le cache IndexedDB est prêt et qu'on est en ligne.
+  useEffect(() => {
+    if (cache.isReady && isOnline) {
+      warmMobileCache(orgSlug)
+    }
+  }, [cache.isReady, isOnline, orgSlug])
 
   const contextValue = useMemo<MobileSyncContextValue>(
     () => ({

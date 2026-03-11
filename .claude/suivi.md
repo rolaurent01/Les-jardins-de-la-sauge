@@ -2,6 +2,57 @@
 
 ---
 
+## [2026-03-12 00:30] — Warm cache : précache automatique de toutes les pages mobiles
+
+**Type :** `feature`
+**Fichiers concernés :** `src/lib/offline/mobile-routes.ts`, `src/lib/offline/warm-cache.ts`, `src/app/sw.ts`, `src/components/mobile/MobileShell.tsx`
+
+### Description
+Auparavant, les pages mobiles n'étaient disponibles offline que si visitées au moins une fois. Désormais, la première visite sur `/m/saisie` déclenche le précache de TOUTES les 21 pages mobiles en arrière-plan.
+
+### Architecture
+1. **`mobile-routes.ts`** — Liste centralisée des 21 routes mobiles (`getMobileRoutes(orgSlug)`).
+2. **`warm-cache.ts`** — Fonction client qui envoie un message `WARM_CACHE` au SW avec la liste des URLs. Throttle 24 h via `localStorage('ljs-warm-cache-at')`. Écoute la confirmation `WARM_CACHE_DONE`.
+3. **`sw.ts`** — Handler `message` qui reçoit `WARM_CACHE`, fetch chaque URL par lots de 3 et stocke dans le cache `mobile-pages` (même cache que la stratégie `NetworkFirst` pour `/m/`). Utilise `event.waitUntil` pour garantir la complétion.
+4. **`MobileShell.tsx`** — Appelle `warmMobileCache(orgSlug)` via `useEffect` dès que `cache.isReady && isOnline`.
+
+### Choix technique : SW message vs fetch client
+Le fetch programmatique depuis le client a `request.mode !== "navigate"`, donc ne passe pas par le matcher `mobilePagesCaching`. Le SW message approach permet d'écrire directement dans le bon cache (`mobile-pages`) via `caches.open()` + `cache.put()`.
+
+### Résultat
+- `npm run build` OK.
+- Au premier chargement mobile en ligne → 21 pages précachées en arrière-plan par lots de 3.
+- Pas de re-warm avant 24 h (localStorage).
+- Toutes les pages mobiles disponibles offline sans visite préalable.
+
+---
+
+## [2026-03-11 24:00] — Fix Service Worker offline (Option C : cache mobile + fallback /offline)
+
+**Type :** `bugfix`
+**Fichiers concernés :** `src/app/sw.ts`, `src/app/offline/page.tsx`, `src/app/serwist/[path]/route.ts`
+
+### Description
+L'app mobile ne fonctionnait pas hors ligne : les routes `/m/saisie` échouaient sans réseau. Le `defaultCache` de Serwist inclut du `NetworkFirst` pour les pages same-origin, mais aucun fallback n'était configuré pour les pages jamais visitées.
+
+### Diagnostic
+- **Scope SW** : OK — `@serwist/turbopack` envoie `Service-Worker-Allowed: /` et le scope par défaut est `/`.
+- **Runtime caching** : `defaultCache` a bien `NetworkFirst` pour les pages same-origin, mais sans `networkTimeoutSeconds` ni fallback offline.
+- **Cause racine** : quand le réseau est coupé et qu'une page n'est pas en cache, `NetworkFirst` échoue sans alternative → erreur réseau.
+
+### Corrections (Option C)
+1. **Page offline statique** (`src/app/offline/page.tsx`) — page "Hors ligne" avec bouton Réessayer, prérendue statiquement par Next.js.
+2. **Stratégie mobile dédiée** dans `src/app/sw.ts` — `NetworkFirst` avec `networkTimeoutSeconds: 3` pour les routes `/m/` (cache `mobile-pages`, TTL 7 jours, max 50 entrées). Insérée AVANT le `defaultCache` pour priorité.
+3. **Fallback navigation** via `fallbacks.entries` Serwist — sert `/offline` depuis le precache quand une stratégie échoue pour un `document`.
+4. **Précache /offline** ajouté dans `additionalPrecacheEntries` du route handler (`src/app/serwist/[path]/route.ts`).
+
+### Résultat
+- `npm run build` OK — `/offline` prérendue statique (○), SW généré.
+- Pages mobiles visitées = servies depuis le cache hors ligne.
+- Pages jamais visitées = fallback vers `/offline`.
+
+---
+
 ## [2026-03-11 23:30] — Suppression fallback INSERT dans tests (migration 028 appliquée)
 
 **Type :** `test`
