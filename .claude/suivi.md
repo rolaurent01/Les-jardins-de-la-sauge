@@ -2,6 +2,49 @@
 
 ---
 
+## [2026-03-11 12:00] — ✅ Phase A complète — Socle de données
+
+**Type :** `milestone`
+
+### Modules livrés
+- A0/A0.9 : Fondations + référentiel + multi-tenant
+- A1 : Semis (sachets + suivi)
+- A2 : Suivi parcelle (travail sol, plantation, suivi rang, cueillette, arrachage, occultation)
+- A3 : Transformation (tronçonnage, séchage, triage + stock event-sourced)
+- A4 : Produits (recettes, wizard production 2 modes, stock produits finis)
+- A5 : Affinage stock (achats, ventes directes, ajustements)
+- A6 : Mobile PWA offline + sync (protocole zéro perte, 15 formulaires, timer intégré)
+- A7 : Polish (espace admin, page Mes variétés, clôture de saison, nettoyage)
+
+### Chiffres
+- 40 tables SQL
+- 58 routes (dont 52 dynamiques)
+- 376 tests unitaires passants (22 fichiers)
+- 249 fichiers source TypeScript/TSX
+
+### Prêt pour test terrain
+Checklist E2E disponible dans docs/checklist-mobile-e2e.md
+Configuration production dans docs/setup-production.md
+
+---
+
+## [2026-03-11 11:50] — A7.4 : Nettoyage final Phase A
+
+**Type :** `cleanup`
+**Fichiers concernés :** `src/app/login/actions.ts`, `docs/setup-production.md`, `.claude/suivi.md`
+
+### Description
+Nettoyage final avant test terrain : suppression des console.log de debug, vérification des migrations, build et tests, documentation production.
+
+### Détails techniques
+- **Console.log supprimés** : 3 logs `[LOGIN]` de debug temporaire dans `src/app/login/actions.ts`. Les 2 `console.error` légitimes (keep-alive, arrachage) sont conservés.
+- **Migration 023** : vérifiée OK (INSERT platform_admins pour rolaurent01@hotmail.com)
+- **Build** : `npm run build` passe sans erreur ni warning (58 routes)
+- **Tests** : `npx vitest run` — 376 tests passants, 0 échec
+- **docs/setup-production.md** : créé avec les étapes de config Supabase (refresh token 30j, migrations, bucket org-logos, env vars, crons, premier utilisateur)
+
+---
+
 ## [2026-03-11 10:00] — Page "Mes variétés" — sélection des variétés actives par ferme
 
 **Type :** `feature`

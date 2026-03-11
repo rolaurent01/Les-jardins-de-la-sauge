@@ -19,8 +19,6 @@ export async function login(formData: FormData): Promise<{ error: string } | nev
           return cookieStore.getAll()
         },
         setAll(cookiesToSet) {
-          // --- DEBUG TEMPORAIRE (à retirer après diagnostic) ---
-          console.log('[LOGIN] setAll called, cookies:', cookiesToSet.map(c => c.name))
           cookiesToSet.forEach(({ name, value, options }) => {
             cookieStore.set(name, value, options)
           })
@@ -32,13 +30,6 @@ export async function login(formData: FormData): Promise<{ error: string } | nev
   const { data: authData, error } = await supabase.auth.signInWithPassword({
     email: formData.get('email') as string,
     password: formData.get('password') as string,
-  })
-
-  // --- DEBUG TEMPORAIRE (à retirer après diagnostic) ---
-  console.log('[LOGIN]', {
-    success: !error,
-    error: error?.message || null,
-    userId: authData?.user?.id?.slice(0, 8) || null,
   })
 
   if (error || !authData.user) {
@@ -64,8 +55,6 @@ export async function login(formData: FormData): Promise<{ error: string } | nev
   } catch {
     // Erreur réseau ou DB — on laisse redirectPath à null
   }
-
-  console.log('[LOGIN] redirectPath:', redirectPath)
 
   if (!redirectPath) {
     return { error: 'Aucune organisation associée à ce compte. Contactez un administrateur.' }
