@@ -573,28 +573,26 @@ function SyncEntryCard({
         </pre>
       </details>
 
-      {(entry.status === 'error' || entry.status === 'pending') && (
-        <div className="flex gap-2 mt-2">
-          {entry.status === 'error' && (
-            <button
-              type="button"
-              onClick={onRetry}
-              className="flex-1 text-[11px] py-1 rounded font-medium"
-              style={{ backgroundColor: '#DBEAFE', color: '#1E40AF', border: 'none' }}
-            >
-              Relancer
-            </button>
-          )}
+      <div className="flex gap-2 mt-2">
+        {entry.status === 'error' && (
           <button
             type="button"
-            onClick={onDelete}
+            onClick={onRetry}
             className="flex-1 text-[11px] py-1 rounded font-medium"
-            style={{ backgroundColor: '#FEE2E2', color: '#991B1B', border: 'none' }}
+            style={{ backgroundColor: '#DBEAFE', color: '#1E40AF', border: 'none' }}
           >
-            Supprimer
+            Relancer
           </button>
-        </div>
-      )}
+        )}
+        <button
+          type="button"
+          onClick={onDelete}
+          className="flex-1 text-[11px] py-1 rounded font-medium"
+          style={{ backgroundColor: '#FEE2E2', color: '#991B1B', border: 'none' }}
+        >
+          Supprimer
+        </button>
+      </div>
     </div>
   )
 }

@@ -2,6 +2,16 @@
 
 ---
 
+## [2026-03-12 04:15] — Bouton Supprimer visible pour tous les statuts dans /m/debug
+
+**Type :** `fix UI`
+**Fichiers concernés :** `src/app/[orgSlug]/(mobile)/m/debug/page.tsx`
+
+### Correction
+Le bouton "Supprimer" de la section Sync Queue n'était affiché que pour les statuts `error` et `pending`. Supprimé la condition restrictive — le bouton est maintenant visible pour tous les statuts (pending, syncing, synced, error).
+
+---
+
 ## [2026-03-12 04:00] — Timeout fetch 10s + clear erreur après sync réussi
 
 **Type :** `amélioration`
