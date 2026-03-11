@@ -2,6 +2,45 @@
 
 ---
 
+## [2026-03-11 21:00] — Fix RLS récursion infinie sur platform_admins
+
+**Type :** `bugfix`
+**Fichiers concernés :** `supabase/migrations/027_fix_platform_admins_rls.sql`
+
+### Description
+Corrige l'erreur "infinite recursion detected in policy for relation platform_admins". La politique `admin_only` (migration 011, ligne 640) faisait `SELECT user_id FROM platform_admins` sur elle-même → boucle infinie RLS.
+
+### Détails techniques
+- Supprime la politique récursive `admin_only` sur `platform_admins`
+- Nouvelle politique `platform_admins_select` : `user_id = auth.uid()` (pas de sous-requête → pas de récursion)
+- INSERT/UPDATE/DELETE bloqués via RLS (`false`) — seul `service_role` peut modifier
+- Les autres tables qui font `auth.uid() IN (SELECT user_id FROM platform_admins)` fonctionnent car la sous-requête sur `platform_admins` ne déclenche plus de récursion (la politique SELECT vérifie juste `user_id = auth.uid()`)
+- Build OK
+
+---
+
+## [2026-03-11 20:00] — Prévisionnel : objectifs par variété ET par état plante
+
+**Type :** `feature`
+**Fichiers concernés :** `src/lib/constants/etat-plante.ts`, `src/lib/validation/previsionnel.ts`, `src/app/[orgSlug]/(dashboard)/previsionnel/actions.ts`, `src/app/[orgSlug]/(dashboard)/previsionnel/page.tsx`, `src/components/previsionnel/PrevisionnelClient.tsx`, `src/components/transformation/types.ts`
+
+### Description
+Refonte du module Prévisionnel pour supporter les objectifs par variété × état plante. Chaque variété peut avoir plusieurs objectifs à différents stades de transformation (ex: Menthe 50 kg frais + 8 kg tronç. séch. triée). Le tableau affiche un badge coloré par état, le réalisé vient des récoltes (frais) ou du stock v_stock (autres états).
+
+### Détails techniques
+- Nouveau fichier partagé `src/lib/constants/etat-plante.ts` : ETATS_PLANTE, ETAT_PLANTE_LABELS (avec accents), ETAT_PLANTE_COLORS (6 couleurs)
+- Schéma Zod : `etat_plante` passe de nullable/optional à obligatoire
+- `fetchRealisedByVariety` renommé en `fetchRealisedData` : retourne `cueilliParVariete` (harvests) + `stockParVarieteEtat` (v_stock) en parallèle
+- Tri des forecasts : groupé par famille → variété → état plante
+- Formulaire d'ajout : sélecteur variété + état plante + quantité, détection de doublons variété × état
+- Résumé adapté : compte les objectifs (pas les variétés), total récolte uniquement sur les objectifs frais
+- Lignes groupées visuellement : nom variété affiché uniquement sur la première ligne, flèche ↳ pour les suivantes
+- `copyForecastsFromYear` copie avec etat_plante intact
+- `transformation/types.ts` : re-export depuis le fichier partagé (labels avec accents FR)
+- Build OK sans erreur
+
+---
+
 ## [2026-03-11 18:00] — Page Prévisionnel (saisie des objectifs annuels)
 
 **Type :** `feature`
