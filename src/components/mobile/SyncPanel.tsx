@@ -42,6 +42,7 @@ export default function SyncPanel({ open, onClose }: SyncPanelProps) {
     forceSync,
     lastAuditResult,
     storageEstimate,
+    orgSlug,
   } = useMobileSync()
 
   const [errorEntries, setErrorEntries] = useState<SyncQueueEntry[]>([])
@@ -344,6 +345,14 @@ export default function SyncPanel({ open, onClose }: SyncPanelProps) {
               </div>
             </Section>
           )}
+          {/* Lien debug discret */}
+          <a
+            href={`/${orgSlug}/m/debug`}
+            className="text-xs text-center py-2"
+            style={{ color: '#9CA3AF' }}
+          >
+            🔧 Debug SW
+          </a>
         </div>
       </div>
     </>

@@ -2,6 +2,31 @@
 
 ---
 
+## [2026-03-12 01:00] — Page de diagnostic Service Worker (debug Safari iOS)
+
+**Type :** `debug`
+**Fichiers concernés :** `src/app/api/sw-debug/route.ts`, `src/app/[orgSlug]/(mobile)/m/debug/page.tsx`, `src/components/mobile/SyncPanel.tsx`
+
+### Description
+Safari iOS affiche "votre iPhone n'est pas connecté" au lieu de servir les pages depuis le cache SW. Création d'outils de diagnostic accessibles depuis le mobile.
+
+### Fichiers créés
+1. **`/api/sw-debug`** — Route GET qui retourne la config SW côté serveur (scope, URLs précachées, stratégies runtime, fallback).
+2. **`/{orgSlug}/m/debug`** — Page client de diagnostic temps réel :
+   - **Service Worker** : controller, scope, state, installing/waiting/active (badges vert/rouge)
+   - **Cache Storage** : liste des caches, contenu de `mobile-pages` avec URLs détaillées
+   - **Réseau** : navigator.onLine, dernier warm cache (timestamp)
+   - **IndexedDB** : contexte offline, variétés en cache, saisies en queue, dernier sync
+   - **Actions** : tester fetch `/m/saisie`, forcer enregistrement SW, lancer warm cache, reset flag 24h
+   - **Journal** : log temps réel des actions effectuées
+3. **SyncPanel** — Lien discret "🔧 Debug SW" en bas du panneau sync.
+
+### Notes
+- Page temporaire — à supprimer après résolution du problème Safari.
+- Fonctionne même si le SW n'est pas installé (pas de dépendance).
+
+---
+
 ## [2026-03-12 00:30] — Warm cache : précache automatique de toutes les pages mobiles
 
 **Type :** `feature`
