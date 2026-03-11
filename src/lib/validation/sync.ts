@@ -21,13 +21,23 @@ export const SYNC_TABLES = [
 
 export type SyncTable = (typeof SYNC_TABLES)[number]
 
+/**
+ * Format UUID souple (8-4-4-4-12 hex) sans vérification de version/variant.
+ * Nécessaire car les IDs bootstrappés (migration 011) ne sont pas RFC 4122 v4
+ * et z.string().uuid() strict les rejette.
+ */
+const uuidFormat = z.string().regex(
+  /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i,
+  'Doit être au format UUID',
+)
+
 /** Schéma de validation pour POST /api/sync */
 export const syncRequestSchema = z.object({
-  uuid_client: z.string().uuid('uuid_client doit être un UUID v4 valide'),
+  uuid_client: uuidFormat,
   table_cible: z.enum(SYNC_TABLES, {
     message: `table_cible invalide. Tables autorisées : ${SYNC_TABLES.join(', ')}`,
   }),
-  farm_id: z.string().uuid('farm_id doit être un UUID valide'),
+  farm_id: uuidFormat,
   payload: z
     .record(z.string(), z.unknown())
     .refine((obj) => Object.keys(obj).length > 0, {
@@ -40,10 +50,10 @@ export type SyncRequest = z.infer<typeof syncRequestSchema>
 /** Schéma de validation pour POST /api/sync/audit */
 export const auditRequestSchema = z.object({
   uuid_clients: z
-    .array(z.string().uuid('Chaque uuid_client doit être un UUID valide'))
+    .array(uuidFormat)
     .min(1, 'Au moins 1 uuid_client requis')
     .max(200, 'Maximum 200 UUID par requête, utilisez la pagination'),
-  farm_id: z.string().uuid('farm_id doit être un UUID valide'),
+  farm_id: uuidFormat,
 })
 
 export type AuditRequest = z.infer<typeof auditRequestSchema>

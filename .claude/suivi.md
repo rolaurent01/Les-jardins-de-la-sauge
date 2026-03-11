@@ -2,6 +2,25 @@
 
 ---
 
+## [2026-03-12 03:30] — Fix validation UUID bootstrappés rejetés par z.string().uuid()
+
+**Type :** `bugfix`
+**Fichiers concernés :** `src/lib/validation/sync.ts`
+
+### Cause racine
+Les farm_id bootstrappés manuellement (migration 011, ex: `00000000-0000-0000-0000-000000000002`) n'ont pas les bits de version/variant RFC 4122 v4. `z.string().uuid()` de Zod est strict et les rejetait avec "farm_id doit être un UUID valide".
+
+### Correction
+Remplacement de `z.string().uuid()` par une regex souple `uuidFormat` (8-4-4-4-12 hex, case-insensitive) dans `syncRequestSchema` et `auditRequestSchema`. Accepte tout format UUID sans vérifier la version.
+
+Les autres schémas (`parcelles.ts`, `semis.ts`, etc.) gardent `.uuid()` strict car ils valident des IDs générés par Supabase (vrais UUID v4).
+
+### Résultat
+- `npm run build` OK
+- Les IDs bootstrappés passent la validation sync
+
+---
+
 ## [2026-03-12 03:00] — Fix "Load failed" Safari iOS — credentials manquants sur fetch
 
 **Type :** `bugfix`
