@@ -2,6 +2,32 @@
 
 ---
 
+## [2026-03-11 18:00] — Page Prévisionnel (saisie des objectifs annuels)
+
+**Type :** `feature`
+**Fichiers concernés :** `src/lib/types.ts`, `src/lib/validation/previsionnel.ts`, `src/app/[orgSlug]/(dashboard)/previsionnel/actions.ts`, `src/app/[orgSlug]/(dashboard)/previsionnel/page.tsx`, `src/components/previsionnel/PrevisionnelClient.tsx`, `src/components/Sidebar.tsx`
+
+### Description
+Implémentation complète de la page Prévisionnel : saisie des objectifs de récolte annuels par variété. Permet de définir un objectif en grammes par variété et par année, avec affichage de l'avancement (réalisé vs prévu) via des barres de progression colorées.
+
+### Détails techniques
+- Types `Forecast` et `ForecastWithVariety` ajoutés dans types.ts
+- Schéma Zod `forecastSchema` dans validation/previsionnel.ts
+- 6 server actions : fetchForecasts, fetchForecastYears, fetchVarietiesForForecast, fetchRealisedByVariety, upsertForecast, deleteForecast, copyForecastsFromYear
+- Toutes les actions utilisent getContext() pour résoudre farmId côté serveur
+- Tableau éditable inline : sauvegarde au blur/Enter avec feedback visuel (✓ vert)
+- Barres de progression colorées : rouge (<40%), orange (40-80%), vert (80-100%), bleu (>100%)
+- Ajout de variété via sélecteur filtrable groupé par famille
+- Copie d'objectifs d'une année vers une autre (avec option écraser)
+- Recherche insensible aux accents + filtre par famille
+- Commentaire par forecast (icône 💬)
+- Résumé en bas : nombre de variétés, total prévu, réalisé, avancement global
+- Nouvelle section 📊 Analyse dans la sidebar avec lien Prévisionnel
+- Route : /{orgSlug}/previsionnel
+- Build OK sans erreur
+
+---
+
 ## [2026-03-11 14:00] — ✅ Migration 026 : Seed référentiel LJS
 
 **Type :** `migration`

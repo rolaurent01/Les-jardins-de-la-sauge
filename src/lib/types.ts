@@ -780,3 +780,33 @@ export type StockAdjustment = {
 export type StockAdjustmentWithVariety = StockAdjustment & {
   varieties: { id: string; nom_vernaculaire: string } | null
 }
+
+// ---- Module Prévisionnel ----
+
+/** États de plante pour le prévisionnel */
+export type EtatPlante = 'frais' | 'tronconnee' | 'sechee' | 'tronconnee_sechee' | 'sechee_triee' | 'tronconnee_sechee_triee'
+
+/** Objectif de récolte annuel — table forecasts */
+export type Forecast = {
+  id: string
+  farm_id: string
+  annee: number
+  variety_id: string
+  etat_plante: EtatPlante | null
+  partie_plante: PartiePlante | null
+  quantite_prevue_g: number | null
+  commentaire: string | null
+  created_by: string | null
+  updated_by: string | null
+  created_at: string
+}
+
+/** Forecast avec la variété jointe (pour affichage dans les listes) */
+export type ForecastWithVariety = Forecast & {
+  varieties: {
+    id: string
+    nom_vernaculaire: string
+    nom_latin: string | null
+    famille: string | null
+  }
+}

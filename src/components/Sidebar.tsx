@@ -173,6 +173,14 @@ const NAV: NavSection[] = [
     ],
   },
   {
+    id: 'analyse',
+    label: 'Analyse',
+    emoji: '📊',
+    children: [
+      { label: 'Prévisionnel', href: '/previsionnel' },
+    ],
+  },
+  {
     id: 'referentiel',
     label: 'Référentiel',
     emoji: '⚙️',
