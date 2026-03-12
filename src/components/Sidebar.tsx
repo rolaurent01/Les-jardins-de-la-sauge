@@ -178,6 +178,7 @@ const NAV: NavSection[] = [
     emoji: '📊',
     children: [
       { label: 'Prévisionnel', href: '/previsionnel' },
+      { label: 'Vue Stock',    href: '/stock/vue-stock' },
     ],
   },
   {

@@ -1,9 +1,16 @@
+import Link from 'next/link'
+import { createAdminClient } from '@/lib/supabase/server'
+import { getContext } from '@/lib/context'
+import { ETAT_PLANTE_LABELS, ETAT_PLANTE_COLORS } from '@/lib/constants/etat-plante'
 
 /**
  * Page dashboard — point d'entrée après connexion.
- * Les widgets (stocks, parcelles, prévisionnel) seront ajoutés en Phase B.
+ * Affiche un résumé du stock (top 5 variétés) avec lien vers Vue Stock.
  */
 export default async function DashboardPage() {
+  const { farmId, orgSlug } = await getContext()
+  const topStock = await fetchTopStock(farmId)
+
   return (
     <div className="p-4 md:p-8">
       {/* En-tête */}
@@ -12,105 +19,139 @@ export default async function DashboardPage() {
           className="text-xl md:text-2xl font-semibold"
           style={{ color: '#2C3E2D' }}
         >
-          Bienvenue dans le futur 🌿
+          Dashboard
         </h1>
+        <p className="text-sm mt-1" style={{ color: '#9CA89D' }}>
+          Vue d&apos;ensemble de votre activité
+        </p>
       </div>
 
-      {/* Grille de modules — placeholders Phase B */}
-      <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-3 gap-3 md:gap-4 mb-6 md:mb-8">
-        {DASHBOARD_CARDS.map(card => (
-          <div
-            key={card.id}
-            className="rounded-xl p-4 md:p-5 border"
-            style={{
-              backgroundColor: '#FAF5E9',
-              borderColor: '#D8E0D9',
-            }}
-          >
-            <div className="flex items-start justify-between mb-2 md:mb-3">
-              <span className="text-xl md:text-2xl">{card.emoji}</span>
-              <span
-                className="text-xs px-2 py-0.5 rounded-full"
-                style={{
-                  backgroundColor: 'color-mix(in srgb, var(--color-primary) 8%, transparent)',
-                  color: 'var(--color-primary-light)',
-                }}
-              >
-                Phase B
-              </span>
-            </div>
-            <h3
-              className="text-xs md:text-sm font-medium leading-snug"
-              style={{ color: '#2C3E2D' }}
+      {/* Widget Stock */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 mb-6">
+        <div
+          className="rounded-xl p-5 border"
+          style={{ backgroundColor: '#FAF5E9', borderColor: '#D8E0D9' }}
+        >
+          <div className="flex items-center justify-between mb-4">
+            <h2 className="text-sm font-semibold flex items-center gap-2" style={{ color: '#2C3E2D' }}>
+              <span>📦</span> Stock en cours
+            </h2>
+            <Link
+              href={`/${orgSlug}/stock/vue-stock`}
+              className="text-xs font-medium hover:underline"
+              style={{ color: 'var(--color-primary)' }}
             >
-              {card.label}
-            </h3>
-            <p className="text-xs mt-1 hidden sm:block" style={{ color: '#9CA89D' }}>
-              {card.description}
-            </p>
+              Voir tout &rarr;
+            </Link>
           </div>
-        ))}
-      </div>
 
-      {/* Banner Phase A en cours */}
-      <div
-        className="rounded-xl p-4 md:p-5 border"
-        style={{
-          backgroundColor: '#F5F9F5',
-          borderColor: 'color-mix(in srgb, var(--color-primary) 19%, transparent)',
-        }}
-      >
-        <div className="flex items-start gap-3">
-          <span className="text-xl flex-shrink-0">🔧</span>
-          <div>
-            <p className="text-sm font-medium" style={{ color: '#2C3E2D' }}>
-              Phase A en cours — Référentiel & Saisie
+          {topStock.length === 0 ? (
+            <p className="text-sm py-4" style={{ color: '#9CA89D' }}>
+              Aucun stock enregistré. Les mouvements de stock sont créés lors des cueillettes, transformations et productions.
             </p>
-            <p className="text-xs mt-0.5" style={{ color: '#9CA89D' }}>
-              Configurez d&apos;abord vos variétés, sites et parcelles via le menu Référentiel.
-            </p>
-          </div>
+          ) : (
+            <div className="space-y-2.5">
+              {topStock.map(row => (
+                <div
+                  key={row.variety_id}
+                  className="flex items-center justify-between py-1.5"
+                  style={{ borderBottom: '1px solid #EDE8E0' }}
+                >
+                  <span className="text-sm font-medium truncate flex-1 mr-3" style={{ color: '#2C3E2D' }}>
+                    {row.nom_vernaculaire}
+                  </span>
+                  <div className="flex items-center gap-1.5 flex-shrink-0">
+                    {row.topEtats.map(e => (
+                      <span
+                        key={e.etat}
+                        className="text-xs px-1.5 py-0.5 rounded"
+                        style={{
+                          backgroundColor: ETAT_PLANTE_COLORS[e.etat] + '18',
+                          color: ETAT_PLANTE_COLORS[e.etat],
+                        }}
+                        title={ETAT_PLANTE_LABELS[e.etat]}
+                      >
+                        {formatWeightShort(e.stock_g)}
+                      </span>
+                    ))}
+                    <span
+                      className="text-xs font-semibold ml-1 min-w-[48px] text-right"
+                      style={{ color: '#2C3E2D' }}
+                    >
+                      {formatWeightShort(row.total_g)}
+                    </span>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
         </div>
       </div>
     </div>
   )
 }
 
-const DASHBOARD_CARDS = [
-  {
-    id: 'stocks',
-    emoji: '📦',
-    label: 'État des stocks',
-    description: 'Stocks par variété et état (frais, séché, trié…)',
-  },
-  {
-    id: 'parcelles',
-    emoji: '🌿',
-    label: 'Parcelles actives',
-    description: 'Plantations en cours, rangs occupés par variété',
-  },
-  {
-    id: 'production',
-    emoji: '🧪',
-    label: 'Production',
-    description: 'Lots produits ce mois, cumul annuel par variété',
-  },
-  {
-    id: 'previsionnel',
-    emoji: '📊',
-    label: 'Prévisionnel',
-    description: 'Avancement vs objectifs annuels',
-  },
-  {
-    id: 'temps',
-    emoji: '⏱️',
-    label: 'Temps de travail',
-    description: 'Répartition par module ce mois',
-  },
-  {
-    id: 'alertes',
-    emoji: '🔔',
-    label: 'Alertes stock bas',
-    description: 'Variétés sous le seuil d\'alerte défini',
-  },
-]
+/* ─── Helpers ─── */
+
+interface TopStockRow {
+  variety_id: string
+  nom_vernaculaire: string
+  total_g: number
+  topEtats: { etat: string; stock_g: number }[]
+}
+
+/** Récupère le top 5 des variétés par stock total */
+async function fetchTopStock(farmId: string): Promise<TopStockRow[]> {
+  const supabase = createAdminClient()
+
+  const { data, error } = await supabase
+    .from('v_stock')
+    .select('variety_id, etat_plante, stock_g')
+    .eq('farm_id', farmId)
+
+  if (error || !data || data.length === 0) return []
+
+  // Agréger par variété
+  const map = new Map<string, { total: number; etats: Map<string, number> }>()
+  for (const row of data) {
+    let entry = map.get(row.variety_id)
+    if (!entry) {
+      entry = { total: 0, etats: new Map() }
+      map.set(row.variety_id, entry)
+    }
+    const g = Number(row.stock_g)
+    entry.total += g
+    entry.etats.set(row.etat_plante, (entry.etats.get(row.etat_plante) ?? 0) + g)
+  }
+
+  // Récupérer les noms
+  const ids = Array.from(map.keys())
+  const { data: varieties } = await supabase
+    .from('varieties')
+    .select('id, nom_vernaculaire')
+    .in('id', ids)
+
+  const nameMap = new Map((varieties ?? []).map(v => [v.id, v.nom_vernaculaire]))
+
+  // Trier par total décroissant, prendre le top 5
+  const sorted = Array.from(map.entries())
+    .filter(([, v]) => v.total > 0)
+    .sort(([, a], [, b]) => b.total - a.total)
+    .slice(0, 5)
+
+  return sorted.map(([id, v]) => ({
+    variety_id: id,
+    nom_vernaculaire: nameMap.get(id) ?? 'Inconnue',
+    total_g: v.total,
+    topEtats: Array.from(v.etats.entries())
+      .filter(([, g]) => g > 0)
+      .sort(([, a], [, b]) => b - a)
+      .slice(0, 3)
+      .map(([etat, stock_g]) => ({ etat, stock_g })),
+  }))
+}
+
+function formatWeightShort(g: number): string {
+  if (g >= 1000) return `${(g / 1000).toFixed(1)} kg`
+  return `${Math.round(g)} g`
+}

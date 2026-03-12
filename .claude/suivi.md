@@ -2,6 +2,47 @@
 
 ---
 
+## [2026-03-12 15:30] — Dashboard : remplacement placeholders par widget stock
+
+**Type :** `feature`
+**Fichiers concernés :** `src/app/[orgSlug]/(dashboard)/dashboard/page.tsx`
+
+### Description
+Suppression du bandeau "Phase A en cours" et des 6 cartes placeholder "Phase B". Remplacé par un vrai widget "Stock en cours" qui affiche le top 5 des variétés par stock total (depuis v_stock), avec les 3 principaux états par variété en badges colorés et un lien "Voir tout" vers la Vue Stock.
+
+### Détails techniques
+- Requête v_stock agrégée par variété, tri décroissant par stock total, top 5
+- Jointure varieties pour les noms
+- Pour chaque variété : jusqu'à 3 badges d'état (triés par poids décroissant) + total
+- Si aucun stock : message d'accueil explicatif
+- Suppression complète de la constante `DASHBOARD_CARDS` et du bandeau Phase A
+- `npm run build` OK
+
+---
+
+## [2026-03-12 15:00] — B1 : Page Vue Stock (tableau pivot + graphique + export)
+
+**Type :** `feature`
+**Fichiers concernés :** `src/app/[orgSlug]/(dashboard)/stock/vue-stock/actions.ts`, `src/app/[orgSlug]/(dashboard)/stock/vue-stock/page.tsx`, `src/components/stock/VueStockClient.tsx`, `src/components/Sidebar.tsx`
+
+### Description
+Implémentation complète de la phase B1 — Vue Stock. Page dédiée affichant le stock temps réel calculé depuis `v_stock` (event-sourced), pivoté en tableau variété × partie_plante × 6 états cumulatifs.
+
+### Détails techniques
+- **Server Actions** : `fetchStock()` (jointure v_stock + varieties, tri famille→nom→partie→état) et `fetchStockAlerts()` (comparaison stock total vs farm_variety_settings.seuil_alerte_g)
+- **Tableau pivot** : groupement par (variety_id, partie_plante), 6 colonnes d'état + total, ligne de totaux en bas
+- **Formatage poids** : >= 1000g → kg (1 décimale), < 1000g → g, 0 → "—" gris, négatif → rouge avec ⚠️
+- **Filtres** : recherche textuelle (insensible casse/accents), famille (select), partie (select), états (multi-toggle), masquer zéros (toggle ON par défaut), filtre variété via clic alerte
+- **Alertes stock bas** : bandeau orange avec badges cliquables (filtrent le tableau sur la variété)
+- **Graphique barres empilées** : recharts, top 20 variétés par stock total, couleurs ETAT_PLANTE_COLORS
+- **Export CSV** : séparateur ;, BOM UTF-8, poids en grammes
+- **Export XLSX** : via librairie xlsx
+- **Dépendances ajoutées** : `recharts`, `xlsx`
+- **Sidebar** : lien "Vue Stock" ajouté dans la section 📊 Analyse, route `/stock/vue-stock`
+- `npm run build` OK
+
+---
+
 ## [2026-03-12 04:15] — Bouton Supprimer visible pour tous les statuts dans /m/debug
 
 **Type :** `fix UI`
