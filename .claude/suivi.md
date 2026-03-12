@@ -2,6 +2,30 @@
 
 ---
 
+## [2026-03-12] — Fix bug multi-tenant : cloisonnement active_farm_id par organisation
+
+**Problème** : Quand un admin navigue vers une nouvelle organisation via l'URL (ex: `/{newOrgSlug}/dashboard`), le cookie `active_farm_id` pointait toujours vers une ferme de l'ancienne organisation. `getContext()` résolvait ce farm_id (membership OK car admin des deux orgs), et toutes les requêtes retournaient les données de la mauvaise organisation.
+
+**Diagnostic** :
+- `OrgSwitcher.tsx` supprimait correctement le cookie lors du switch via le dropdown (ligne 31)
+- Mais la navigation directe par URL ne passait pas par ce composant
+- Le proxy (`proxy.ts`) n'initialisait le cookie que quand il était complètement absent (ligne 87)
+- Résultat : données de "Les Jardins de la Sauge" visibles depuis une autre organisation
+
+**Correction** : Ajout d'un contrôle dans `proxy.ts` (après vérification du slug et du membership) :
+1. Lecture du `active_farm_id` actuel du cookie
+2. Vérification que cette ferme appartient bien à l'organisation du slug URL
+3. Si mismatch → bascule automatique vers la première ferme de l'organisation courante
+4. Propagation du nouveau cookie au browser ET aux server components (via `request.cookies.set`)
+
+**Fichier modifié** : `src/proxy.ts` (lignes 146-177)
+
+**Audit complet** : Vérification de TOUTES les requêtes scopées (`sites`, `parcels`, `rows`, `seed_lots`, `plantings`, `harvests`, `v_stock`, etc.) → toutes filtrent correctement par `farm_id`. Le seul point de fuite était le proxy.
+
+**Build** : `npm run build` ✅
+
+---
+
 ## [2026-03-12 23:30] — B6 : Admin complet — Merge variétés, Super data, Purge archives
 
 **Type :** `feature`

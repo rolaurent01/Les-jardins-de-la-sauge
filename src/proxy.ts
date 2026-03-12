@@ -144,6 +144,43 @@ export async function proxy(request: NextRequest) {
       return redirectTo(new URL(`/${orgSlug}/dashboard`, request.url))
     }
 
+    // Cloisonnement multi-tenant : vérifier que active_farm_id appartient à cette org.
+    // Si le cookie pointe vers une ferme d'une autre organisation → basculer
+    // automatiquement vers la première ferme de l'organisation courante.
+    const currentFarmId = request.cookies.get('active_farm_id')?.value
+    if (currentFarmId) {
+      const { data: farmOrg } = await admin
+        .from('farms')
+        .select('organization_id')
+        .eq('id', currentFarmId)
+        .single()
+
+      if (!farmOrg || farmOrg.organization_id !== org.id) {
+        // Cookie pointe vers une autre org → résoudre la première ferme de cette org
+        const { data: orgFarms } = await admin
+          .from('farms')
+          .select('id')
+          .eq('organization_id', org.id)
+          .order('nom')
+          .limit(1)
+
+        const newFarmId = orgFarms?.[0]?.id
+        if (newFarmId) {
+          request.cookies.set('active_farm_id', newFarmId)
+          const previousCookies = response.cookies.getAll()
+          response = NextResponse.next({ request })
+          previousCookies.forEach((c) => response.cookies.set(c.name, c.value))
+
+          response.cookies.set('active_farm_id', newFarmId, {
+            path: '/',
+            httpOnly: true,
+            sameSite: 'lax',
+            maxAge: 365 * 24 * 60 * 60,
+          })
+        }
+      }
+    }
+
     // Protection des routes admin — uniquement platform_admins
     if (pathname.includes('/admin/') || pathname.endsWith('/admin')) {
       const { data: platformAdmin } = await admin
