@@ -808,11 +808,11 @@ function PurgeArchivesSection() {
   // Confirmation simple par table
   const [confirmTable, setConfirmTable] = useState<string | null>(null)
 
-  async function loadCounts() {
+  async function loadCounts(days?: number) {
     setLoading(true)
     setError(null)
     try {
-      const data = await fetchArchivedCounts()
+      const data = await fetchArchivedCounts(undefined, days ?? olderThanDays)
       setCounts(data)
     } catch (err) {
       setError(err instanceof Error ? err.message : String(err))
@@ -958,7 +958,11 @@ function PurgeArchivesSection() {
               type="number"
               min={1}
               value={olderThanDays}
-              onChange={e => setOlderThanDays(parseInt(e.target.value) || 30)}
+              onChange={e => {
+                const days = parseInt(e.target.value) || 30
+                setOlderThanDays(days)
+                loadCounts(days)
+              }}
               style={{
                 width: '60px',
                 padding: '4px 8px',

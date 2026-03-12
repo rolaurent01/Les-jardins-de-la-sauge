@@ -194,14 +194,6 @@ const NAV: NavSection[] = [
       { label: 'Produits complémentaires', href: '/referentiel/materiaux'     },
     ],
   },
-  {
-    id: 'miel',
-    label: 'Miel',
-    emoji: '🍯',
-    disabled: true,
-    phaseLabel: 'Phase C',
-    children: [],
-  },
 ]
 
 /* ---------------------------------------------------------------

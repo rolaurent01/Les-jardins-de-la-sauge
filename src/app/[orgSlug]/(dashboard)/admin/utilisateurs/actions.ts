@@ -60,32 +60,41 @@ export async function fetchUsers(): Promise<UserWithRelations[]> {
     .from('farm_access')
     .select('id, farm_id, user_id, permission, farms(nom)')
 
-  return users.map(u => {
-    const memberships = (allMemberships ?? [])
-      .filter(m => m.user_id === u.id)
-      .map(m => ({
-        id: m.id,
-        organization_id: m.organization_id,
-        organization_name: (m.organizations as unknown as { nom: string })?.nom ?? '',
-        role: m.role as MembershipRole,
-      }))
+  // Ne garder que les users qui ont au moins un membership (exclure les fantômes auth)
+  const membershipsByUser = new Map<string, typeof allMemberships>()
+  for (const m of allMemberships ?? []) {
+    const list = membershipsByUser.get(m.user_id) ?? []
+    list.push(m)
+    membershipsByUser.set(m.user_id, list)
+  }
 
-    const farmAccess = (allFarmAccess ?? [])
-      .filter(fa => fa.user_id === u.id)
-      .map(fa => ({
-        id: fa.id,
-        farm_id: fa.farm_id,
-        farm_name: (fa.farms as unknown as { nom: string })?.nom ?? '',
-        permission: fa.permission as FarmAccessPermission,
-      }))
+  return users
+    .filter(u => membershipsByUser.has(u.id))
+    .map(u => {
+      const memberships = (membershipsByUser.get(u.id) ?? [])
+        .map(m => ({
+          id: m.id,
+          organization_id: m.organization_id,
+          organization_name: (m.organizations as unknown as { nom: string })?.nom ?? '',
+          role: m.role as MembershipRole,
+        }))
 
-    return {
-      id: u.id,
-      email: u.email ?? '',
-      memberships,
-      farmAccess,
-    }
-  })
+      const farmAccess = (allFarmAccess ?? [])
+        .filter(fa => fa.user_id === u.id)
+        .map(fa => ({
+          id: fa.id,
+          farm_id: fa.farm_id,
+          farm_name: (fa.farms as unknown as { nom: string })?.nom ?? '',
+          permission: fa.permission as FarmAccessPermission,
+        }))
+
+      return {
+        id: u.id,
+        email: u.email ?? '',
+        memberships,
+        farmAccess,
+      }
+    })
 }
 
 /** Récupère les organisations avec leurs fermes (pour les sélecteurs) */

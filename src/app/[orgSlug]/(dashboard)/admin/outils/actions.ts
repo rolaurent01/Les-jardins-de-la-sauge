@@ -450,7 +450,7 @@ const SOFT_DELETE_TABLES: { table: string; label: string }[] = [
 ]
 
 /** Compte les enregistrements archivés (deleted_at IS NOT NULL) par table */
-export async function fetchArchivedCounts(farmId?: string): Promise<ArchivedCount[]> {
+export async function fetchArchivedCounts(farmId?: string, olderThanDays?: number): Promise<ArchivedCount[]> {
   await requireAdmin()
   const admin = createAdminClient()
 
@@ -460,6 +460,11 @@ export async function fetchArchivedCounts(farmId?: string): Promise<ArchivedCoun
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     let query = (admin as any).from(table).select('id', { count: 'exact', head: true }).not('deleted_at', 'is', null)
     if (farmId) query = query.eq('farm_id', farmId)
+    if (olderThanDays) {
+      const cutoff = new Date()
+      cutoff.setDate(cutoff.getDate() - olderThanDays)
+      query = query.lt('deleted_at', cutoff.toISOString())
+    }
 
     const { count, error } = await query
     if (error) throw new Error(`Erreur sur ${table} : ${error.message}`)

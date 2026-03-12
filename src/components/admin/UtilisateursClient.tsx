@@ -174,7 +174,13 @@ export default function UtilisateursClient({
               </tr>
             )}
             {filtered.map(user => (
-              <tr key={user.id} className="border-t" style={{ borderColor: '#F3F4F6' }}>
+              <tr
+                key={user.id}
+                className="border-t"
+                style={{ borderColor: '#F3F4F6', transition: 'background-color 150ms' }}
+                onMouseEnter={e => { e.currentTarget.style.backgroundColor = '#F9FAFB' }}
+                onMouseLeave={e => { e.currentTarget.style.backgroundColor = '' }}
+              >
                 <td className="px-4 py-3 font-medium">{user.email}</td>
                 <td className="px-4 py-3">
                   <div className="flex flex-wrap gap-1.5">

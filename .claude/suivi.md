@@ -2,6 +2,33 @@
 
 ---
 
+## [2026-03-12] — Fix 3 bugs : purge archives, section Miel, admin utilisateurs
+
+### Bug 1 — Purge archives ne supprime rien
+**Cause** : `fetchArchivedCounts()` comptait TOUS les archivés (sans filtre date), mais `purgeArchives()` filtrait par `olderThanDays=30`. Si les archives avaient < 30 jours, le compteur affichait des éléments mais la purge en supprimait 0.
+**Fix** : Ajout du paramètre `olderThanDays` à `fetchArchivedCounts()` + le client passe `olderThanDays` aux compteurs + recharge les compteurs quand la valeur change.
+- `src/app/[orgSlug]/(dashboard)/admin/outils/actions.ts` — signature `fetchArchivedCounts(farmId?, olderThanDays?)`
+- `src/components/admin/OutilsClient.tsx` — `loadCounts(days?)` + onChange recharge
+
+### Bug 2 — Section Miel visible dans la sidebar
+**Cause** : Entrée `miel` dans le tableau NAV avec `disabled: true`, affichée en grisé avec badge "Phase C".
+**Fix** : Suppression de l'entrée du tableau NAV (sera rajoutée en Phase C).
+- `src/components/Sidebar.tsx` — suppression de la section `miel`
+
+### Bug 3a — Hover cassé sur tableau utilisateurs
+**Cause** : Les `<tr>` n'avaient aucun style de survol.
+**Fix** : Ajout de `onMouseEnter`/`onMouseLeave` sur les `<tr>` pour changer le `backgroundColor`.
+- `src/components/admin/UtilisateursClient.tsx`
+
+### Bug 3b — Utilisateur fantôme
+**Cause** : `fetchUsers()` utilisait `auth.admin.listUsers()` qui retourne tous les users Supabase Auth, y compris ceux sans membership (comptes test, supprimés, etc.).
+**Fix** : Filtrage pour ne garder que les users ayant au moins un membership.
+- `src/app/[orgSlug]/(dashboard)/admin/utilisateurs/actions.ts` — `users.filter(u => membershipsByUser.has(u.id))`
+
+**Build** : `npm run build` ✅
+
+---
+
 ## [2026-03-12] — Fix bug multi-tenant : cloisonnement active_farm_id par organisation
 
 **Problème** : Quand un admin navigue vers une nouvelle organisation via l'URL (ex: `/{newOrgSlug}/dashboard`), le cookie `active_farm_id` pointait toujours vers une ferme de l'ancienne organisation. `getContext()` résolvait ce farm_id (membership OK car admin des deux orgs), et toutes les requêtes retournaient les données de la mauvaise organisation.
