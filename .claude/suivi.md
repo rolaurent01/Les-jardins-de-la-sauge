@@ -2,6 +2,32 @@
 
 ---
 
+## [2026-03-12 17:00] — B2 : Page Vue Production totale + widget dashboard production
+
+**Type :** `feature`
+**Fichiers concernés :** `src/app/[orgSlug]/(dashboard)/production-totale/actions.ts`, `src/app/[orgSlug]/(dashboard)/production-totale/page.tsx`, `src/components/production/VueProductionClient.tsx`, `src/components/Sidebar.tsx`, `src/app/[orgSlug]/(dashboard)/dashboard/page.tsx`
+
+### Description
+Implémentation complète de la phase B2 — Vue Production totale. Page dédiée affichant les cumuls d'activité par variété et par année depuis `production_summary`, avec prévisionnel depuis `forecasts`.
+
+### Détails techniques
+- **Server Actions** : `fetchProductionSummary(annee, mois?)` (jointure production_summary + varieties, tri famille→nom), `fetchForecastsForProduction(annee)` (forecasts état frais → map variety_id→quantite_prevue_g), `fetchAvailableYears()` (années distinctes + année en cours)
+- **Tableau principal** : 11 colonnes (variété, cueilli, tronçonné, séché, trié, produit, vendu, acheté, temps, prévu, avancement) + ligne de totaux
+- **Barre d'avancement colorée** : < 40% rouge, 40-80% orange, 80-100% vert, > 100% bleu
+- **Détail temps au clic** : expansion de ligne avec répartition temps par étape (5 étapes) + mini donut chart recharts
+- **Onglet Graphique volumes** : barres empilées recharts (top 20 par cueilli), 4 couleurs (cueilli/tronçonné/séché/trié)
+- **Onglet Temps de travail** : camembert global PieChart + barres de progression par étape avec pourcentages
+- **Filtres** : année (boutons), mois (select avec "Année complète"), recherche textuelle (insensible casse/accents), famille (select), masquer les vides (toggle ON par défaut)
+- **Chargement dynamique** : useTransition pour charger année/mois sans bloquer l'UI
+- **Export CSV/XLSX** : même pattern que B1, poids en grammes, temps en minutes, nom fichier `production_YYYY[_MM]`
+- **Sidebar** : lien "Vue Production" ajouté dans la section 📊 Analyse
+- **Dashboard** : ajout widget "Production [année]" avec nb variétés actives, total cueilli, total trié, temps total. Requête depuis production_summary (mois IS NULL)
+- Formatage poids : >= 1000g → kg, < 1000g → g, 0 → "—"
+- Formatage temps : Xh, XhMM, X min, "—" si 0
+- `npm run build` OK
+
+---
+
 ## [2026-03-12 15:30] — Dashboard : remplacement placeholders par widget stock
 
 **Type :** `feature`

@@ -177,8 +177,9 @@ const NAV: NavSection[] = [
     label: 'Analyse',
     emoji: '📊',
     children: [
-      { label: 'Prévisionnel', href: '/previsionnel' },
-      { label: 'Vue Stock',    href: '/stock/vue-stock' },
+      { label: 'Prévisionnel',    href: '/previsionnel' },
+      { label: 'Vue Stock',       href: '/stock/vue-stock' },
+      { label: 'Vue Production',  href: '/production-totale' },
     ],
   },
   {
