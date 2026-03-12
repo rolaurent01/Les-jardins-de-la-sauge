@@ -9,13 +9,20 @@ import {
   fetchActivePlantings,
   closeSeasonForPlanting,
   autoCloseAnnuals,
+  fetchSuperData,
+  fetchArchivedCounts,
+  purgeArchives,
+  purgeAllArchives,
 } from '@/app/[orgSlug]/(dashboard)/admin/outils/actions'
 import type {
   BackupLogEntry,
   OrgWithFarms,
   FarmOption,
   ActivePlanting,
+  SuperDataResult,
+  ArchivedCount,
 } from '@/app/[orgSlug]/(dashboard)/admin/outils/actions'
+import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts'
 
 type Props = {
   orgSlug: string
@@ -47,6 +54,8 @@ export default function OutilsClient({
           impersonation={impersonation}
         />
         <SeasonCloseSection farms={farms} />
+        <SuperDataSection />
+        <PurgeArchivesSection />
       </div>
     </div>
   )
@@ -636,6 +645,423 @@ function SeasonCloseSection({ farms }: { farms: FarmOption[] }) {
               {Object.values(actions).filter(a => a === 'uproot').length} arrachés
             </span>
           </div>
+        </>
+      )}
+    </Card>
+  )
+}
+
+// ── Section 5 — Super data cross-tenant ─────────────
+
+const MOIS_LABELS = ['Jan', 'Fév', 'Mar', 'Avr', 'Mai', 'Jun', 'Jul', 'Aoû', 'Sep', 'Oct', 'Nov', 'Déc']
+
+function SuperDataSection() {
+  const [data, setData] = useState<SuperDataResult | null>(null)
+  const [loading, setLoading] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+  const [loaded, setLoaded] = useState(false)
+
+  async function handleLoad() {
+    setLoading(true)
+    setError(null)
+    try {
+      const result = await fetchSuperData()
+      setData(result)
+      setLoaded(true)
+    } catch (err) {
+      setError(err instanceof Error ? err.message : String(err))
+    }
+    setLoading(false)
+  }
+
+  // Chargement au premier affichage
+  if (!loaded && !loading) {
+    handleLoad()
+  }
+
+  const totalStock = data?.stockParEtat.reduce((s, e) => s + e.total_kg, 0) ?? 0
+
+  return (
+    <Card>
+      <div className="flex items-center justify-between mb-3">
+        <h2 className="font-semibold text-sm" style={{ color: '#1F2937' }}>
+          Super data (plateforme)
+        </h2>
+        <button
+          onClick={handleLoad}
+          disabled={loading}
+          style={{
+            padding: '6px 14px',
+            borderRadius: '6px',
+            border: '1px solid #D1D5DB',
+            backgroundColor: '#fff',
+            fontSize: '12px',
+            color: '#374151',
+            cursor: loading ? 'wait' : 'pointer',
+            opacity: loading ? 0.6 : 1,
+          }}
+        >
+          {loading ? 'Chargement...' : 'Rafraîchir'}
+        </button>
+      </div>
+
+      {error && (
+        <p className="text-xs mb-3" style={{ color: '#DC2626' }}>Erreur : {error}</p>
+      )}
+
+      {data && (
+        <div className="flex flex-col gap-4">
+          {/* Stock total */}
+          <div>
+            <p className="text-sm font-semibold mb-1" style={{ color: '#1F2937' }}>
+              Stock total : {totalStock.toFixed(2)} kg
+            </p>
+            <div className="flex gap-3 flex-wrap">
+              {data.stockParEtat.map(s => (
+                <span key={s.etat} className="text-xs" style={{ color: '#6B7280' }}>
+                  {s.etat} : {s.total_kg.toFixed(2)} kg
+                </span>
+              ))}
+            </div>
+          </div>
+
+          {/* Activité par org */}
+          <div>
+            <p className="text-xs font-semibold mb-1" style={{ color: '#6B7280' }}>
+              Activité ce mois
+            </p>
+            {data.activiteParOrg.map(a => (
+              <div key={a.org_nom} className="text-xs mb-1" style={{ color: '#374151' }}>
+                <span className="font-semibold">{a.org_nom}</span> : {a.nb_cueillettes} cueillette{a.nb_cueillettes > 1 ? 's' : ''}, {a.nb_lots} lot{a.nb_lots > 1 ? 's' : ''}, {a.nb_users} utilisateur{a.nb_users > 1 ? 's' : ''}
+              </div>
+            ))}
+          </div>
+
+          {/* Top variétés */}
+          {data.topVarietes.length > 0 && (
+            <div>
+              <p className="text-xs font-semibold mb-1" style={{ color: '#6B7280' }}>
+                Top variétés (nb fermes qui les cultivent)
+              </p>
+              {data.topVarietes.map((v, i) => (
+                <div key={v.nom_vernaculaire} className="text-xs" style={{ color: '#374151' }}>
+                  {i + 1}. {v.nom_vernaculaire} ({v.nb_fermes} ferme{v.nb_fermes > 1 ? 's' : ''})
+                </div>
+              ))}
+            </div>
+          )}
+
+          {/* Graphique volume mensuel */}
+          {data.volumeParMois.length > 0 && (
+            <div>
+              <p className="text-xs font-semibold mb-2" style={{ color: '#6B7280' }}>
+                Volume cueilli par mois ({new Date().getFullYear()})
+              </p>
+              <div style={{ width: '100%', height: 200 }}>
+                <ResponsiveContainer>
+                  <LineChart data={data.volumeParMois.map(v => ({ ...v, label: MOIS_LABELS[v.mois - 1] ?? v.mois }))}>
+                    <CartesianGrid strokeDasharray="3 3" stroke="#E5E7EB" />
+                    <XAxis dataKey="label" tick={{ fontSize: 11 }} />
+                    <YAxis tick={{ fontSize: 11 }} unit=" kg" />
+                    <Tooltip
+                      formatter={(value) => [`${Number(value).toFixed(2)} kg`, 'Volume']}
+                      contentStyle={{ fontSize: 12 }}
+                    />
+                    <Line type="monotone" dataKey="total_kg" stroke="#2563EB" strokeWidth={2} dot={{ r: 4 }} />
+                  </LineChart>
+                </ResponsiveContainer>
+              </div>
+            </div>
+          )}
+        </div>
+      )}
+    </Card>
+  )
+}
+
+// ── Section 6 — Purge des archives ──────────────────
+
+const TABLE_LABELS_PURGE: Record<string, string> = {
+  varieties: 'Variétés',
+  seed_lots: 'Sachets de graines',
+  seedlings: 'Semis',
+  plantings: 'Plantations',
+  harvests: 'Cueillettes',
+  recipes: 'Recettes',
+  production_lots: 'Lots de production',
+  stock_movements: 'Mouvements de stock',
+}
+
+function PurgeArchivesSection() {
+  const [counts, setCounts] = useState<ArchivedCount[] | null>(null)
+  const [loading, setLoading] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+  const [olderThanDays, setOlderThanDays] = useState(30)
+  const [purging, setPurging] = useState<string | null>(null)
+  const [purgeResult, setPurgeResult] = useState<string | null>(null)
+
+  // Confirmation renforcée pour "Tout purger"
+  const [purgeAllConfirm, setPurgeAllConfirm] = useState(false)
+  const [purgeAllText, setPurgeAllText] = useState('')
+  const [purgingAll, setPurgingAll] = useState(false)
+
+  // Confirmation simple par table
+  const [confirmTable, setConfirmTable] = useState<string | null>(null)
+
+  async function loadCounts() {
+    setLoading(true)
+    setError(null)
+    try {
+      const data = await fetchArchivedCounts()
+      setCounts(data)
+    } catch (err) {
+      setError(err instanceof Error ? err.message : String(err))
+    }
+    setLoading(false)
+  }
+
+  // Chargement initial
+  if (!counts && !loading && !error) {
+    loadCounts()
+  }
+
+  async function handlePurgeTable(table: string) {
+    if (confirmTable !== table) {
+      setConfirmTable(table)
+      return
+    }
+    setConfirmTable(null)
+    setPurging(table)
+    setPurgeResult(null)
+    try {
+      const res = await purgeArchives(table, undefined, olderThanDays)
+      if ('error' in res) {
+        setPurgeResult(`Erreur : ${res.error}`)
+      } else {
+        setPurgeResult(`${res.data?.deleted ?? 0} enregistrement(s) purgé(s) de ${TABLE_LABELS_PURGE[table] ?? table}.`)
+        await loadCounts()
+      }
+    } catch (err) {
+      setPurgeResult(`Erreur : ${err instanceof Error ? err.message : String(err)}`)
+    }
+    setPurging(null)
+  }
+
+  async function handlePurgeAll() {
+    if (!purgeAllConfirm) {
+      setPurgeAllConfirm(true)
+      return
+    }
+    if (purgeAllText !== 'PURGER') return
+
+    setPurgingAll(true)
+    setPurgeResult(null)
+    try {
+      const res = await purgeAllArchives(undefined, olderThanDays)
+      if ('error' in res) {
+        setPurgeResult(`Erreur : ${res.error}`)
+      } else {
+        setPurgeResult(`Purge terminée : ${res.data?.total ?? 0} enregistrement(s) supprimé(s).`)
+        await loadCounts()
+      }
+    } catch (err) {
+      setPurgeResult(`Erreur : ${err instanceof Error ? err.message : String(err)}`)
+    }
+    setPurgingAll(false)
+    setPurgeAllConfirm(false)
+    setPurgeAllText('')
+  }
+
+  const total = counts?.reduce((s, c) => s + c.count, 0) ?? 0
+
+  return (
+    <Card>
+      <h2 className="font-semibold text-sm mb-2" style={{ color: '#1F2937' }}>
+        Purge des archives
+      </h2>
+      <p className="text-xs mb-3" style={{ color: '#6B7280' }}>
+        Supprimer définitivement les éléments archivés (suppression logique).
+      </p>
+
+      {error && (
+        <p className="text-xs mb-3" style={{ color: '#DC2626' }}>Erreur : {error}</p>
+      )}
+
+      {loading && !counts && (
+        <p className="text-xs" style={{ color: '#9CA3AF' }}>Chargement...</p>
+      )}
+
+      {counts && (
+        <>
+          <div
+            style={{
+              border: '1px solid #E5E7EB',
+              borderRadius: '8px',
+              overflow: 'hidden',
+              marginBottom: '12px',
+            }}
+          >
+            <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '13px' }}>
+              <thead>
+                <tr style={{ backgroundColor: '#F9FAFB' }}>
+                  <th style={thStyle}>Table</th>
+                  <th style={{ ...thStyle, textAlign: 'right' }}>Nb archivés</th>
+                  <th style={{ ...thStyle, textAlign: 'center', width: '120px' }}>Action</th>
+                </tr>
+              </thead>
+              <tbody>
+                {counts.map(c => (
+                  <tr key={c.table} style={{ borderTop: '1px solid #E5E7EB' }}>
+                    <td style={tdStyle}>{c.label}</td>
+                    <td style={{ ...tdStyle, textAlign: 'right', fontWeight: 600 }}>{c.count}</td>
+                    <td style={{ ...tdStyle, textAlign: 'center' }}>
+                      {c.count > 0 ? (
+                        <button
+                          onClick={() => handlePurgeTable(c.table)}
+                          disabled={purging === c.table}
+                          style={{
+                            padding: '4px 12px',
+                            borderRadius: '6px',
+                            backgroundColor: confirmTable === c.table ? '#DC2626' : '#F3F4F6',
+                            color: confirmTable === c.table ? '#fff' : '#374151',
+                            fontSize: '12px',
+                            fontWeight: 600,
+                            border: 'none',
+                            cursor: purging === c.table ? 'wait' : 'pointer',
+                          }}
+                        >
+                          {purging === c.table
+                            ? 'Purge...'
+                            : confirmTable === c.table
+                              ? 'Confirmer'
+                              : 'Purger'}
+                        </button>
+                      ) : (
+                        <span className="text-xs" style={{ color: '#9CA3AF' }}>—</span>
+                      )}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+
+          <p className="text-sm font-semibold mb-3" style={{ color: '#1F2937' }}>
+            Total : {total} élément{total > 1 ? 's' : ''} archivé{total > 1 ? 's' : ''}
+          </p>
+
+          <div className="flex items-center gap-2 mb-3 flex-wrap">
+            <span className="text-xs" style={{ color: '#6B7280' }}>
+              Purger uniquement les archives de plus de
+            </span>
+            <input
+              type="number"
+              min={1}
+              value={olderThanDays}
+              onChange={e => setOlderThanDays(parseInt(e.target.value) || 30)}
+              style={{
+                width: '60px',
+                padding: '4px 8px',
+                borderRadius: '6px',
+                border: '1px solid #D1D5DB',
+                fontSize: '13px',
+                textAlign: 'center',
+              }}
+            />
+            <span className="text-xs" style={{ color: '#6B7280' }}>jours</span>
+          </div>
+
+          {total > 0 && (
+            <div className="flex flex-col gap-2">
+              {!purgeAllConfirm ? (
+                <button
+                  onClick={handlePurgeAll}
+                  style={{
+                    padding: '10px 20px',
+                    borderRadius: '8px',
+                    backgroundColor: '#DC2626',
+                    color: '#fff',
+                    fontSize: '13px',
+                    fontWeight: 600,
+                    border: 'none',
+                    cursor: 'pointer',
+                    alignSelf: 'flex-start',
+                  }}
+                >
+                  Tout purger
+                </button>
+              ) : (
+                <div className="flex items-center gap-2 flex-wrap">
+                  <span className="text-xs" style={{ color: '#DC2626', fontWeight: 600 }}>
+                    Tapez PURGER pour confirmer :
+                  </span>
+                  <input
+                    type="text"
+                    value={purgeAllText}
+                    onChange={e => setPurgeAllText(e.target.value)}
+                    placeholder="PURGER"
+                    style={{
+                      width: '100px',
+                      padding: '4px 8px',
+                      borderRadius: '6px',
+                      border: '1px solid #FECACA',
+                      fontSize: '13px',
+                    }}
+                  />
+                  <button
+                    onClick={handlePurgeAll}
+                    disabled={purgeAllText !== 'PURGER' || purgingAll}
+                    style={{
+                      padding: '6px 14px',
+                      borderRadius: '6px',
+                      backgroundColor: purgeAllText === 'PURGER' ? '#DC2626' : '#9CA3AF',
+                      color: '#fff',
+                      fontSize: '12px',
+                      fontWeight: 600,
+                      border: 'none',
+                      cursor: purgeAllText === 'PURGER' ? 'pointer' : 'default',
+                    }}
+                  >
+                    {purgingAll ? 'Purge en cours...' : 'Confirmer la purge totale'}
+                  </button>
+                  <button
+                    onClick={() => { setPurgeAllConfirm(false); setPurgeAllText('') }}
+                    style={{
+                      padding: '6px 14px',
+                      borderRadius: '6px',
+                      border: '1px solid #D1D5DB',
+                      backgroundColor: '#fff',
+                      fontSize: '12px',
+                      color: '#6B7280',
+                      cursor: 'pointer',
+                    }}
+                  >
+                    Annuler
+                  </button>
+                </div>
+              )}
+            </div>
+          )}
+
+          <div
+            className="mt-3"
+            style={{
+              padding: '8px 12px',
+              borderRadius: '6px',
+              backgroundColor: '#FFFBEB',
+              border: '1px solid #FDE68A',
+              fontSize: '11px',
+              color: '#92400E',
+            }}
+          >
+            La purge est définitive. Les éléments ne pourront pas être restaurés.
+          </div>
+
+          {purgeResult && (
+            <p className="mt-2 text-xs" style={{ color: purgeResult.startsWith('Erreur') ? '#DC2626' : '#059669' }}>
+              {purgeResult}
+            </p>
+          )}
         </>
       )}
     </Card>

@@ -2,6 +2,39 @@
 
 ---
 
+## [2026-03-12 23:30] — B6 : Admin complet — Merge variétés, Super data, Purge archives
+
+**Type :** `feature`
+**Fichiers concernés :** `src/app/[orgSlug]/(dashboard)/admin/merge-varietes/actions.ts`, `src/app/[orgSlug]/(dashboard)/admin/merge-varietes/page.tsx`, `src/components/admin/MergeVarietesClient.tsx`, `src/app/[orgSlug]/(dashboard)/admin/outils/actions.ts`, `src/components/admin/OutilsClient.tsx`, `src/components/admin/AdminNav.tsx`
+
+### Description
+Implémentation des 3 fonctionnalités manquantes de l'espace admin : fusion de variétés (page dédiée), super data cross-tenant et purge des archives (sections dans Outils).
+
+### Détails techniques
+- **Merge variétés** — Page admin dédiée avec workflow en 3 étapes :
+  - Sélection source/cible avec recherche filtrée et détails (nom latin, famille)
+  - Prévisualisation : comptage des FK dans 17 tables (seed_lots → farm_variety_settings)
+  - Exécution : UPDATE de toutes les FK, gestion des conflits UNIQUE (farm_variety_settings, forecasts — suppression si doublon existe), soft-delete source avec merged_into_id, fusion des aliases + ajout du nom source, log audit_log
+- **Super data cross-tenant** — Section lazy-loaded dans Outils :
+  - Stock total plateforme par état via v_stock (SUM avec bypass RLS via service_role)
+  - Activité par organisation (nb cueillettes/lots mois en cours, nb users)
+  - Top 10 variétés les plus cultivées (COUNT DISTINCT farm_id sur plantings actifs)
+  - Graphique courbe recharts LineChart volume cueilli par mois (année en cours via production_summary)
+  - Bouton rafraîchir
+- **Purge archives** — Section dans Outils :
+  - Tableau des 8 tables avec soft delete : compteur d'archivés par table
+  - Purge individuelle par table avec double confirmation
+  - Filtre "plus de N jours" (défaut 30)
+  - Purge totale avec confirmation renforcée (texte "PURGER" à saisir)
+  - Gestion FK : suppression des stock_movements/production_lot_ingredients/product_stock_movements avant les parents, vérification FK actives avant suppression de variétés
+  - Ordre de purge : enfants avant parents
+- **AdminNav** mis à jour : 6 onglets (Organisations | Fermes | Utilisateurs | Merge variétés | Logs | Outils)
+- Toutes les actions protégées par requireAdmin() (isPlatformAdmin)
+- Pas de console.log
+- `npm run build` OK
+
+---
+
 ## [2026-03-12 23:00] — B5 : Export CSV/XLSX sur tous les tableaux + documentation utilisateur
 
 **Type :** `feature`

@@ -4,11 +4,12 @@ import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 
 const TABS = [
-  { label: 'Organisations', href: '/admin/organisations' },
-  { label: 'Fermes',        href: '/admin/fermes' },
-  { label: 'Utilisateurs',  href: '/admin/utilisateurs' },
-  { label: 'Logs',          href: '/admin/logs' },
-  { label: 'Outils',        href: '/admin/outils' },
+  { label: 'Organisations',  href: '/admin/organisations' },
+  { label: 'Fermes',         href: '/admin/fermes' },
+  { label: 'Utilisateurs',   href: '/admin/utilisateurs' },
+  { label: 'Merge variétés', href: '/admin/merge-varietes' },
+  { label: 'Logs',           href: '/admin/logs' },
+  { label: 'Outils',         href: '/admin/outils' },
 ]
 
 export default function AdminNav({ orgSlug }: { orgSlug: string }) {
