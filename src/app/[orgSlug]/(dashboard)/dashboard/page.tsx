@@ -47,13 +47,6 @@ export default async function DashboardPage() {
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-6">
-        {/* Vue Parcelles — pleine largeur */}
-        {parcelles.status === 'fulfilled' ? (
-          <DashboardParcellesWidget data={parcelles.value} />
-        ) : (
-          <WidgetError title="🗺️ Vue Parcelles" className="md:col-span-2" />
-        )}
-
         {/* Stock */}
         {stock.status === 'fulfilled' ? (
           <DashboardStockWidget data={stock.value} orgSlug={orgSlug} />
@@ -87,6 +80,13 @@ export default async function DashboardPage() {
           <DashboardActiviteWidget data={activite.value} />
         ) : (
           <WidgetError title="🕐 Activité récente" className="md:col-span-2" />
+        )}
+
+        {/* Vue Parcelles — pleine largeur, en bas */}
+        {parcelles.status === 'fulfilled' ? (
+          <DashboardParcellesWidget data={parcelles.value} />
+        ) : (
+          <WidgetError title="🗺️ Vue Parcelles" className="md:col-span-2" />
         )}
       </div>
     </div>

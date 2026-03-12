@@ -180,6 +180,7 @@ const NAV: NavSection[] = [
       { label: 'Prévisionnel',    href: '/previsionnel' },
       { label: 'Vue Stock',       href: '/stock/vue-stock' },
       { label: 'Vue Production',  href: '/production-totale' },
+      { label: 'Traçabilité',    href: '/tracabilite' },
     ],
   },
   {

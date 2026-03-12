@@ -85,8 +85,8 @@ function SiteBlock({ site }: { site: DashboardParcelleData }) {
 }
 
 function ParcelAccordion({ parcelle }: { parcelle: DashboardParcelleData['parcelles'][number] }) {
-  // Fermer par défaut si > 20 rangs
-  const [open, setOpen] = useState(parcelle.rangs.length <= 20)
+  // Fermé par défaut — l'utilisateur clique pour afficher les rangs
+  const [open, setOpen] = useState(false)
 
   return (
     <div className="rounded-lg border" style={{ borderColor: '#E8E4DE' }}>

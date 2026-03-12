@@ -2,6 +2,38 @@
 
 ---
 
+## [2026-03-12 21:00] — B4 : Page Traçabilité complète — recherche lot → chaîne graine→produit
+
+**Type :** `feature`
+**Fichiers concernés :** `src/app/[orgSlug]/(dashboard)/tracabilite/actions.ts`, `src/app/[orgSlug]/(dashboard)/tracabilite/page.tsx`, `src/components/tracabilite/TracabiliteClient.tsx`, `src/components/Sidebar.tsx`
+
+### Description
+Implémentation complète de la phase B4 — Traçabilité. Page dédiée permettant de rechercher un lot de production par numéro ou nom de recette, puis de remonter la chaîne complète : lot → ingrédients → cueillettes → plantations → semis → sachet de graines. Fonctionnalité clé pour la certification AB et les contrôles qualité.
+
+### Détails techniques
+- **Server Actions** (`actions.ts`) : 2 fonctions principales + 3 helpers de résolution
+  - `searchProductionLots(query)` : recherche les 50 derniers lots, filtre côté client par numéro de lot OU nom de recette, retourne les 20 premiers résultats
+  - `fetchLotTraceability(lotId)` : remonte la chaîne complète pour un lot — requête la plus complexe du projet
+  - `resolveRecipes()` : résolution batch recettes + catégories (sans FK join car Relationships: [] dans les types)
+  - `resolveRows()` : résolution batch rangs → parcelles → sites pour le libellé lieu
+  - `resolveSeedlings()` : résolution batch semis → sachets de graines avec fournisseur et certif AB
+- **Traçabilité par variété + année** : pour chaque ingrédient plante, on remonte TOUTES les cueillettes de cette variété pour l'année de récolte (ou année du lot), et TOUTES les plantations. Le stock étant fongible, on ne peut pas tracer au gramme exact.
+- **Vue recherche** : champ de recherche + liste des 20 derniers lots cliquables
+- **Vue traçabilité** : carte du lot (numéro, recette, catégorie, poids, DDM, temps) + accordéons par ingrédient
+  - 3 premiers ingrédients ouverts par défaut
+  - Ingrédients plante : cueillettes (date, poids, lieu) + plantations (rang, nb plants, type) + semis + sachet (fournisseur, certif AB)
+  - Matériaux externes : juste le fournisseur
+  - Badges : état plante (ETAT_PLANTE_COLORS), partie plante (PARTIE_COLORS), certif AB (vert)
+  - Chaîne visuellement indentée avec border-left colorée
+- **Export texte** : bouton "Exporter" génère un fichier .txt téléchargeable avec toute la chaîne structurée
+- **Cueillettes sauvages** : affichent le `lieu_sauvage` au lieu du rang
+- **Sidebar** : lien "Traçabilité" ajouté dans la section 📊 Analyse
+- **Style** : fond crème #F9F8F6, cartes blanches rounded-2xl shadow-sm, accordéons avec border-left var(--color-primary)
+- Pas de console.log
+- `npm run build` OK
+
+---
+
 ## [2026-03-12 19:00] — B3 : Dashboard complet — 6 widgets centre de commande
 
 **Type :** `feature`
