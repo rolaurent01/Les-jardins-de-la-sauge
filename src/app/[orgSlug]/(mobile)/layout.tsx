@@ -1,6 +1,7 @@
 import { cookies } from 'next/headers'
 import { createClient, createAdminClient } from '@/lib/supabase/server'
 import MobileShell from '@/components/mobile/MobileShell'
+import MobileFarmSelector from '@/components/mobile/MobileFarmSelector'
 
 /**
  * Layout mobile — enveloppe toutes les pages sous /{orgSlug}/m/*.
@@ -30,8 +31,20 @@ export default async function MobileLayout({
     .eq('slug', orgSlug)
     .single()
 
-  // Ferme active depuis le cookie
-  const farmId = cookieStore.get('active_farm_id')?.value ?? ''
+  // Charger les fermes accessibles (pour le sélecteur mobile)
+  const { data: farms } = org
+    ? await admin
+        .from('farms')
+        .select('id, nom')
+        .eq('organization_id', org.id)
+        .order('nom')
+    : { data: [] }
+
+  const farmList = farms ?? []
+
+  // Ferme active depuis le cookie, sinon la première
+  const farmId = cookieStore.get('active_farm_id')?.value
+    ?? (farmList.length > 0 ? farmList[0].id : '')
 
   return (
     <div
@@ -43,12 +56,19 @@ export default async function MobileLayout({
         className="flex items-center justify-between px-4 py-3 flex-shrink-0"
         style={{ backgroundColor: 'var(--color-primary)', color: '#fff' }}
       >
-        <span className="text-sm font-medium">
-          {org?.nom_affiche ?? 'Mon Jardin'}
-        </span>
+        {/* Nom de l'org + sélecteur de ferme */}
+        <div className="flex items-center gap-2 min-w-0">
+          <span className="text-sm font-medium shrink-0">
+            {org?.nom_affiche ?? 'Mon Jardin'}
+          </span>
+          <MobileFarmSelector
+            farms={farmList}
+            activeFarmId={farmId}
+          />
+        </div>
         <a
           href={`/${orgSlug}/dashboard`}
-          className="text-xs underline opacity-80"
+          className="text-xs underline opacity-80 shrink-0 ml-2"
         >
           Mode bureau
         </a>

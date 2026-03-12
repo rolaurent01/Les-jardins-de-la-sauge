@@ -2,6 +2,26 @@
 
 ---
 
+## [2026-03-12] — Alerte changement de ferme (bureau) + sélecteur de ferme (mobile)
+
+### Logique partagée — useFarmSwitchGuard + FarmSwitchAlert
+- `src/hooks/useFarmSwitchGuard.ts` — hook partagé : compte la syncQueue non synced via Dexie, gère l'état de la modale d'alerte, effectue le changement (cookie + reload). Paramètre `isMobile` pour différencier le comportement (bureau = switch direct si queue vide, mobile = toujours confirmer).
+- `src/components/layout/FarmSwitchAlert.tsx` — composant modale partagé. Deux modes :
+  - Queue non vide → alerte sync avec message "connectez-vous au Wi-Fi" + bouton principal "Annuler"
+  - Queue vide (mobile) → confirmation "cache rechargé, restez connecté" + bouton principal "Changer"
+- Try/catch sur l'import Dexie → si IndexedDB indisponible, pendingCount = 0
+
+### Bureau — FarmSelector avec alerte
+- `src/components/layout/FarmSelector.tsx` — remplacé `handleChange` direct par `useFarmSwitchGuard(false)`. Queue vide → changement immédiat. Queue non vide → modale d'alerte.
+
+### Mobile — Nouveau MobileFarmSelector
+- `src/components/mobile/MobileFarmSelector.tsx` — bouton [🌿 nom ▼] dans le header + bottom-sheet avec liste radio. Masqué si 1 seule ferme. Utilise `useFarmSwitchGuard(true)` → toujours confirmer (même queue vide, car le cache IndexedDB doit être rechargé).
+- `src/app/[orgSlug]/(mobile)/layout.tsx` — chargement des fermes (query `farms` comme le layout dashboard), passage au `MobileFarmSelector` dans le header vert entre le nom de l'org et "Mode bureau".
+
+**Build** : `npm run build` ✅
+
+---
+
 ## [2026-03-12] — Fix 3 bugs : purge archives, section Miel, admin utilisateurs
 
 ### Bug 1 — Purge archives ne supprime rien

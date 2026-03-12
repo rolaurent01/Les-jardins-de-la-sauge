@@ -1,6 +1,7 @@
 'use client'
 
-import { useRouter } from 'next/navigation'
+import { useFarmSwitchGuard } from '@/hooks/useFarmSwitchGuard'
+import FarmSwitchAlert from './FarmSwitchAlert'
 
 type Farm = { id: string; nom: string }
 
@@ -11,19 +12,19 @@ type Props = {
 
 /**
  * Sélecteur de ferme active — affiché dans la sidebar si l'utilisateur a accès à plusieurs fermes.
- * Met à jour le cookie active_farm_id et recharge la page.
+ * Vérifie la syncQueue avant de changer : si des saisies sont en attente, affiche une alerte.
  */
 export default function FarmSelector({ farms, activeFarmId }: Props) {
-  const router = useRouter()
+  const guard = useFarmSwitchGuard(false)
 
   // Aucun sélecteur si une seule ferme ou aucune
   if (farms.length <= 1) return null
 
   function handleChange(e: React.ChangeEvent<HTMLSelectElement>) {
     const newFarmId = e.target.value
-    // Mise à jour du cookie côté client
-    document.cookie = `active_farm_id=${newFarmId}; path=/; max-age=${365 * 24 * 60 * 60}; samesite=lax`
-    router.refresh()
+    if (newFarmId === activeFarmId) return
+    const targetFarm = farms.find(f => f.id === newFarmId)
+    guard.checkBeforeSwitch(newFarmId, targetFarm?.nom ?? '')
   }
 
   return (
@@ -51,6 +52,16 @@ export default function FarmSelector({ farms, activeFarmId }: Props) {
           ))}
         </select>
       </div>
+
+      {guard.showAlert && (
+        <FarmSwitchAlert
+          pendingCount={guard.pendingCount}
+          isMobile={false}
+          targetFarmName={guard.targetFarmName}
+          onCancel={guard.dismissAlert}
+          onConfirm={guard.confirmSwitch}
+        />
+      )}
     </div>
   )
 }
