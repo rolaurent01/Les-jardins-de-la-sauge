@@ -14,6 +14,8 @@ import { MODE_LABELS } from './types'
 import ProductionWizard from './ProductionWizard'
 import ConditionnerModal from './ConditionnerModal'
 import ProductionLotDetail from './ProductionLotDetail'
+import ExportButton from '@/components/shared/ExportButton'
+import type { ExportColumn } from '@/components/shared/ExportButton'
 
 /** Normalise une chaine pour la recherche insensible casse + accents */
 function normalize(str: string): string {
@@ -31,6 +33,18 @@ const MODE_BADGE: Record<ProductionMode, { bg: string; color: string }> = {
   produit: { bg: '#DCFCE7', color: '#166534' },
   melange: { bg: '#FEF3C7', color: '#92400E' },
 }
+
+const PRODUCTION_EXPORT_COLUMNS: ExportColumn[] = [
+  { key: 'numero_lot', label: 'N° Lot' },
+  { key: 'recipes', label: 'Recette', format: (v) => (v as { nom?: string } | null)?.nom ?? '' },
+  { key: 'mode', label: 'Mode' },
+  { key: 'date_production', label: 'Date production' },
+  { key: 'ddm', label: 'DDM' },
+  { key: 'nb_unites', label: 'Nb unités' },
+  { key: 'poids_total_g', label: 'Poids total (g)' },
+  { key: 'temps_min', label: 'Temps (min)' },
+  { key: 'commentaire', label: 'Commentaire' },
+]
 
 type ModeFilter = 'all' | 'produit' | 'melange'
 
@@ -136,14 +150,22 @@ export default function ProductionClient({ initialLots, recipes, categories, sto
           </p>
         </div>
 
-        <button
-          onClick={() => setWizardOpen(true)}
-          className="flex items-center gap-1.5 px-4 py-2 rounded-lg text-sm font-medium transition-opacity"
-          style={{ backgroundColor: 'var(--color-primary)', color: '#F9F8F6' }}
-        >
-          <span className="text-base leading-none">+</span>
-          Produire un lot
-        </button>
+        <div className="flex items-center gap-2">
+          <ExportButton
+            data={displayed as unknown as Record<string, unknown>[]}
+            columns={PRODUCTION_EXPORT_COLUMNS}
+            filename="production_lots"
+            variant="compact"
+          />
+          <button
+            onClick={() => setWizardOpen(true)}
+            className="flex items-center gap-1.5 px-4 py-2 rounded-lg text-sm font-medium transition-opacity"
+            style={{ backgroundColor: 'var(--color-primary)', color: '#F9F8F6' }}
+          >
+            <span className="text-base leading-none">+</span>
+            Produire un lot
+          </button>
+        </div>
       </div>
 
       {/* Barre de recherche + filtres */}

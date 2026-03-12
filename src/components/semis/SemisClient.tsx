@@ -12,6 +12,8 @@ import {
   updateSeedling,
 } from '@/app/[orgSlug]/(dashboard)/semis/suivi/actions'
 import SemisSlideOver from './SemisSlideOver'
+import ExportButton from '@/components/shared/ExportButton'
+import type { ExportColumn } from '@/components/shared/ExportButton'
 
 function normalize(str: string): string {
   return str.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase()
@@ -38,6 +40,17 @@ type Props = {
   seedLots: SeedLotForSelect[]
   varieties: Pick<Variety, 'id' | 'nom_vernaculaire' | 'nom_latin'>[]
 }
+
+const SEMIS_EXPORT_COLUMNS: ExportColumn[] = [
+  { key: 'varieties', label: 'Variété', format: (v) => (v as { nom_vernaculaire?: string } | null)?.nom_vernaculaire ?? '' },
+  { key: 'processus', label: 'Processus', format: (v) => v === 'mini_motte' ? 'Mini-motte' : 'Caissette/Godet' },
+  { key: 'date_semis', label: 'Date semis' },
+  { key: 'nb_mottes', label: 'Nb mottes' },
+  { key: 'nb_plants_caissette', label: 'Nb plants caissette' },
+  { key: 'nb_plants_obtenus', label: 'Nb plants obtenus' },
+  { key: 'poids_graines_utilise_g', label: 'Poids graines (g)' },
+  { key: 'commentaire', label: 'Commentaire' },
+]
 
 export default function SemisClient({ initialSeedlings, seedLots, varieties }: Props) {
   const router = useRouter()
@@ -141,14 +154,22 @@ export default function SemisClient({ initialSeedlings, seedLots, varieties }: P
           </p>
         </div>
 
-        <button
-          onClick={openCreate}
-          className="flex items-center gap-1.5 px-4 py-2 rounded-lg text-sm font-medium transition-opacity"
-          style={{ backgroundColor: 'var(--color-primary)', color: '#F9F8F6' }}
-        >
-          <span className="text-base leading-none">＋</span>
-          Nouveau semis
-        </button>
+        <div className="flex items-center gap-2">
+          <ExportButton
+            data={displayed as unknown as Record<string, unknown>[]}
+            columns={SEMIS_EXPORT_COLUMNS}
+            filename="suivi_semis"
+            variant="compact"
+          />
+          <button
+            onClick={openCreate}
+            className="flex items-center gap-1.5 px-4 py-2 rounded-lg text-sm font-medium transition-opacity"
+            style={{ backgroundColor: 'var(--color-primary)', color: '#F9F8F6' }}
+          >
+            <span className="text-base leading-none">＋</span>
+            Nouveau semis
+          </button>
+        </div>
       </div>
 
       {/* Barre d'outils */}

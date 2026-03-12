@@ -9,6 +9,20 @@ import { formatDate } from '@/lib/utils/format'
 import { ETAT_PLANTE_LABELS } from '@/components/transformation/types'
 import type { StockPurchaseWithVariety } from '@/lib/types'
 import AchatSlideOver from './AchatSlideOver'
+import ExportButton from '@/components/shared/ExportButton'
+import type { ExportColumn } from '@/components/shared/ExportButton'
+
+const ACHATS_EXPORT_COLUMNS: ExportColumn[] = [
+  { key: 'varieties', label: 'Variété', format: (v) => (v as { nom_vernaculaire?: string } | null)?.nom_vernaculaire ?? '' },
+  { key: 'partie_plante', label: 'Partie' },
+  { key: 'etat_plante', label: 'État' },
+  { key: 'date', label: 'Date' },
+  { key: 'poids_g', label: 'Poids (g)' },
+  { key: 'fournisseur', label: 'Fournisseur' },
+  { key: 'certif_ab', label: 'Certif AB', format: (v) => v ? 'Oui' : 'Non' },
+  { key: 'prix', label: 'Prix (€)', format: (v) => v != null ? String(Number(v).toFixed(2)) : '' },
+  { key: 'commentaire', label: 'Commentaire' },
+]
 
 /** Normalise une chaine pour la recherche insensible casse + accents */
 function normalize(str: string): string {
@@ -110,13 +124,21 @@ export default function AchatsClient({ purchases: initialPurchases, varieties, s
           </p>
         </div>
 
-        <button
-          onClick={openCreate}
-          className="flex items-center gap-1.5 px-4 py-2 rounded-lg text-sm font-medium transition-opacity"
-          style={{ backgroundColor: 'var(--color-primary)', color: '#F9F8F6' }}
-        >
-          + Nouvel achat
-        </button>
+        <div className="flex items-center gap-2">
+          <ExportButton
+            data={displayed as unknown as Record<string, unknown>[]}
+            columns={ACHATS_EXPORT_COLUMNS}
+            filename="achats"
+            variant="compact"
+          />
+          <button
+            onClick={openCreate}
+            className="flex items-center gap-1.5 px-4 py-2 rounded-lg text-sm font-medium transition-opacity"
+            style={{ backgroundColor: 'var(--color-primary)', color: '#F9F8F6' }}
+          >
+            + Nouvel achat
+          </button>
+        </div>
       </div>
 
       {/* Barre de recherche + filtres */}

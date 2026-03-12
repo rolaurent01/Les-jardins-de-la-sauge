@@ -9,6 +9,18 @@ import { formatDate } from '@/lib/utils/format'
 import { ETAT_PLANTE_LABELS } from '@/components/transformation/types'
 import type { StockDirectSaleWithVariety } from '@/lib/types'
 import VenteSlideOver from './VenteSlideOver'
+import ExportButton from '@/components/shared/ExportButton'
+import type { ExportColumn } from '@/components/shared/ExportButton'
+
+const VENTES_EXPORT_COLUMNS: ExportColumn[] = [
+  { key: 'varieties', label: 'Variété', format: (v) => (v as { nom_vernaculaire?: string } | null)?.nom_vernaculaire ?? '' },
+  { key: 'partie_plante', label: 'Partie' },
+  { key: 'etat_plante', label: 'État' },
+  { key: 'date', label: 'Date' },
+  { key: 'poids_g', label: 'Poids (g)' },
+  { key: 'destinataire', label: 'Destinataire' },
+  { key: 'commentaire', label: 'Commentaire' },
+]
 
 function normalize(str: string): string {
   return str.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase()
@@ -108,13 +120,21 @@ export default function VentesClient({ sales: initialSales, varieties, stockLeve
           </p>
         </div>
 
-        <button
-          onClick={openCreate}
-          className="flex items-center gap-1.5 px-4 py-2 rounded-lg text-sm font-medium transition-opacity"
-          style={{ backgroundColor: '#DDA15E', color: '#F9F8F6' }}
-        >
-          + Nouvelle vente
-        </button>
+        <div className="flex items-center gap-2">
+          <ExportButton
+            data={displayed as unknown as Record<string, unknown>[]}
+            columns={VENTES_EXPORT_COLUMNS}
+            filename="ventes_directes"
+            variant="compact"
+          />
+          <button
+            onClick={openCreate}
+            className="flex items-center gap-1.5 px-4 py-2 rounded-lg text-sm font-medium transition-opacity"
+            style={{ backgroundColor: '#DDA15E', color: '#F9F8F6' }}
+          >
+            + Nouvelle vente
+          </button>
+        </div>
       </div>
 
       {/* Barre de recherche + filtres */}

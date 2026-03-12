@@ -17,6 +17,17 @@ import {
   deleteForecast,
   copyForecastsFromYear,
 } from '@/app/[orgSlug]/(dashboard)/previsionnel/actions'
+import ExportButton from '@/components/shared/ExportButton'
+import type { ExportColumn } from '@/components/shared/ExportButton'
+
+const PREVISIONNEL_EXPORT_COLUMNS: ExportColumn[] = [
+  { key: 'varieties', label: 'Variété', format: (v) => (v as { nom_vernaculaire?: string } | null)?.nom_vernaculaire ?? '' },
+  { key: 'etat_plante', label: 'État' },
+  { key: 'quantite_prevue_g', label: 'Objectif (g)' },
+  { key: '_realise_g', label: 'Réalisé (g)' },
+  { key: '_avancement_pct', label: 'Avancement (%)' },
+  { key: 'commentaire', label: 'Commentaire' },
+]
 
 /* ---------------------------------------------------------------
    Helpers
@@ -170,9 +181,20 @@ export default function PrevisionnelClient({
   return (
     <div className="p-6 max-w-5xl mx-auto">
       {/* ── Header ── */}
-      <h1 className="text-xl font-semibold mb-4" style={{ color: 'var(--color-primary)' }}>
-        Prévisionnel
-      </h1>
+      <div className="flex items-center justify-between mb-4">
+        <h1 className="text-xl font-semibold" style={{ color: 'var(--color-primary)' }}>
+          Prévisionnel
+        </h1>
+        <ExportButton
+          data={filtered.map(f => {
+            const realise = getRealisedForForecast(f, realisedData)
+            return { ...f, _realise_g: realise, _avancement_pct: computePercent(realise, f.quantite_prevue_g ?? 0) }
+          }) as unknown as Record<string, unknown>[]}
+          columns={PREVISIONNEL_EXPORT_COLUMNS}
+          filename={`previsionnel_${selectedYear}`}
+          variant="compact"
+        />
+      </div>
 
       {/* ── Sélecteur d'année + Copie ── */}
       <div className="flex flex-wrap items-center gap-3 mb-4">

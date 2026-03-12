@@ -5,6 +5,8 @@ import { useRouter } from 'next/navigation'
 import type { RowCareWithRelations, RowWithParcel, Variety } from '@/lib/types'
 import { createRowCare, updateRowCare, deleteRowCare } from '@/app/[orgSlug]/(dashboard)/parcelles/suivi-rang/actions'
 import SuiviRangSlideOver from './SuiviRangSlideOver'
+import ExportButton from '@/components/shared/ExportButton'
+import type { ExportColumn } from '@/components/shared/ExportButton'
 import { formatDate, formatDuration } from '@/lib/utils/format'
 
 /** Normalise une chaine pour la recherche insensible casse + accents */
@@ -47,6 +49,15 @@ type Props = {
   rows: RowWithParcel[]
   varieties: Pick<Variety, 'id' | 'nom_vernaculaire'>[]
 }
+
+const SUIVI_RANG_EXPORT_COLUMNS: ExportColumn[] = [
+  { key: 'varieties', label: 'Variété', format: (v) => (v as { nom_vernaculaire?: string })?.nom_vernaculaire ?? '' },
+  { key: '_rang', label: 'Rang' },
+  { key: 'date', label: 'Date' },
+  { key: 'type_soin', label: 'Type soin' },
+  { key: 'temps_min', label: 'Temps (min)' },
+  { key: 'commentaire', label: 'Commentaire' },
+]
 
 export default function SuiviRangClient({ initialRowCare, rows, varieties }: Props) {
   const router = useRouter()
@@ -127,14 +138,22 @@ export default function SuiviRangClient({ initialRowCare, rows, varieties }: Pro
           </p>
         </div>
 
-        <button
-          onClick={openCreate}
-          className="flex items-center gap-1.5 px-4 py-2 rounded-lg text-sm font-medium transition-opacity"
-          style={{ backgroundColor: 'var(--color-primary)', color: '#F9F8F6' }}
-        >
-          <span className="text-base leading-none">+</span>
-          Nouveau soin
-        </button>
+        <div className="flex items-center gap-2">
+          <ExportButton
+            data={displayed.map(c => ({ ...c, _rang: rowLabel(c) })) as unknown as Record<string, unknown>[]}
+            columns={SUIVI_RANG_EXPORT_COLUMNS}
+            filename="suivi_rang"
+            variant="compact"
+          />
+          <button
+            onClick={openCreate}
+            className="flex items-center gap-1.5 px-4 py-2 rounded-lg text-sm font-medium transition-opacity"
+            style={{ backgroundColor: 'var(--color-primary)', color: '#F9F8F6' }}
+          >
+            <span className="text-base leading-none">+</span>
+            Nouveau soin
+          </button>
+        </div>
       </div>
 
       {/* Barre de recherche */}

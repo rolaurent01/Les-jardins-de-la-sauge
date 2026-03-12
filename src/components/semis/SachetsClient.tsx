@@ -5,6 +5,8 @@ import { useRouter } from 'next/navigation'
 import type { SeedLotWithVariety, Variety } from '@/lib/types'
 import { archiveSeedLot, restoreSeedLot, createSeedLot, updateSeedLot } from '@/app/[orgSlug]/(dashboard)/semis/sachets/actions'
 import SachetSlideOver from './SachetSlideOver'
+import ExportButton from '@/components/shared/ExportButton'
+import type { ExportColumn } from '@/components/shared/ExportButton'
 
 /* Normalise une chaîne pour la recherche insensible casse + accents */
 function normalize(str: string): string {
@@ -22,6 +24,17 @@ type Props = {
   initialSeedLots: SeedLotWithVariety[]
   varieties: Pick<Variety, 'id' | 'nom_vernaculaire' | 'nom_latin'>[]
 }
+
+const SACHETS_EXPORT_COLUMNS: ExportColumn[] = [
+  { key: 'lot_interne', label: 'N° Lot' },
+  { key: 'varieties', label: 'Variété', format: (v) => (v as { nom_vernaculaire?: string } | null)?.nom_vernaculaire ?? '' },
+  { key: 'fournisseur', label: 'Fournisseur' },
+  { key: 'date_achat', label: 'Date achat' },
+  { key: 'poids_sachet_g', label: 'Poids sachet (g)' },
+  { key: 'certif_ab', label: 'Certif AB', format: (v) => v ? 'Oui' : 'Non' },
+  { key: 'numero_lot_fournisseur', label: 'N° lot fournisseur' },
+  { key: 'commentaire', label: 'Commentaire' },
+]
 
 export default function SachetsClient({ initialSeedLots, varieties }: Props) {
   const router = useRouter()
@@ -121,14 +134,22 @@ export default function SachetsClient({ initialSeedLots, varieties }: Props) {
           </p>
         </div>
 
-        <button
-          onClick={openCreate}
-          className="flex items-center gap-1.5 px-4 py-2 rounded-lg text-sm font-medium transition-opacity"
-          style={{ backgroundColor: 'var(--color-primary)', color: '#F9F8F6' }}
-        >
-          <span className="text-base leading-none">＋</span>
-          Nouveau sachet
-        </button>
+        <div className="flex items-center gap-2">
+          <ExportButton
+            data={displayed as unknown as Record<string, unknown>[]}
+            columns={SACHETS_EXPORT_COLUMNS}
+            filename="sachets_graines"
+            variant="compact"
+          />
+          <button
+            onClick={openCreate}
+            className="flex items-center gap-1.5 px-4 py-2 rounded-lg text-sm font-medium transition-opacity"
+            style={{ backgroundColor: 'var(--color-primary)', color: '#F9F8F6' }}
+          >
+            <span className="text-base leading-none">＋</span>
+            Nouveau sachet
+          </button>
+        </div>
       </div>
 
       {/* ---- Barre de recherche + toggle archivés ---- */}

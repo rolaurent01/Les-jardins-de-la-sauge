@@ -12,6 +12,8 @@ import {
   restoreHarvest,
 } from '@/app/[orgSlug]/(dashboard)/parcelles/cueillette/actions'
 import CueilletteSlideOver from './CueilletteSlideOver'
+import ExportButton from '@/components/shared/ExportButton'
+import type { ExportColumn } from '@/components/shared/ExportButton'
 import { formatDate, formatDuration } from '@/lib/utils/format'
 
 /** Normalise une chaine pour la recherche insensible casse + accents */
@@ -44,6 +46,17 @@ type Props = {
   varieties: Pick<Variety, 'id' | 'nom_vernaculaire'>[]
   lieuxSauvages: string[]
 }
+
+const CUEILLETTE_EXPORT_COLUMNS: ExportColumn[] = [
+  { key: 'type_cueillette', label: 'Type', format: (v) => v === 'parcelle' ? 'Parcelle' : 'Sauvage' },
+  { key: 'varieties', label: 'Variété', format: (v) => (v as { nom_vernaculaire?: string })?.nom_vernaculaire ?? '' },
+  { key: 'partie_plante', label: 'Partie plante' },
+  { key: '_lieu', label: 'Lieu' },
+  { key: 'date', label: 'Date' },
+  { key: 'poids_g', label: 'Poids (g)' },
+  { key: 'temps_min', label: 'Temps (min)' },
+  { key: 'commentaire', label: 'Commentaire' },
+]
 
 export default function CueilletteClient({ initialHarvests, rows, varieties, lieuxSauvages }: Props) {
   const router = useRouter()
@@ -138,14 +151,22 @@ export default function CueilletteClient({ initialHarvests, rows, varieties, lie
           </p>
         </div>
 
-        <button
-          onClick={openCreate}
-          className="flex items-center gap-1.5 px-4 py-2 rounded-lg text-sm font-medium transition-opacity"
-          style={{ backgroundColor: 'var(--color-primary)', color: '#F9F8F6' }}
-        >
-          <span className="text-base leading-none">+</span>
-          Nouvelle cueillette
-        </button>
+        <div className="flex items-center gap-2">
+          <ExportButton
+            data={displayed.map(h => ({ ...h, _lieu: lieuLabel(h) })) as unknown as Record<string, unknown>[]}
+            columns={CUEILLETTE_EXPORT_COLUMNS}
+            filename="cueillettes"
+            variant="compact"
+          />
+          <button
+            onClick={openCreate}
+            className="flex items-center gap-1.5 px-4 py-2 rounded-lg text-sm font-medium transition-opacity"
+            style={{ backgroundColor: 'var(--color-primary)', color: '#F9F8F6' }}
+          >
+            <span className="text-base leading-none">+</span>
+            Nouvelle cueillette
+          </button>
+        </div>
       </div>
 
       {/* Barre de recherche + filtres */}

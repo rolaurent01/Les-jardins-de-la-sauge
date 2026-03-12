@@ -9,6 +9,19 @@ import { formatDate } from '@/lib/utils/format'
 import { ETAT_PLANTE_LABELS } from '@/components/transformation/types'
 import type { StockAdjustmentWithVariety } from '@/lib/types'
 import AjustementSlideOver from './AjustementSlideOver'
+import ExportButton from '@/components/shared/ExportButton'
+import type { ExportColumn } from '@/components/shared/ExportButton'
+
+const AJUSTEMENTS_EXPORT_COLUMNS: ExportColumn[] = [
+  { key: 'varieties', label: 'Variété', format: (v) => (v as { nom_vernaculaire?: string } | null)?.nom_vernaculaire ?? '' },
+  { key: 'partie_plante', label: 'Partie' },
+  { key: 'etat_plante', label: 'État' },
+  { key: 'type_mouvement', label: 'Type', format: (v) => v === 'entree' ? 'Entrée' : 'Sortie' },
+  { key: 'date', label: 'Date' },
+  { key: 'poids_g', label: 'Poids (g)' },
+  { key: 'motif', label: 'Motif' },
+  { key: 'commentaire', label: 'Commentaire' },
+]
 
 function normalize(str: string): string {
   return str.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase()
@@ -120,13 +133,21 @@ export default function AjustementsClient({ adjustments: initialAdjustments, var
           </p>
         </div>
 
-        <button
-          onClick={openCreate}
-          className="flex items-center gap-1.5 px-4 py-2 rounded-lg text-sm font-medium transition-opacity"
-          style={{ backgroundColor: 'var(--color-primary)', color: '#F9F8F6' }}
-        >
-          + Nouvel ajustement
-        </button>
+        <div className="flex items-center gap-2">
+          <ExportButton
+            data={displayed as unknown as Record<string, unknown>[]}
+            columns={AJUSTEMENTS_EXPORT_COLUMNS}
+            filename="ajustements"
+            variant="compact"
+          />
+          <button
+            onClick={openCreate}
+            className="flex items-center gap-1.5 px-4 py-2 rounded-lg text-sm font-medium transition-opacity"
+            style={{ backgroundColor: 'var(--color-primary)', color: '#F9F8F6' }}
+          >
+            + Nouvel ajustement
+          </button>
+        </div>
       </div>
 
       {/* Barre de recherche + filtres */}

@@ -11,6 +11,8 @@ import {
   restorePlanting,
 } from '@/app/[orgSlug]/(dashboard)/parcelles/plantations/actions'
 import PlantationSlideOver from './PlantationSlideOver'
+import ExportButton from '@/components/shared/ExportButton'
+import type { ExportColumn } from '@/components/shared/ExportButton'
 import { formatDate } from '@/lib/utils/format'
 
 /* Normalise une chaîne pour la recherche insensible casse + accents */
@@ -63,6 +65,19 @@ type Props = {
   varieties: Pick<Variety, 'id' | 'nom_vernaculaire'>[]
   seedlings: SeedlingForSelect[]
 }
+
+const PLANTATIONS_EXPORT_COLUMNS: ExportColumn[] = [
+  { key: 'varieties', label: 'Variété', format: (v) => (v as { nom_vernaculaire?: string })?.nom_vernaculaire ?? '' },
+  { key: '_rang', label: 'Rang' },
+  { key: 'date_plantation', label: 'Date plantation' },
+  { key: 'annee', label: 'Année' },
+  { key: 'nb_plants', label: 'Nb plants' },
+  { key: 'type_plant', label: 'Type plant', format: (v) => TYPE_PLANT_LABELS[v as string] ?? String(v ?? '') },
+  { key: 'longueur_m', label: 'Longueur (m)' },
+  { key: 'largeur_m', label: 'Largeur (m)' },
+  { key: 'actif', label: 'Actif', format: (v) => v ? 'Oui' : 'Non' },
+  { key: 'commentaire', label: 'Commentaire' },
+]
 
 export default function PlantationsClient({ initialPlantings, rows, varieties, seedlings }: Props) {
   const router = useRouter()
@@ -188,14 +203,22 @@ export default function PlantationsClient({ initialPlantings, rows, varieties, s
           </p>
         </div>
 
-        <button
-          onClick={openCreate}
-          className="flex items-center gap-1.5 px-4 py-2 rounded-lg text-sm font-medium transition-opacity"
-          style={{ backgroundColor: 'var(--color-primary)', color: '#F9F8F6' }}
-        >
-          <span className="text-base leading-none">＋</span>
-          Nouvelle plantation
-        </button>
+        <div className="flex items-center gap-2">
+          <ExportButton
+            data={displayed.map(p => ({ ...p, _rang: rowLabel(p) })) as unknown as Record<string, unknown>[]}
+            columns={PLANTATIONS_EXPORT_COLUMNS}
+            filename="plantations"
+            variant="compact"
+          />
+          <button
+            onClick={openCreate}
+            className="flex items-center gap-1.5 px-4 py-2 rounded-lg text-sm font-medium transition-opacity"
+            style={{ backgroundColor: 'var(--color-primary)', color: '#F9F8F6' }}
+          >
+            <span className="text-base leading-none">＋</span>
+            Nouvelle plantation
+          </button>
+        </div>
       </div>
 
       {/* ---- Barre de recherche + toggle archivés ---- */}

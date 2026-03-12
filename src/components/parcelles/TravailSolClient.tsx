@@ -5,6 +5,8 @@ import { useRouter } from 'next/navigation'
 import type { SoilWorkWithRelations, RowWithParcel } from '@/lib/types'
 import { createSoilWork, updateSoilWork, deleteSoilWork } from '@/app/[orgSlug]/(dashboard)/parcelles/travail-sol/actions'
 import TravailSolSlideOver from './TravailSolSlideOver'
+import ExportButton from '@/components/shared/ExportButton'
+import type { ExportColumn } from '@/components/shared/ExportButton'
 import { formatDate, formatDuration } from '@/lib/utils/format'
 
 /* Normalise une chaîne pour la recherche insensible casse + accents */
@@ -46,6 +48,15 @@ type Props = {
   initialSoilWorks: SoilWorkWithRelations[]
   rows: RowWithParcel[]
 }
+
+const TRAVAIL_SOL_EXPORT_COLUMNS: ExportColumn[] = [
+  { key: '_rang', label: 'Rang' },
+  { key: 'date', label: 'Date' },
+  { key: 'type_travail', label: 'Type' },
+  { key: 'detail', label: 'Détail' },
+  { key: 'temps_min', label: 'Temps (min)' },
+  { key: 'commentaire', label: 'Commentaire' },
+]
 
 export default function TravailSolClient({ initialSoilWorks, rows }: Props) {
   const router = useRouter()
@@ -130,14 +141,22 @@ export default function TravailSolClient({ initialSoilWorks, rows }: Props) {
           </p>
         </div>
 
-        <button
-          onClick={openCreate}
-          className="flex items-center gap-1.5 px-4 py-2 rounded-lg text-sm font-medium transition-opacity"
-          style={{ backgroundColor: 'var(--color-primary)', color: '#F9F8F6' }}
-        >
-          <span className="text-base leading-none">＋</span>
-          Nouveau travail
-        </button>
+        <div className="flex items-center gap-2">
+          <ExportButton
+            data={displayed.map(w => ({ ...w, _rang: rowLabel(w) })) as unknown as Record<string, unknown>[]}
+            columns={TRAVAIL_SOL_EXPORT_COLUMNS}
+            filename="travail_sol"
+            variant="compact"
+          />
+          <button
+            onClick={openCreate}
+            className="flex items-center gap-1.5 px-4 py-2 rounded-lg text-sm font-medium transition-opacity"
+            style={{ backgroundColor: 'var(--color-primary)', color: '#F9F8F6' }}
+          >
+            <span className="text-base leading-none">＋</span>
+            Nouveau travail
+          </button>
+        </div>
       </div>
 
       {/* ---- Barre de recherche ---- */}

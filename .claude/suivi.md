@@ -2,6 +2,23 @@
 
 ---
 
+## [2026-03-12 23:00] — B5 : Export CSV/XLSX sur tous les tableaux + documentation utilisateur
+
+**Type :** `feature`
+**Fichiers concernés :** `src/components/shared/ExportButton.tsx`, `src/components/semis/SachetsClient.tsx`, `src/components/semis/SemisClient.tsx`, `src/components/parcelles/TravailSolClient.tsx`, `src/components/parcelles/PlantationsClient.tsx`, `src/components/parcelles/SuiviRangClient.tsx`, `src/components/parcelles/CueilletteClient.tsx`, `src/components/parcelles/ArrachageClient.tsx`, `src/components/parcelles/OccultationClient.tsx`, `src/components/transformation/TransformationClient.tsx`, `src/components/produits/RecettesClient.tsx`, `src/components/produits/ProductionClient.tsx`, `src/components/produits/ProductStockClient.tsx`, `src/components/affinage-stock/AchatsClient.tsx`, `src/components/affinage-stock/VentesClient.tsx`, `src/components/affinage-stock/AjustementsClient.tsx`, `src/components/previsionnel/PrevisionnelClient.tsx`, `docs/guide-utilisateur.md`
+
+### Description
+Implémentation complète de la phase B5 — Export CSV/XLSX sur tous les tableaux de saisie bureau et création de la documentation utilisateur. Ajout d'un composant réutilisable `ExportButton` et intégration sur 17 composants client.
+
+### Détails techniques
+- **Composant réutilisable** (`src/components/shared/ExportButton.tsx`) : bouton dropdown "Exporter" avec 2 options (CSV, XLSX). Accepte `data`, `columns` (avec format custom), `filename`, `variant` (default/compact). CSV avec séparateur `;`, BOM UTF-8. XLSX via SheetJS.
+- **17 composants modifiés** : chaque tableau de saisie bureau reçoit un `<ExportButton>` dans l'en-tête, à côté du bouton de création. Les données exportées sont celles APRÈS filtrage (recherche, filtres actifs).
+- **Champs calculés** : pour les colonnes nécessitant un calcul (rang formaté, lieu, ingrédients, avancement prévisionnel), les données sont mappées avec des champs `_rang`, `_lieu`, `_ingredients`, `_realise_g`, `_avancement_pct` avant passage au composant.
+- **Documentation** (`docs/guide-utilisateur.md`) : guide utilisateur complet couvrant navigation, saisie, mode terrain, stock, recettes/production, prévisionnel, export, traçabilité, mode hors ligne et référentiel.
+- Build vérifié sans erreur
+
+---
+
 ## [2026-03-12 21:00] — B4 : Page Traçabilité complète — recherche lot → chaîne graine→produit
 
 **Type :** `feature`

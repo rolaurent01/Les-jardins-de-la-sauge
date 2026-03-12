@@ -9,6 +9,8 @@ import {
   deleteOccultation,
 } from '@/app/[orgSlug]/(dashboard)/parcelles/occultation/actions'
 import OccultationSlideOver from './OccultationSlideOver'
+import ExportButton from '@/components/shared/ExportButton'
+import type { ExportColumn } from '@/components/shared/ExportButton'
 import { formatDate, formatDuration } from '@/lib/utils/format'
 
 /** Normalise une chaine pour la recherche insensible casse + accents */
@@ -65,6 +67,16 @@ type Props = {
   rows: RowWithParcel[]
   engraisVertNoms: string[]
 }
+
+const OCCULTATION_EXPORT_COLUMNS: ExportColumn[] = [
+  { key: '_rang', label: 'Rang' },
+  { key: 'methode', label: 'Méthode', format: (v) => METHODE_LABELS[v as MethodeOccultation] ?? String(v ?? '') },
+  { key: 'date_debut', label: 'Date début' },
+  { key: 'date_fin', label: 'Date fin' },
+  { key: 'fournisseur', label: 'Fournisseur' },
+  { key: 'temps_min', label: 'Temps (min)' },
+  { key: 'commentaire', label: 'Commentaire' },
+]
 
 export default function OccultationClient({ initialOccultations, rows, engraisVertNoms }: Props) {
   const router = useRouter()
@@ -149,14 +161,22 @@ export default function OccultationClient({ initialOccultations, rows, engraisVe
           </p>
         </div>
 
-        <button
-          onClick={openCreate}
-          className="flex items-center gap-1.5 px-4 py-2 rounded-lg text-sm font-medium transition-opacity"
-          style={{ backgroundColor: 'var(--color-primary)', color: '#F9F8F6' }}
-        >
-          <span className="text-base leading-none">+</span>
-          Nouvelle occultation
-        </button>
+        <div className="flex items-center gap-2">
+          <ExportButton
+            data={displayed.map(o => ({ ...o, _rang: rowLabel(o) })) as unknown as Record<string, unknown>[]}
+            columns={OCCULTATION_EXPORT_COLUMNS}
+            filename="occultations"
+            variant="compact"
+          />
+          <button
+            onClick={openCreate}
+            className="flex items-center gap-1.5 px-4 py-2 rounded-lg text-sm font-medium transition-opacity"
+            style={{ backgroundColor: 'var(--color-primary)', color: '#F9F8F6' }}
+          >
+            <span className="text-base leading-none">+</span>
+            Nouvelle occultation
+          </button>
+        </div>
       </div>
 
       {/* Barre de recherche + filtres */}

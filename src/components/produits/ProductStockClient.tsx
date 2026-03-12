@@ -5,11 +5,22 @@ import { useRouter } from 'next/navigation'
 import type { ProductStockMovementWithRelations, ProductStockSummary } from '@/lib/types'
 import { deleteProductStockMovement } from '@/app/[orgSlug]/(dashboard)/produits/stock/actions'
 import ProductStockSlideOver from './ProductStockSlideOver'
+import ExportButton from '@/components/shared/ExportButton'
+import type { ExportColumn } from '@/components/shared/ExportButton'
 
 /** Normalise une chaine pour la recherche insensible casse + accents */
 function normalize(str: string): string {
   return str.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase()
 }
+
+const PRODUCT_STOCK_EXPORT_COLUMNS: ExportColumn[] = [
+  { key: 'production_lots', label: 'N° Lot', format: (v) => (v as { numero_lot?: string } | null)?.numero_lot ?? '' },
+  { key: '_recipe_nom', label: 'Recette' },
+  { key: 'type_mouvement', label: 'Type', format: (v) => v === 'entree' ? 'Entrée' : 'Sortie' },
+  { key: 'date', label: 'Date' },
+  { key: 'quantite', label: 'Quantité' },
+  { key: 'commentaire', label: 'Commentaire' },
+]
 
 type TypeFilter = 'all' | 'entree' | 'sortie'
 
@@ -97,14 +108,22 @@ export default function ProductStockClient({ initialMovements, initialSummary, l
           </p>
         </div>
 
-        <button
-          onClick={() => setSlideOverOpen(true)}
-          className="flex items-center gap-1.5 px-4 py-2 rounded-lg text-sm font-medium transition-opacity"
-          style={{ backgroundColor: 'var(--color-primary)', color: '#F9F8F6' }}
-        >
-          <span className="text-base leading-none">+</span>
-          Mouvement de stock
-        </button>
+        <div className="flex items-center gap-2">
+          <ExportButton
+            data={displayed.map(m => ({ ...m, _recipe_nom: m.production_lots?.recipes?.nom ?? '' })) as unknown as Record<string, unknown>[]}
+            columns={PRODUCT_STOCK_EXPORT_COLUMNS}
+            filename="stock_produits_finis"
+            variant="compact"
+          />
+          <button
+            onClick={() => setSlideOverOpen(true)}
+            className="flex items-center gap-1.5 px-4 py-2 rounded-lg text-sm font-medium transition-opacity"
+            style={{ backgroundColor: 'var(--color-primary)', color: '#F9F8F6' }}
+          >
+            <span className="text-base leading-none">+</span>
+            Mouvement de stock
+          </button>
+        </div>
       </div>
 
       {/* Section haute : Resume stock par lot */}

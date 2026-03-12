@@ -13,6 +13,8 @@ import type {
 } from './types'
 import { ETAT_PLANTE_LABELS } from './types'
 import TransformationSlideOver from './TransformationSlideOver'
+import ExportButton from '@/components/shared/ExportButton'
+import type { ExportColumn } from '@/components/shared/ExportButton'
 
 /** Normalise une chaine pour la recherche insensible casse + accents */
 function normalize(str: string): string {
@@ -30,6 +32,17 @@ function truncate(text: string, max: number): string {
   if (text.length <= max) return text
   return text.slice(0, max) + '…'
 }
+
+const TRANSFORMATION_EXPORT_COLUMNS: ExportColumn[] = [
+  { key: 'type', label: 'Type', format: (v) => v === 'entree' ? 'Entrée' : 'Sortie' },
+  { key: 'varieties', label: 'Variété', format: (v) => (v as { nom_vernaculaire?: string } | null)?.nom_vernaculaire ?? '' },
+  { key: 'partie_plante', label: 'Partie' },
+  { key: 'etat_plante', label: 'État' },
+  { key: 'date', label: 'Date' },
+  { key: 'poids_g', label: 'Poids (g)' },
+  { key: 'temps_min', label: 'Temps (min)' },
+  { key: 'commentaire', label: 'Commentaire' },
+]
 
 type TypeFilter = 'all' | 'entree' | 'sortie'
 
@@ -134,6 +147,12 @@ export default function TransformationClient({ config, items: initialItems, vari
         </div>
 
         <div className="flex items-center gap-2">
+          <ExportButton
+            data={displayed as unknown as Record<string, unknown>[]}
+            columns={TRANSFORMATION_EXPORT_COLUMNS}
+            filename={config.module}
+            variant="compact"
+          />
           <button
             onClick={() => openCreate('entree')}
             className="flex items-center gap-1.5 px-4 py-2 rounded-lg text-sm font-medium transition-opacity"

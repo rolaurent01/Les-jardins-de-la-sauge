@@ -11,6 +11,8 @@ import {
   toggleRecipeActive,
 } from '@/app/[orgSlug]/(dashboard)/produits/recettes/actions'
 import RecetteSlideOver from './RecetteSlideOver'
+import ExportButton from '@/components/shared/ExportButton'
+import type { ExportColumn } from '@/components/shared/ExportButton'
 
 /** Normalise une chaine pour la recherche insensible casse + accents */
 function normalize(str: string): string {
@@ -38,6 +40,14 @@ function ingredientsSummary(recipe: RecipeWithRelations): string {
   if (sorted.length > 3) parts.push('…')
   return parts.join(', ')
 }
+
+const RECETTES_EXPORT_COLUMNS: ExportColumn[] = [
+  { key: 'nom', label: 'Recette' },
+  { key: 'product_categories', label: 'Catégorie', format: (v) => (v as { nom?: string } | null)?.nom ?? '' },
+  { key: 'poids_sachet_g', label: 'Poids sachet (g)' },
+  { key: 'actif', label: 'Active', format: (v) => v ? 'Oui' : 'Non' },
+  { key: '_ingredients', label: 'Ingrédients' },
+]
 
 type StatusFilter = 'all' | 'active' | 'inactive'
 
@@ -164,14 +174,22 @@ export default function RecettesClient({ initialRecipes, categories, varieties, 
           </p>
         </div>
 
-        <button
-          onClick={openCreate}
-          className="flex items-center gap-1.5 px-4 py-2 rounded-lg text-sm font-medium transition-opacity"
-          style={{ backgroundColor: 'var(--color-primary)', color: '#F9F8F6' }}
-        >
-          <span className="text-base leading-none">+</span>
-          Nouvelle recette
-        </button>
+        <div className="flex items-center gap-2">
+          <ExportButton
+            data={displayed.map(r => ({ ...r, _ingredients: ingredientsSummary(r) })) as unknown as Record<string, unknown>[]}
+            columns={RECETTES_EXPORT_COLUMNS}
+            filename="recettes"
+            variant="compact"
+          />
+          <button
+            onClick={openCreate}
+            className="flex items-center gap-1.5 px-4 py-2 rounded-lg text-sm font-medium transition-opacity"
+            style={{ backgroundColor: 'var(--color-primary)', color: '#F9F8F6' }}
+          >
+            <span className="text-base leading-none">+</span>
+            Nouvelle recette
+          </button>
+        </div>
       </div>
 
       {/* Barre de recherche + filtres */}

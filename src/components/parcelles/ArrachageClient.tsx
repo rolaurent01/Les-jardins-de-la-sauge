@@ -9,6 +9,8 @@ import {
   deleteUprooting,
 } from '@/app/[orgSlug]/(dashboard)/parcelles/arrachage/actions'
 import ArrachageSlideOver from './ArrachageSlideOver'
+import ExportButton from '@/components/shared/ExportButton'
+import type { ExportColumn } from '@/components/shared/ExportButton'
 import { formatDate, formatDuration } from '@/lib/utils/format'
 
 /** Normalise une chaine pour la recherche insensible casse + accents */
@@ -33,6 +35,14 @@ type Props = {
   rows: RowWithParcel[]
   varieties: Pick<Variety, 'id' | 'nom_vernaculaire'>[]
 }
+
+const ARRACHAGE_EXPORT_COLUMNS: ExportColumn[] = [
+  { key: '_rang', label: 'Rang' },
+  { key: 'varieties', label: 'Variété', format: (v) => (v as { nom_vernaculaire?: string })?.nom_vernaculaire ?? '' },
+  { key: 'date', label: 'Date' },
+  { key: 'temps_min', label: 'Temps (min)' },
+  { key: 'commentaire', label: 'Commentaire' },
+]
 
 export default function ArrachageClient({ initialUprootings, rows, varieties }: Props) {
   const router = useRouter()
@@ -111,14 +121,22 @@ export default function ArrachageClient({ initialUprootings, rows, varieties }: 
           </p>
         </div>
 
-        <button
-          onClick={openCreate}
-          className="flex items-center gap-1.5 px-4 py-2 rounded-lg text-sm font-medium transition-opacity"
-          style={{ backgroundColor: 'var(--color-primary)', color: '#F9F8F6' }}
-        >
-          <span className="text-base leading-none">+</span>
-          Nouvel arrachage
-        </button>
+        <div className="flex items-center gap-2">
+          <ExportButton
+            data={displayed.map(u => ({ ...u, _rang: rowLabel(u) })) as unknown as Record<string, unknown>[]}
+            columns={ARRACHAGE_EXPORT_COLUMNS}
+            filename="arrachages"
+            variant="compact"
+          />
+          <button
+            onClick={openCreate}
+            className="flex items-center gap-1.5 px-4 py-2 rounded-lg text-sm font-medium transition-opacity"
+            style={{ backgroundColor: 'var(--color-primary)', color: '#F9F8F6' }}
+          >
+            <span className="text-base leading-none">+</span>
+            Nouvel arrachage
+          </button>
+        </div>
       </div>
 
       {/* Barre de recherche */}
