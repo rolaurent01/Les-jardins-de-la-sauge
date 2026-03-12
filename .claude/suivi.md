@@ -2,6 +2,27 @@
 
 ---
 
+## [2026-03-12 19:00] — B3 : Dashboard complet — 6 widgets centre de commande
+
+**Type :** `feature`
+**Fichiers concernés :** `src/app/[orgSlug]/(dashboard)/dashboard/actions.ts`, `src/app/[orgSlug]/(dashboard)/dashboard/page.tsx`, `src/components/dashboard/DashboardStockWidget.tsx`, `src/components/dashboard/DashboardProductionWidget.tsx`, `src/components/dashboard/DashboardParcellesWidget.tsx`, `src/components/dashboard/DashboardAvancementWidget.tsx`, `src/components/dashboard/DashboardTempsWidget.tsx`, `src/components/dashboard/DashboardActiviteWidget.tsx`
+
+### Description
+Implémentation complète de la phase B3 — Dashboard centre de commande. Refactoring des 2 widgets existants (Stock, Production) en composants séparés + ajout de 4 nouveaux widgets : Vue Parcelles, Avancement prévisionnel, Temps de travail, Activité récente. Extraction de toutes les requêtes dans un fichier `actions.ts` dédié.
+
+### Détails techniques
+- **Server Actions** (`actions.ts`) : 6 fonctions — `fetchDashboardStock`, `fetchDashboardProduction`, `fetchDashboardParcelles`, `fetchDashboardTemps`, `fetchDashboardAvancement`, `fetchDashboardActiviteRecente`
+- **Vue Parcelles** : structure sites → parcelles → rangs avec plantings actifs et occultations. Accordéon par parcelle (fermé si > 20 rangs). Rangs visuels colorés : vert (planté, couleur hash stable par variété), orange (occultation), gris (vide). Multi-variétés divisées.
+- **Avancement prévisionnel** : top 10 variétés par objectif (forecasts frais), barres d'avancement colorées (rouge < 40%, orange 40-80%, vert 80-100%, bleu > 100%). Barre globale + détail par variété avec kg/kg. Lien → /previsionnel.
+- **Temps de travail** : donut chart recharts (PieChart innerRadius) avec 5 étapes (cueillette, tronçonnage, séchage, triage, production). Légende avec heures + pourcentages. Total au centre du donut. Lien → /production-totale.
+- **Activité récente** : 10 dernières opérations (harvests, cuttings, dryings, sortings, production_lots) groupées par jour (Aujourd'hui, Hier, date). Timeline verticale avec emojis par type. Résolution noms variétés et recettes.
+- **Refactoring** : widgets Stock et Production extraits de page.tsx vers des composants dédiés dans `src/components/dashboard/`. page.tsx ne contient plus que le layout et l'orchestration.
+- **Grille responsive** : `grid-cols-1 md:grid-cols-2 gap-4 md:gap-6`. Vue Parcelles et Activité récente en `md:col-span-2` (pleine largeur). Fond page `#F9F8F6`, cartes blanches avec `rounded-2xl shadow-sm`.
+- **Résilience** : `Promise.allSettled` pour isoler les erreurs — un widget en erreur affiche un message sans crasher les autres.
+- `npm run build` OK
+
+---
+
 ## [2026-03-12 17:00] — B2 : Page Vue Production totale + widget dashboard production
 
 **Type :** `feature`
