@@ -27,7 +27,7 @@ export default function LoginPage() {
         {/* Logo */}
         <div className="flex justify-center mb-8">
           <Image
-            src="/Carnet culture.png"
+            src="/Carnet culture sans fond.png"
             alt="Carnet Culture"
             width={200}
             height={120}
