@@ -3,7 +3,7 @@
 import { useState, useCallback } from 'react'
 import { useMobileSync } from '@/components/mobile/MobileSyncContext'
 import MobileFormLayout from '@/components/mobile/MobileFormLayout'
-import MobileSelect from '@/components/mobile/fields/MobileSelect'
+import MobileSearchSelect from '@/components/mobile/fields/MobileSearchSelect'
 import MobileInput from '@/components/mobile/fields/MobileInput'
 import MobileTextarea from '@/components/mobile/fields/MobileTextarea'
 import MobileCheckbox from '@/components/mobile/fields/MobileCheckbox'
@@ -118,6 +118,7 @@ export default function SachetForm({ orgSlug }: SachetFormProps) {
   const varietyOptions = varieties.map((v) => ({
     value: v.id,
     label: v.nom_vernaculaire,
+    sublabel: v.nom_latin ?? undefined,
   }))
 
   return (
@@ -130,13 +131,14 @@ export default function SachetForm({ orgSlug }: SachetFormProps) {
       error={globalError}
       onReset={handleReset}
     >
-      <MobileSelect
+      <MobileSearchSelect
         label="Variété"
         required
         value={form.variety_id}
         onChange={(v) => set('variety_id', v)}
         options={varietyOptions}
         placeholder={varietiesLoading ? 'Chargement…' : 'Sélectionner une variété'}
+        searchPlaceholder="Rechercher une variété..."
         error={errors.variety_id}
       />
 

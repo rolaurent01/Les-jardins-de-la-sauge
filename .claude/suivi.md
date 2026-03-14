@@ -2,6 +2,30 @@
 
 ---
 
+## [2026-03-14 16:15] — Sélecteur variété mobile avec recherche + tri alphabétique
+
+**Type :** `feature`
+**Fichiers concernés :** `src/hooks/useCachedData.ts`, `src/components/mobile/fields/MobileSearchSelect.tsx`, `src/components/mobile/forms/SachetForm.tsx`, `SuiviSemisForm.tsx`, `PlantationForm.tsx`, `SuiviRangForm.tsx`, `CueilletteForm.tsx`, `ArrachageForm.tsx`, `TransformationMobileForm.tsx`, `AchatForm.tsx`, `VenteForm.tsx`
+
+### Description
+Deux améliorations sur les sélecteurs de variétés mobile :
+
+1. **Tri alphabétique** — `useCachedVarieties`, `useCachedRecipes` et `useCachedSeedLots` trient désormais les résultats par nom (insensible casse/accents, locale `fr`). Les rangs restent triés par site → parcelle → `position_ordre` (inchangé).
+
+2. **MobileSearchSelect** — Nouveau composant bottom-sheet avec recherche pour les listes longues (90+ variétés). Recherche insensible aux accents/casse, filtrage en temps réel, nom latin en sublabel gris. Remplace `MobileSelect` pour le champ variété dans les 9 formulaires mobiles. Les petites listes (partie plante, type soin, lune, état plante...) gardent le select natif. Les rangs gardent le select natif avec optgroup (le groupement site/parcelle est plus utile que la recherche).
+
+### Détails techniques
+- Normalisation NFD + strip diacritiques pour la recherche
+- `font-size: 16px` sur l'input pour éviter le zoom iOS
+- Bottom-sheet hauteur max 70vh, scroll fluide, overlay sombre
+- Sublabel `nom_latin` affiché en italique sous chaque option
+- Checkmark vert sur l'option sélectionnée
+- Fermeture : tap overlay, bouton ✕, touche Escape
+
+### Build : OK
+
+---
+
 ## [2026-03-14 15:30] — Corrections mobile : suppression Miel, redirect auto, bandeau bureau
 
 **Type :** `fix`

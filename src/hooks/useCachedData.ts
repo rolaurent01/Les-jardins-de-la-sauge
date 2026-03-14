@@ -19,9 +19,15 @@ import {
  * useLiveQuery se met à jour automatiquement si IndexedDB change.
  */
 
-/** Cache des variétés pour les selects */
+/** Cache des variétés pour les selects — triées par nom vernaculaire (insensible casse/accents) */
 export function useCachedVarieties() {
-  const varieties = useLiveQuery(() => offlineDb.varieties.toArray())
+  const varieties = useLiveQuery(() =>
+    offlineDb.varieties.toArray().then(arr =>
+      arr.sort((a, b) =>
+        a.nom_vernaculaire.localeCompare(b.nom_vernaculaire, 'fr', { sensitivity: 'base' })
+      )
+    )
+  )
   return {
     varieties: (varieties ?? []) as CachedVariety[],
     isLoading: varieties === undefined,
@@ -41,18 +47,26 @@ export function useCachedRows() {
   }
 }
 
-/** Cache des recettes */
+/** Cache des recettes — triées par nom (insensible casse/accents) */
 export function useCachedRecipes() {
-  const recipes = useLiveQuery(() => offlineDb.recipes.toArray())
+  const recipes = useLiveQuery(() =>
+    offlineDb.recipes.toArray().then(arr =>
+      arr.sort((a, b) => a.nom.localeCompare(b.nom, 'fr', { sensitivity: 'base' }))
+    )
+  )
   return {
     recipes: (recipes ?? []) as CachedRecipe[],
     isLoading: recipes === undefined,
   }
 }
 
-/** Cache des sachets de graines (pour select "sachet source") */
+/** Cache des sachets de graines — triés par lot_interne (insensible casse/accents) */
 export function useCachedSeedLots() {
-  const seedLots = useLiveQuery(() => offlineDb.seedLots.toArray())
+  const seedLots = useLiveQuery(() =>
+    offlineDb.seedLots.toArray().then(arr =>
+      arr.sort((a, b) => a.lot_interne.localeCompare(b.lot_interne, 'fr', { sensitivity: 'base' }))
+    )
+  )
   return {
     seedLots: (seedLots ?? []) as CachedSeedLot[],
     isLoading: seedLots === undefined,

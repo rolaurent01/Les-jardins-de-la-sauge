@@ -4,6 +4,7 @@ import { useState, useCallback, useMemo } from 'react'
 import { useMobileSync } from '@/components/mobile/MobileSyncContext'
 import MobileFormLayout from '@/components/mobile/MobileFormLayout'
 import MobileSelect from '@/components/mobile/fields/MobileSelect'
+import MobileSearchSelect from '@/components/mobile/fields/MobileSearchSelect'
 import MobileInput from '@/components/mobile/fields/MobileInput'
 import MobileTimerInput from '@/components/mobile/fields/MobileTimerInput'
 import MobileTextarea from '@/components/mobile/fields/MobileTextarea'
@@ -170,6 +171,7 @@ export default function TransformationMobileForm({
   const varietyOptions = varieties.map((v) => ({
     value: v.id,
     label: v.nom_vernaculaire,
+    sublabel: v.nom_latin ?? undefined,
   }))
 
   return (
@@ -214,13 +216,14 @@ export default function TransformationMobileForm({
         </div>
       </div>
 
-      <MobileSelect
+      <MobileSearchSelect
         label="Variété"
         required
         value={form.variety_id}
         onChange={(v) => set('variety_id', v)}
         options={varietyOptions}
         placeholder={varietiesLoading ? 'Chargement…' : 'Sélectionner une variété'}
+        searchPlaceholder="Rechercher une variété..."
         error={errors.variety_id}
       />
 

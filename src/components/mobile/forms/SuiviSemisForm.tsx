@@ -4,6 +4,7 @@ import { useState, useCallback, useMemo } from 'react'
 import { useMobileSync } from '@/components/mobile/MobileSyncContext'
 import MobileFormLayout from '@/components/mobile/MobileFormLayout'
 import MobileSelect from '@/components/mobile/fields/MobileSelect'
+import MobileSearchSelect from '@/components/mobile/fields/MobileSearchSelect'
 import MobileInput from '@/components/mobile/fields/MobileInput'
 import MobileTimerInput from '@/components/mobile/fields/MobileTimerInput'
 import MobileTextarea from '@/components/mobile/fields/MobileTextarea'
@@ -88,6 +89,7 @@ export default function SuiviSemisForm({ orgSlug }: SuiviSemisFormProps) {
   const varietyOptions = varieties.map((v) => ({
     value: v.id,
     label: v.nom_vernaculaire,
+    sublabel: v.nom_latin ?? undefined,
   }))
 
   /** Parse un champ numérique — retourne null si vide, le nombre sinon */
@@ -207,7 +209,7 @@ export default function SuiviSemisForm({ orgSlug }: SuiviSemisFormProps) {
         )}
       </div>
 
-      <MobileSelect
+      <MobileSearchSelect
         label="Variété"
         required
         value={form.variety_id ?? ''}
@@ -218,6 +220,7 @@ export default function SuiviSemisForm({ orgSlug }: SuiviSemisFormProps) {
         }}
         options={varietyOptions}
         placeholder={varietiesLoading ? 'Chargement…' : 'Sélectionner une variété'}
+        searchPlaceholder="Rechercher une variété..."
         error={errors.variety_id}
       />
 
