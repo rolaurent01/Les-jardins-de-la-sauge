@@ -5,6 +5,7 @@ import { createClient } from '@/lib/supabase/server'
 import { isPlatformAdmin } from '@/lib/admin/is-platform-admin'
 import { revalidatePath } from 'next/cache'
 import type { ActionResult, Organization } from '@/lib/types'
+import { mapSupabaseError } from '@/lib/utils/error-messages'
 
 /** Vérifie que l'utilisateur courant est super admin */
 async function requireAdmin(): Promise<string> {
@@ -48,7 +49,7 @@ export async function fetchOrganizations(): Promise<OrganizationWithCounts[]> {
     .select('*')
     .order('nom')
 
-  if (error) throw new Error(`Erreur : ${error.message}`)
+  if (error) throw new Error(mapSupabaseError(error))
   if (!orgs) return []
 
   // Compteurs + membres en parallèle
@@ -117,7 +118,7 @@ export async function createOrganization(formData: FormData): Promise<ActionResu
     .select()
     .single()
 
-  if (error) return { error: `Erreur : ${error.message}` }
+  if (error) return { error: mapSupabaseError(error) }
 
   revalidatePath('/', 'layout')
   return { success: true, data: data as Organization }
@@ -159,7 +160,7 @@ export async function updateOrganization(id: string, formData: FormData): Promis
     .update({ nom, slug, nom_affiche, plan, max_farms, max_users, couleur_primaire, couleur_secondaire })
     .eq('id', id)
 
-  if (error) return { error: `Erreur : ${error.message}` }
+  if (error) return { error: mapSupabaseError(error) }
 
   revalidatePath('/', 'layout')
   return { success: true }
@@ -188,7 +189,7 @@ export async function deleteOrganization(id: string): Promise<ActionResult> {
     .delete()
     .eq('id', id)
 
-  if (error) return { error: `Erreur : ${error.message}` }
+  if (error) return { error: mapSupabaseError(error) }
 
   revalidatePath('/', 'layout')
   return { success: true }
@@ -220,7 +221,7 @@ export async function uploadOrganizationLogo(orgId: string, formData: FormData):
     .from('org-logos')
     .upload(path, file, { upsert: true })
 
-  if (uploadError) return { error: `Erreur upload : ${uploadError.message}` }
+  if (uploadError) return { error: mapSupabaseError(uploadError) }
 
   // Récupérer l'URL publique
   const { data: urlData } = admin.storage
@@ -233,7 +234,7 @@ export async function uploadOrganizationLogo(orgId: string, formData: FormData):
     .update({ logo_url: urlData.publicUrl })
     .eq('id', orgId)
 
-  if (updateError) return { error: `Erreur mise à jour : ${updateError.message}` }
+  if (updateError) return { error: mapSupabaseError(updateError) }
 
   revalidatePath('/', 'layout')
   return { success: true }

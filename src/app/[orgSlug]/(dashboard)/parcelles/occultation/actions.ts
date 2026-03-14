@@ -6,6 +6,7 @@ import { getContext } from '@/lib/context'
 import { buildPath } from '@/lib/utils/path'
 import { parseOccultationForm } from '@/lib/utils/parcelles-parsers'
 import type { ActionResult, Occultation, OccultationWithRelations } from '@/lib/types'
+import { mapSupabaseError } from '@/lib/utils/error-messages'
 
 // ---- Requetes ----
 
@@ -60,7 +61,7 @@ export async function createOccultation(formData: FormData): Promise<ActionResul
     .select()
     .single()
 
-  if (error) return { error: `Erreur : ${error.message}` }
+  if (error) return { error: mapSupabaseError(error) }
 
   revalidatePath(buildPath(orgSlug, '/parcelles/occultation'))
   return { success: true, data: data as Occultation }
@@ -85,7 +86,7 @@ export async function updateOccultation(
     .select()
     .single()
 
-  if (error) return { error: `Erreur : ${error.message}` }
+  if (error) return { error: mapSupabaseError(error) }
 
   revalidatePath(buildPath(orgSlug, '/parcelles/occultation'))
   return { success: true, data: data as Occultation }
@@ -102,7 +103,7 @@ export async function deleteOccultation(id: string): Promise<ActionResult> {
     .eq('id', id)
     .eq('farm_id', farmId)
 
-  if (error) return { error: `Erreur lors de la suppression : ${error.message}` }
+  if (error) return { error: mapSupabaseError(error) }
 
   revalidatePath(buildPath(orgSlug, '/parcelles/occultation'))
   return { success: true }

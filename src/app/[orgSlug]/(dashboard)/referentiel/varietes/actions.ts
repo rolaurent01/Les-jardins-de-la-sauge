@@ -6,6 +6,7 @@ import { getContext } from '@/lib/context'
 import { buildPath } from '@/lib/utils/path'
 import type { ActionResult, Variety, TypeCycle, PartiePlante } from '@/lib/types'
 import { PARTIES_PLANTE } from '@/lib/types'
+import { mapSupabaseError } from '@/lib/utils/error-messages'
 
 const VALID_TYPE_CYCLES: TypeCycle[] = ['annuelle', 'bisannuelle', 'perenne', 'vivace']
 
@@ -35,10 +36,6 @@ function _buildFields(formData: FormData, rawCycle: string, parties: PartiePlant
   }
 }
 
-function mapSupabaseError(code: string | undefined, fallback: string): string {
-  if (code === '23505') return 'Cette variété existe déjà (nom en doublon).'
-  return fallback
-}
 
 /** Récupère tout le catalogue actif (inclut archivées pour le toggle UI, exclut les fusionnées) */
 export async function fetchVarieties(): Promise<Variety[]> {
@@ -78,7 +75,7 @@ export async function createVariety(
     .select()
     .single()
 
-  if (error) return { error: mapSupabaseError(error.code, `Erreur : ${error.message}`) }
+  if (error) return { error: mapSupabaseError(error) }
 
   revalidatePath(buildPath(orgSlug, '/referentiel/varietes'))
   return { success: true, data: data as Variety }
@@ -103,7 +100,7 @@ export async function updateVariety(
     .update({ ...parsed, updated_by: userId })
     .eq('id', id)
 
-  if (error) return { error: mapSupabaseError(error.code, `Erreur : ${error.message}`) }
+  if (error) return { error: mapSupabaseError(error) }
 
   revalidatePath(buildPath(orgSlug, '/referentiel/varietes'))
   return { success: true }
@@ -118,7 +115,7 @@ export async function archiveVariety(id: string): Promise<ActionResult> {
     .update({ deleted_at: new Date().toISOString(), updated_by: userId })
     .eq('id', id)
 
-  if (error) return { error: `Erreur lors de l'archivage : ${error.message}` }
+  if (error) return { error: mapSupabaseError(error) }
 
   revalidatePath(buildPath(orgSlug, '/referentiel/varietes'))
   return { success: true }
@@ -133,7 +130,7 @@ export async function restoreVariety(id: string): Promise<ActionResult> {
     .update({ deleted_at: null, updated_by: userId })
     .eq('id', id)
 
-  if (error) return { error: `Erreur lors de la restauration : ${error.message}` }
+  if (error) return { error: mapSupabaseError(error) }
 
   revalidatePath(buildPath(orgSlug, '/referentiel/varietes'))
   return { success: true }

@@ -9,6 +9,7 @@ import { seedlingSchema } from '@/lib/validation/semis'
 import { parseSeedlingForm } from '@/lib/utils/semis-parsers'
 import { computeSeedlingStatut } from '@/lib/utils/seedling-statut'
 import type { ActionResult, Seedling, SeedlingWithRelations } from '@/lib/types'
+import { mapSupabaseError } from '@/lib/utils/error-messages'
 
 // ---- Helpers ----
 
@@ -184,7 +185,7 @@ export async function createSeedling(formData: FormData): Promise<ActionResult<S
     .select()
     .single()
 
-  if (error) return { error: `Erreur lors de la création du semis : ${error.message}` }
+  if (error) return { error: mapSupabaseError(error) }
 
   revalidatePath(buildPath(orgSlug, '/semis/suivi'))
   return { success: true, data: data as Seedling }
@@ -225,7 +226,7 @@ export async function updateSeedling(
     .select()
     .single()
 
-  if (error) return { error: `Erreur lors de la mise à jour du semis : ${error.message}` }
+  if (error) return { error: mapSupabaseError(error) }
 
   revalidatePath(buildPath(orgSlug, '/semis/suivi'))
   return { success: true, data: data as Seedling }
@@ -242,7 +243,7 @@ export async function archiveSeedling(id: string): Promise<ActionResult> {
     .eq('id', id)
     .eq('farm_id', farmId)
 
-  if (error) return { error: `Erreur lors de l'archivage du semis : ${error.message}` }
+  if (error) return { error: mapSupabaseError(error) }
 
   revalidatePath(buildPath(orgSlug, '/semis/suivi'))
   return { success: true }
@@ -259,7 +260,7 @@ export async function restoreSeedling(id: string): Promise<ActionResult> {
     .eq('id', id)
     .eq('farm_id', farmId)
 
-  if (error) return { error: `Erreur lors de la restauration du semis : ${error.message}` }
+  if (error) return { error: mapSupabaseError(error) }
 
   // Recalculer le statut après restauration
   await recalculateSeedlingStatut(id)

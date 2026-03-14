@@ -301,8 +301,9 @@ function ImpersonationSection({
 
       <div className="flex gap-3 items-end flex-wrap">
         <div className="flex flex-col gap-1">
-          <label className="text-xs" style={{ color: '#6B7280' }}>Organisation</label>
+          <label htmlFor="admin-outils-impers-org" className="text-xs" style={{ color: '#6B7280' }}>Organisation</label>
           <select
+            id="admin-outils-impers-org"
             value={selectedOrg}
             onChange={e => {
               setSelectedOrg(e.target.value)
@@ -318,8 +319,9 @@ function ImpersonationSection({
         </div>
 
         <div className="flex flex-col gap-1">
-          <label className="text-xs" style={{ color: '#6B7280' }}>Ferme</label>
+          <label htmlFor="admin-outils-impers-ferme" className="text-xs" style={{ color: '#6B7280' }}>Ferme</label>
           <select
+            id="admin-outils-impers-ferme"
             value={selectedFarm}
             onChange={e => setSelectedFarm(e.target.value)}
             disabled={!selectedOrg}
@@ -454,8 +456,9 @@ function SeasonCloseSection({ farms }: { farms: FarmOption[] }) {
 
       <div className="flex gap-3 items-end flex-wrap mb-3">
         <div className="flex flex-col gap-1">
-          <label className="text-xs" style={{ color: '#6B7280' }}>Ferme</label>
+          <label htmlFor="admin-outils-cloture-ferme" className="text-xs" style={{ color: '#6B7280' }}>Ferme</label>
           <select
+            id="admin-outils-cloture-ferme"
             value={selectedFarm}
             onChange={e => {
               setSelectedFarm(e.target.value)
@@ -472,8 +475,9 @@ function SeasonCloseSection({ farms }: { farms: FarmOption[] }) {
         </div>
 
         <div className="flex flex-col gap-1">
-          <label className="text-xs" style={{ color: '#6B7280' }}>Année</label>
+          <label htmlFor="admin-outils-cloture-annee" className="text-xs" style={{ color: '#6B7280' }}>Année</label>
           <select
+            id="admin-outils-cloture-annee"
             value={selectedYear}
             onChange={e => {
               setSelectedYear(parseInt(e.target.value))

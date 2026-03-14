@@ -162,10 +162,11 @@ export default function MergeVarietesClient({ varieties: initialVarieties }: Pro
           <div className="flex flex-col gap-5">
             {/* Source */}
             <div>
-              <label className="block text-xs font-semibold mb-1" style={{ color: '#6B7280' }}>
+              <label htmlFor="admin-merge-source-search" className="block text-xs font-semibold mb-1" style={{ color: '#6B7280' }}>
                 Source (doublon à supprimer)
               </label>
               <input
+                id="admin-merge-source-search"
                 type="text"
                 placeholder="Rechercher une variété..."
                 value={sourceSearch}
@@ -173,6 +174,7 @@ export default function MergeVarietesClient({ varieties: initialVarieties }: Pro
                 style={inputStyle}
               />
               <select
+                id="admin-merge-source-select"
                 value={sourceId}
                 onChange={e => setSourceId(e.target.value)}
                 style={{ ...selectStyle, marginTop: '4px' }}
@@ -192,10 +194,11 @@ export default function MergeVarietesClient({ varieties: initialVarieties }: Pro
 
             {/* Cible */}
             <div>
-              <label className="block text-xs font-semibold mb-1" style={{ color: '#6B7280' }}>
+              <label htmlFor="admin-merge-target-search" className="block text-xs font-semibold mb-1" style={{ color: '#6B7280' }}>
                 Cible (variété à conserver)
               </label>
               <input
+                id="admin-merge-target-search"
                 type="text"
                 placeholder="Rechercher une variété..."
                 value={targetSearch}
@@ -203,6 +206,7 @@ export default function MergeVarietesClient({ varieties: initialVarieties }: Pro
                 style={inputStyle}
               />
               <select
+                id="admin-merge-target-select"
                 value={targetId}
                 onChange={e => setTargetId(e.target.value)}
                 style={{ ...selectStyle, marginTop: '4px' }}

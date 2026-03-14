@@ -4,6 +4,7 @@ import { createAdminClient, createClient } from '@/lib/supabase/server'
 import { isPlatformAdmin } from '@/lib/admin/is-platform-admin'
 import { revalidatePath } from 'next/cache'
 import type { ActionResult, MembershipRole, FarmAccessPermission } from '@/lib/types'
+import { mapSupabaseError } from '@/lib/utils/error-messages'
 
 async function requireAdmin(): Promise<string> {
   const supabase = await createClient()
@@ -46,7 +47,7 @@ export async function fetchUsers(): Promise<UserWithRelations[]> {
 
   // Récupérer les users via l'API admin auth
   const { data: authData, error: authError } = await admin.auth.admin.listUsers()
-  if (authError) throw new Error(`Erreur auth : ${authError.message}`)
+  if (authError) throw new Error(mapSupabaseError(authError))
 
   const users = authData?.users ?? []
 
@@ -107,7 +108,7 @@ export async function fetchOrgsWithFarms(): Promise<OrgWithFarms[]> {
     .select('id, nom, max_users, farms(id, nom)')
     .order('nom')
 
-  if (error) throw new Error(`Erreur : ${error.message}`)
+  if (error) throw new Error(mapSupabaseError(error))
 
   return (data ?? []).map(o => ({
     id: o.id,
@@ -158,7 +159,7 @@ export async function createUser(formData: FormData): Promise<ActionResult> {
     email_confirm: true,
   })
 
-  if (authError) return { error: `Erreur création utilisateur : ${authError.message}` }
+  if (authError) return { error: mapSupabaseError(authError) }
   if (!authUser.user) return { error: 'Erreur inattendue lors de la création.' }
 
   const userId = authUser.user.id
@@ -168,7 +169,7 @@ export async function createUser(formData: FormData): Promise<ActionResult> {
     .from('memberships')
     .insert({ organization_id: organizationId, user_id: userId, role })
 
-  if (membershipError) return { error: `Erreur membership : ${membershipError.message}` }
+  if (membershipError) return { error: mapSupabaseError(membershipError) }
 
   // Créer les farm_access (pour les members uniquement)
   if (role === 'member' && farmIds.length > 0) {
@@ -182,7 +183,7 @@ export async function createUser(formData: FormData): Promise<ActionResult> {
       .from('farm_access')
       .insert(farmAccessRows)
 
-    if (farmAccessError) return { error: `Erreur accès ferme : ${farmAccessError.message}` }
+    if (farmAccessError) return { error: mapSupabaseError(farmAccessError) }
   }
 
   revalidatePath('/', 'layout')
@@ -199,7 +200,7 @@ export async function updateMembership(membershipId: string, role: MembershipRol
     .update({ role })
     .eq('id', membershipId)
 
-  if (error) return { error: `Erreur : ${error.message}` }
+  if (error) return { error: mapSupabaseError(error) }
 
   revalidatePath('/', 'layout')
   return { success: true }
@@ -218,7 +219,7 @@ export async function addFarmAccess(
     .from('farm_access')
     .insert({ farm_id: farmId, user_id: userId, permission })
 
-  if (error) return { error: `Erreur : ${error.message}` }
+  if (error) return { error: mapSupabaseError(error) }
 
   revalidatePath('/', 'layout')
   return { success: true }
@@ -234,7 +235,7 @@ export async function removeFarmAccess(farmAccessId: string): Promise<ActionResu
     .delete()
     .eq('id', farmAccessId)
 
-  if (error) return { error: `Erreur : ${error.message}` }
+  if (error) return { error: mapSupabaseError(error) }
 
   revalidatePath('/', 'layout')
   return { success: true }
@@ -251,17 +252,21 @@ export async function deleteUser(userId: string): Promise<ActionResult> {
     .select('id, organization_id, role')
     .eq('user_id', userId)
 
-  for (const m of memberships ?? []) {
-    if (m.role === 'owner') {
-      const { count } = await admin
-        .from('memberships')
-        .select('id', { count: 'exact', head: true })
-        .eq('organization_id', m.organization_id)
-        .eq('role', 'owner')
+  // Vérifier en parallèle les owner counts pour chaque membership owner
+  const ownerMemberships = (memberships ?? []).filter(m => m.role === 'owner')
+  if (ownerMemberships.length > 0) {
+    const ownerCounts = await Promise.all(
+      ownerMemberships.map(m =>
+        admin
+          .from('memberships')
+          .select('id', { count: 'exact', head: true })
+          .eq('organization_id', m.organization_id)
+          .eq('role', 'owner')
+      )
+    )
 
-      if (count !== null && count <= 1) {
-        return { error: 'Impossible de supprimer le dernier owner d\u2019une organisation.' }
-      }
+    if (ownerCounts.some(r => r.count !== null && r.count <= 1)) {
+      return { error: 'Impossible de supprimer le dernier owner d\u2019une organisation.' }
     }
   }
 
@@ -273,7 +278,7 @@ export async function deleteUser(userId: string): Promise<ActionResult> {
 
   // Supprimer le user auth
   const { error: authError } = await admin.auth.admin.deleteUser(userId)
-  if (authError) return { error: `Erreur suppression auth : ${authError.message}` }
+  if (authError) return { error: mapSupabaseError(authError) }
 
   revalidatePath('/', 'layout')
   return { success: true }
@@ -289,7 +294,7 @@ export async function resetPassword(userId: string, newPassword: string): Promis
   }
 
   const { error } = await admin.auth.admin.updateUserById(userId, { password: newPassword })
-  if (error) return { error: `Erreur : ${error.message}` }
+  if (error) return { error: mapSupabaseError(error) }
 
   return { success: true }
 }

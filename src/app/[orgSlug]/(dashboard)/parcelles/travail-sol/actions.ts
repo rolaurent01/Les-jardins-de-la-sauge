@@ -6,6 +6,7 @@ import { getContext } from '@/lib/context'
 import { buildPath } from '@/lib/utils/path'
 import { parseSoilWorkForm } from '@/lib/utils/parcelles-parsers'
 import type { ActionResult, SoilWork, SoilWorkWithRelations } from '@/lib/types'
+import { mapSupabaseError } from '@/lib/utils/error-messages'
 
 // ---- Requêtes ----
 
@@ -41,7 +42,7 @@ export async function createSoilWork(formData: FormData): Promise<ActionResult<S
     .select()
     .single()
 
-  if (error) return { error: `Erreur : ${error.message}` }
+  if (error) return { error: mapSupabaseError(error) }
 
   revalidatePath(buildPath(orgSlug, '/parcelles/travail-sol'))
   return { success: true, data: data as SoilWork }
@@ -66,7 +67,7 @@ export async function updateSoilWork(
     .select()
     .single()
 
-  if (error) return { error: `Erreur : ${error.message}` }
+  if (error) return { error: mapSupabaseError(error) }
 
   revalidatePath(buildPath(orgSlug, '/parcelles/travail-sol'))
   return { success: true, data: data as SoilWork }
@@ -83,7 +84,7 @@ export async function deleteSoilWork(id: string): Promise<ActionResult> {
     .eq('id', id)
     .eq('farm_id', farmId)
 
-  if (error) return { error: `Erreur lors de la suppression : ${error.message}` }
+  if (error) return { error: mapSupabaseError(error) }
 
   revalidatePath(buildPath(orgSlug, '/parcelles/travail-sol'))
   return { success: true }

@@ -5,6 +5,7 @@ import { revalidatePath } from 'next/cache'
 import { getContext } from '@/lib/context'
 import { buildPath } from '@/lib/utils/path'
 import { parseProductStockMovementForm } from '@/lib/utils/produits-parsers'
+import { mapSupabaseError } from '@/lib/utils/error-messages'
 import type {
   ActionResult,
   ProductStockMovementWithRelations,
@@ -168,7 +169,7 @@ export async function createProductStockMovement(
       created_by: userId,
     })
 
-  if (error) return { error: `Erreur : ${error.message}` }
+  if (error) return { error: mapSupabaseError(error) }
 
   revalidatePath(buildPath(orgSlug, '/produits/stock'))
   return { success: true }
@@ -196,7 +197,7 @@ export async function deleteProductStockMovement(id: string): Promise<ActionResu
     .eq('id', id)
     .eq('farm_id', farmId)
 
-  if (error) return { error: `Erreur : ${error.message}` }
+  if (error) return { error: mapSupabaseError(error) }
 
   revalidatePath(buildPath(orgSlug, '/produits/stock'))
   return { success: true }

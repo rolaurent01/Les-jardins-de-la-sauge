@@ -219,9 +219,10 @@ export default function UserEditSlideOver({
 
           {/* Réinitialisation mot de passe */}
           <div>
-            <label style={labelStyle}>Réinitialiser le mot de passe</label>
+            <label htmlFor="admin-user-edit-password" style={labelStyle}>Réinitialiser le mot de passe</label>
             <div className="flex items-center gap-2">
               <input
+                id="admin-user-edit-password"
                 type="text"
                 value={newPassword}
                 onChange={e => setNewPassword(e.target.value)}

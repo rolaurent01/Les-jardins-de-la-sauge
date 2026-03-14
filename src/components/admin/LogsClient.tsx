@@ -167,8 +167,9 @@ export default function LogsClient({
       {/* Filtres */}
       <div className="flex gap-3 mb-4 flex-wrap items-end">
         <div className="flex flex-col gap-1">
-          <label className="text-xs" style={{ color: '#6B7280' }}>Source</label>
+          <label htmlFor="admin-logs-source" className="text-xs" style={{ color: '#6B7280' }}>Source</label>
           <select
+            id="admin-logs-source"
             value={source}
             onChange={e => {
               setSource(e.target.value)
@@ -190,8 +191,9 @@ export default function LogsClient({
         </div>
 
         <div className="flex flex-col gap-1">
-          <label className="text-xs" style={{ color: '#6B7280' }}>Du</label>
+          <label htmlFor="admin-logs-date-from" className="text-xs" style={{ color: '#6B7280' }}>Du</label>
           <input
+            id="admin-logs-date-from"
             type="date"
             value={dateFrom}
             onChange={e => {
@@ -208,8 +210,9 @@ export default function LogsClient({
         </div>
 
         <div className="flex flex-col gap-1">
-          <label className="text-xs" style={{ color: '#6B7280' }}>Au</label>
+          <label htmlFor="admin-logs-date-to" className="text-xs" style={{ color: '#6B7280' }}>Au</label>
           <input
+            id="admin-logs-date-to"
             type="date"
             value={dateTo}
             onChange={e => {
@@ -226,7 +229,7 @@ export default function LogsClient({
         </div>
 
         <div className="flex flex-col gap-1">
-          <label className="text-xs" style={{ color: '#6B7280' }}>Recherche</label>
+          <label htmlFor="admin-logs-search" className="text-xs" style={{ color: '#6B7280' }}>Recherche</label>
           <form
             onSubmit={e => {
               e.preventDefault()
@@ -235,6 +238,7 @@ export default function LogsClient({
             className="flex gap-1"
           >
             <input
+              id="admin-logs-search"
               type="text"
               value={search}
               onChange={e => setSearch(e.target.value)}
@@ -351,10 +355,11 @@ export default function LogsClient({
           Purger les anciens logs
         </h3>
         <div className="flex items-center gap-3">
-          <label className="text-xs" style={{ color: '#6B7280' }}>
+          <label htmlFor="admin-logs-purge-days" className="text-xs" style={{ color: '#6B7280' }}>
             Supprimer les logs de plus de
           </label>
           <input
+            id="admin-logs-purge-days"
             type="number"
             min={1}
             value={purgeDays}

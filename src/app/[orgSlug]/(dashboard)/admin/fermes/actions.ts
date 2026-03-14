@@ -4,6 +4,7 @@ import { createAdminClient, createClient } from '@/lib/supabase/server'
 import { isPlatformAdmin } from '@/lib/admin/is-platform-admin'
 import { revalidatePath } from 'next/cache'
 import type { ActionResult, Farm, Organization } from '@/lib/types'
+import { mapSupabaseError } from '@/lib/utils/error-messages'
 
 async function requireAdmin(): Promise<string> {
   const supabase = await createClient()
@@ -32,7 +33,7 @@ export async function fetchFarms(): Promise<FarmWithRelations[]> {
     .select('*, organizations(id, nom, slug)')
     .order('nom')
 
-  if (error) throw new Error(`Erreur : ${error.message}`)
+  if (error) throw new Error(mapSupabaseError(error))
   if (!farms) return []
 
   // Récupérer les modules pour chaque ferme
@@ -64,7 +65,7 @@ export async function fetchOrganizationsForSelect(): Promise<Pick<Organization, 
     .select('id, nom, max_farms')
     .order('nom')
 
-  if (error) throw new Error(`Erreur : ${error.message}`)
+  if (error) throw new Error(mapSupabaseError(error))
   return data ?? []
 }
 
@@ -118,7 +119,7 @@ export async function createFarm(formData: FormData): Promise<ActionResult<Farm>
     .select()
     .single()
 
-  if (error) return { error: `Erreur : ${error.message}` }
+  if (error) return { error: mapSupabaseError(error) }
 
   revalidatePath('/', 'layout')
   return { success: true, data: data as Farm }
@@ -162,7 +163,7 @@ export async function updateFarm(id: string, formData: FormData): Promise<Action
     .update({ nom, slug, certif_bio, organisme_certificateur, numero_certificat })
     .eq('id', id)
 
-  if (error) return { error: `Erreur : ${error.message}` }
+  if (error) return { error: mapSupabaseError(error) }
 
   revalidatePath('/', 'layout')
   return { success: true }
@@ -197,7 +198,7 @@ export async function deleteFarm(id: string): Promise<ActionResult> {
     .delete()
     .eq('id', id)
 
-  if (error) return { error: `Erreur : ${error.message}` }
+  if (error) return { error: mapSupabaseError(error) }
 
   revalidatePath('/', 'layout')
   return { success: true }
@@ -223,14 +224,14 @@ export async function toggleModule(farmId: string, module: FarmModule): Promise<
       .delete()
       .eq('id', existing.id)
 
-    if (error) return { error: `Erreur : ${error.message}` }
+    if (error) return { error: mapSupabaseError(error) }
   } else {
     // Activer
     const { error } = await admin
       .from('farm_modules')
       .insert({ farm_id: farmId, module })
 
-    if (error) return { error: `Erreur : ${error.message}` }
+    if (error) return { error: mapSupabaseError(error) }
   }
 
   revalidatePath('/', 'layout')

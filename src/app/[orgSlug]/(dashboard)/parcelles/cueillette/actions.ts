@@ -6,6 +6,7 @@ import { getContext } from '@/lib/context'
 import { buildPath } from '@/lib/utils/path'
 import { parseHarvestForm } from '@/lib/utils/parcelles-parsers'
 import type { ActionResult, Harvest, HarvestWithRelations } from '@/lib/types'
+import { mapSupabaseError } from '@/lib/utils/error-messages'
 
 // ---- Requetes ----
 
@@ -75,7 +76,7 @@ export async function createHarvest(formData: FormData): Promise<ActionResult<Ha
     p_created_by: userId,
   })
 
-  if (error) return { error: `Erreur : ${error.message}` }
+  if (error) return { error: mapSupabaseError(error) }
 
   revalidatePath(buildPath(orgSlug, '/parcelles/cueillette'))
   return { success: true, data: { id: data } as unknown as Harvest }
@@ -110,7 +111,7 @@ export async function updateHarvest(
     p_updated_by: userId,
   })
 
-  if (error) return { error: `Erreur : ${error.message}` }
+  if (error) return { error: mapSupabaseError(error) }
 
   revalidatePath(buildPath(orgSlug, '/parcelles/cueillette'))
   return { success: true, data: { id } as unknown as Harvest }
@@ -130,7 +131,7 @@ export async function archiveHarvest(id: string): Promise<ActionResult> {
     .eq('id', id)
     .eq('farm_id', farmId)
 
-  if (error) return { error: `Erreur lors de l'archivage : ${error.message}` }
+  if (error) return { error: mapSupabaseError(error) }
 
   // 2. Archiver le stock_movement correspondant
   const { error: stockError } = await supabase
@@ -158,7 +159,7 @@ export async function restoreHarvest(id: string): Promise<ActionResult> {
     .eq('id', id)
     .eq('farm_id', farmId)
 
-  if (error) return { error: `Erreur lors de la restauration : ${error.message}` }
+  if (error) return { error: mapSupabaseError(error) }
 
   // 2. Restaurer le stock_movement correspondant
   const { error: stockError } = await supabase

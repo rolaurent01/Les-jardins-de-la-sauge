@@ -7,14 +7,7 @@ import { buildPath } from '@/lib/utils/path'
 import { generateSeedLotNumber } from '@/lib/utils/lots'
 import { parseSeedLotForm } from '@/lib/utils/semis-parsers'
 import type { ActionResult, SeedLot, SeedLotWithVariety } from '@/lib/types'
-
-// ---- Helpers ----
-
-/** Mappe les codes d'erreur Supabase vers des messages lisibles */
-function mapSupabaseError(code: string | undefined, fallback: string): string {
-  if (code === '23505') return 'Ce numéro de lot interne est déjà utilisé. Réessayez.'
-  return fallback
-}
+import { mapSupabaseError } from '@/lib/utils/error-messages'
 
 // ---- Requêtes ----
 
@@ -79,7 +72,7 @@ export async function createSeedLot(formData: FormData): Promise<ActionResult<Se
     .like('lot_interne', `SL-${year}-%`)
 
   if (countError) {
-    return { error: `Erreur lors de la génération du numéro de lot : ${countError.message}` }
+    return { error: mapSupabaseError(countError) }
   }
 
   const lot_interne = generateSeedLotNumber(year, count ?? 0)
@@ -90,7 +83,7 @@ export async function createSeedLot(formData: FormData): Promise<ActionResult<Se
     .select()
     .single()
 
-  if (error) return { error: mapSupabaseError(error.code, `Erreur : ${error.message}`) }
+  if (error) return { error: mapSupabaseError(error) }
 
   revalidatePath(buildPath(orgSlug, '/semis/sachets'))
   return { success: true, data: data as SeedLot }
@@ -116,7 +109,7 @@ export async function updateSeedLot(
     .select()
     .single()
 
-  if (error) return { error: mapSupabaseError(error.code, `Erreur : ${error.message}`) }
+  if (error) return { error: mapSupabaseError(error) }
 
   revalidatePath(buildPath(orgSlug, '/semis/sachets'))
   return { success: true, data: data as SeedLot }
@@ -133,7 +126,7 @@ export async function archiveSeedLot(id: string): Promise<ActionResult> {
     .eq('id', id)
     .eq('farm_id', farmId)
 
-  if (error) return { error: `Erreur lors de l'archivage : ${error.message}` }
+  if (error) return { error: mapSupabaseError(error) }
 
   revalidatePath(buildPath(orgSlug, '/semis/sachets'))
   return { success: true }
@@ -150,7 +143,7 @@ export async function restoreSeedLot(id: string): Promise<ActionResult> {
     .eq('id', id)
     .eq('farm_id', farmId)
 
-  if (error) return { error: `Erreur lors de la restauration : ${error.message}` }
+  if (error) return { error: mapSupabaseError(error) }
 
   revalidatePath(buildPath(orgSlug, '/semis/sachets'))
   return { success: true }

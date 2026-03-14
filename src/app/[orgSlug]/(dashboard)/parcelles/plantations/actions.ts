@@ -8,6 +8,7 @@ import { buildPath } from '@/lib/utils/path'
 import { parsePlantingForm } from '@/lib/utils/parcelles-parsers'
 import { recalculateSeedlingStatut } from '@/app/[orgSlug]/(dashboard)/semis/suivi/actions'
 import type { ActionResult, Planting, PlantingWithRelations, Seedling, Variety } from '@/lib/types'
+import { mapSupabaseError } from '@/lib/utils/error-messages'
 
 // ---- Types locaux ----
 
@@ -241,7 +242,7 @@ export async function createPlanting(formData: FormData): Promise<ActionResult<P
     .select()
     .single()
 
-  if (error) return { error: `Erreur : ${error.message}` }
+  if (error) return { error: mapSupabaseError(error) }
 
   // Mettre à jour le statut du seedling si on a planté depuis un semis
   if (seedlingId) {
@@ -310,7 +311,7 @@ export async function updatePlanting(
     .select()
     .single()
 
-  if (error) return { error: `Erreur : ${error.message}` }
+  if (error) return { error: mapSupabaseError(error) }
 
   // Recalculer le statut de l'ancien seedling si changé
   const oldSeedlingId = (oldPlanting?.seedling_id as string | null) ?? null
@@ -346,7 +347,7 @@ export async function archivePlanting(id: string): Promise<ActionResult> {
     .eq('id', id)
     .eq('farm_id', farmId)
 
-  if (error) return { error: `Erreur lors de l'archivage : ${error.message}` }
+  if (error) return { error: mapSupabaseError(error) }
 
   // Recalculer le statut du seedling lié
   const seedlingId = (planting?.seedling_id as string | null) ?? null
@@ -378,7 +379,7 @@ export async function restorePlanting(id: string): Promise<ActionResult> {
     .eq('id', id)
     .eq('farm_id', farmId)
 
-  if (error) return { error: `Erreur lors de la restauration : ${error.message}` }
+  if (error) return { error: mapSupabaseError(error) }
 
   // Recalculer le statut du seedling lié
   const seedlingId = (planting?.seedling_id as string | null) ?? null

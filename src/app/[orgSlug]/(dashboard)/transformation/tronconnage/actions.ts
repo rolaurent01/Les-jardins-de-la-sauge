@@ -6,6 +6,7 @@ import { getContext } from '@/lib/context'
 import { buildPath } from '@/lib/utils/path'
 import { parseCuttingForm } from '@/lib/utils/transformation-parsers'
 import type { ActionResult, Cutting, CuttingWithVariety } from '@/lib/types'
+import { mapSupabaseError } from '@/lib/utils/error-messages'
 
 // ---- Requetes ----
 
@@ -49,7 +50,7 @@ export async function createCutting(formData: FormData): Promise<ActionResult<Cu
     p_uuid_client: null,
   })
 
-  if (error) return { error: `Erreur : ${error.message}` }
+  if (error) return { error: mapSupabaseError(error) }
 
   revalidatePath(buildPath(orgSlug, '/transformation/tronconnage'))
   return { success: true, data: { id: data } as unknown as Cutting }
@@ -77,7 +78,7 @@ export async function updateCutting(
     p_updated_by: userId,
   })
 
-  if (error) return { error: `Erreur : ${error.message}` }
+  if (error) return { error: mapSupabaseError(error) }
 
   revalidatePath(buildPath(orgSlug, '/transformation/tronconnage'))
   return { success: true, data: { id } as unknown as Cutting }
@@ -92,7 +93,7 @@ export async function deleteCutting(id: string): Promise<ActionResult> {
     p_cutting_id: id,
   })
 
-  if (error) return { error: `Erreur : ${error.message}` }
+  if (error) return { error: mapSupabaseError(error) }
 
   revalidatePath(buildPath(orgSlug, '/transformation/tronconnage'))
   return { success: true }

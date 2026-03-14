@@ -2,6 +2,40 @@
 
 ---
 
+## [2026-03-14 11:40] — Polish / Corrections finales (erreurs, labels, N+1)
+
+**Type :** `refactor`
+
+### Résumé
+- Création du helper centralisé `mapSupabaseError` (`src/lib/utils/error-messages.ts`)
+- ~65 occurrences d'erreurs Supabase brutes remplacées par des messages FR lisibles dans 28 fichiers d'actions (22 métier + 6 admin)
+- 30 paires `htmlFor`/`id` ajoutées dans 7 composants admin (OrganisationSlideOver, FermeSlideOver, UserCreateSlideOver, UserEditSlideOver, MergeVarietesClient, OutilsClient, LogsClient)
+- N+1 optimisés dans 3 fichiers admin : `Promise.all` pour merge-varietes preview, batch update pour autoCloseAnnuals, parallélisation fetchSuperData et deleteDependencies dans outils, Promise.all pour deleteUser memberships check
+
+### Détails
+
+**1. Mapping erreurs centralisé**
+- Helper `mapSupabaseError(error)` gère : UNIQUE (23505), FK (23503), NOT NULL (23502), CHECK (23514), RLS (42501), réseau, stock insuffisant (passthrough FR), fallback générique
+- Appliqué dans toutes les Server Actions qui retournent `{ error }` ou `throw new Error`
+- Exceptions conservées : messages Zod (déjà lisibles), messages hardcodés FR, console.error serveur
+
+**2. Labels accessibilité admin**
+- Convention `admin-{entité}-{champ}` pour les ids
+- 7 fichiers corrigés, 30 paires label/input associées
+
+**3. N+1 admin**
+- `merge-varietes/previewMerge` : boucle séquentielle sur 17 FK tables → `Promise.all`
+- `outils/autoCloseAnnuals` : N+1 closeSeasonForPlanting → batch `.update().in('id', ids)` + `.insert(rows)`
+- `outils/fetchSuperData` : boucle séquentielle par org → `Promise.all` externe + interne
+- `outils/deleteDependencies` : N×5 queries → `.in('variety_id', ids)` par table + `Promise.all`
+- `utilisateurs/deleteUser` : boucle owner check → `Promise.all`
+
+### Build : OK
+### Tests unitaires : 376/376 passants (22 suites)
+### Tests intégration : 66/66 passants (1 skipped)
+
+---
+
 ## [2026-03-14 — après-midi] — Bouton rafraîchissement cache offline + indicateur d'âge
 
 **Type :** `feature`

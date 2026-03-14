@@ -151,8 +151,9 @@ export default function UserCreateSlideOver({ open, orgsWithFarms, onClose, onSu
           )}
 
           <div>
-            <label style={labelStyle}>Email *</label>
+            <label htmlFor="admin-user-create-email" style={labelStyle}>Email *</label>
             <input
+              id="admin-user-create-email"
               ref={firstInput}
               type="email"
               value={email}
@@ -163,8 +164,9 @@ export default function UserCreateSlideOver({ open, orgsWithFarms, onClose, onSu
           </div>
 
           <div>
-            <label style={labelStyle}>Mot de passe temporaire *</label>
+            <label htmlFor="admin-user-create-password" style={labelStyle}>Mot de passe temporaire *</label>
             <input
+              id="admin-user-create-password"
               type="text"
               value={password}
               onChange={e => setPassword(e.target.value)}
@@ -174,8 +176,9 @@ export default function UserCreateSlideOver({ open, orgsWithFarms, onClose, onSu
           </div>
 
           <div>
-            <label style={labelStyle}>Organisation *</label>
+            <label htmlFor="admin-user-create-organisation" style={labelStyle}>Organisation *</label>
             <select
+              id="admin-user-create-organisation"
               value={organizationId}
               onChange={e => setOrganizationId(e.target.value)}
               style={inputStyle}
@@ -187,8 +190,9 @@ export default function UserCreateSlideOver({ open, orgsWithFarms, onClose, onSu
           </div>
 
           <div>
-            <label style={labelStyle}>Rôle *</label>
+            <label htmlFor="admin-user-create-role" style={labelStyle}>Rôle *</label>
             <select
+              id="admin-user-create-role"
               value={role}
               onChange={e => setRole(e.target.value as MembershipRole)}
               style={inputStyle}

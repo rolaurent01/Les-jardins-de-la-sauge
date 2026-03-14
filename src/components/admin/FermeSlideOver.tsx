@@ -157,8 +157,9 @@ export default function FermeSlideOver({ open, item, organizations, onClose, onS
           {/* Organisation (uniquement en création) */}
           {!item && (
             <div>
-              <label style={labelStyle}>Organisation *</label>
+              <label htmlFor="admin-ferme-organisation" style={labelStyle}>Organisation *</label>
               <select
+                id="admin-ferme-organisation"
                 ref={firstInput}
                 value={organizationId}
                 onChange={e => setOrganizationId(e.target.value)}
@@ -173,8 +174,9 @@ export default function FermeSlideOver({ open, item, organizations, onClose, onS
 
           {/* Nom */}
           <div>
-            <label style={labelStyle}>Nom *</label>
+            <label htmlFor="admin-ferme-nom" style={labelStyle}>Nom *</label>
             <input
+              id="admin-ferme-nom"
               type="text"
               value={nom}
               onChange={e => handleNomChange(e.target.value)}
@@ -185,8 +187,9 @@ export default function FermeSlideOver({ open, item, organizations, onClose, onS
 
           {/* Slug */}
           <div>
-            <label style={labelStyle}>Slug</label>
+            <label htmlFor="admin-ferme-slug" style={labelStyle}>Slug</label>
             <input
+              id="admin-ferme-slug"
               type="text"
               value={slug}
               onChange={e => setSlug(e.target.value)}
@@ -222,8 +225,9 @@ export default function FermeSlideOver({ open, item, organizations, onClose, onS
           {certifBio && (
             <>
               <div>
-                <label style={labelStyle}>Organisme certificateur</label>
+                <label htmlFor="admin-ferme-organisme-certificateur" style={labelStyle}>Organisme certificateur</label>
                 <input
+                  id="admin-ferme-organisme-certificateur"
                   type="text"
                   value={organismeCertificateur}
                   onChange={e => setOrganismeCertificateur(e.target.value)}
@@ -232,8 +236,9 @@ export default function FermeSlideOver({ open, item, organizations, onClose, onS
                 />
               </div>
               <div>
-                <label style={labelStyle}>N° certificat</label>
+                <label htmlFor="admin-ferme-numero-certificat" style={labelStyle}>N° certificat</label>
                 <input
+                  id="admin-ferme-numero-certificat"
                   type="text"
                   value={numeroCertificat}
                   onChange={e => setNumeroCertificat(e.target.value)}

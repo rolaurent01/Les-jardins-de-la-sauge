@@ -5,6 +5,7 @@ import { isPlatformAdmin } from '@/lib/admin/is-platform-admin'
 import { cookies } from 'next/headers'
 import { revalidatePath } from 'next/cache'
 import type { ActionResult } from '@/lib/types'
+import { mapSupabaseError } from '@/lib/utils/error-messages'
 
 /** Vérifie que l'utilisateur courant est super admin */
 async function requireAdmin(): Promise<string> {
@@ -28,7 +29,7 @@ export async function recalculateProductionSummary(): Promise<ActionResult<{ mes
   const { error } = await (admin.rpc as any)('recalculate_production_summary')
   const duration = Date.now() - start
 
-  if (error) return { error: `Erreur : ${error.message}` }
+  if (error) return { error: mapSupabaseError(error) }
 
   return {
     success: true,
@@ -59,7 +60,7 @@ export async function getBackupStatus(): Promise<BackupLogEntry[]> {
     .order('created_at', { ascending: false })
     .limit(5)
 
-  if (error) throw new Error(`Erreur : ${error.message}`)
+  if (error) throw new Error(mapSupabaseError(error))
   return (data ?? []) as BackupLogEntry[]
 }
 
@@ -83,7 +84,7 @@ export async function fetchOrgsWithFarms(): Promise<OrgWithFarms[]> {
     .select('id, nom, slug, farms(id, nom)')
     .order('nom')
 
-  if (error) throw new Error(`Erreur : ${error.message}`)
+  if (error) throw new Error(mapSupabaseError(error))
   return (data ?? []) as OrgWithFarms[]
 }
 
@@ -177,7 +178,7 @@ export async function fetchFarms(): Promise<FarmOption[]> {
     .select('id, nom')
     .order('nom')
 
-  if (error) throw new Error(`Erreur : ${error.message}`)
+  if (error) throw new Error(mapSupabaseError(error))
   return (data ?? []) as FarmOption[]
 }
 
@@ -202,7 +203,7 @@ export async function fetchActivePlantings(farmId: string, year: number): Promis
     .is('deleted_at', null)
     .order('date_plantation')
 
-  if (error) throw new Error(`Erreur : ${error.message}`)
+  if (error) throw new Error(mapSupabaseError(error))
   if (!data) return []
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -246,7 +247,7 @@ export async function closeSeasonForPlanting(
     .update({ actif: false })
     .eq('id', plantingId)
 
-  if (updateErr) return { error: `Erreur : ${updateErr.message}` }
+  if (updateErr) return { error: mapSupabaseError(updateErr) }
 
   // Créer l'arrachage au 31/12
   if (!planting.row_id) return { error: 'Planting sans rang associé.' }
@@ -261,7 +262,7 @@ export async function closeSeasonForPlanting(
       commentaire: `Clôture de saison ${year} (admin)`,
     })
 
-  if (insertErr) return { error: `Erreur arrachage : ${insertErr.message}` }
+  if (insertErr) return { error: mapSupabaseError(insertErr) }
 
   return { success: true }
 }
@@ -283,7 +284,7 @@ export async function autoCloseAnnuals(
     .eq('annee', year)
     .is('deleted_at', null)
 
-  if (fetchErr) return { error: `Erreur : ${fetchErr.message}` }
+  if (fetchErr) return { error: mapSupabaseError(fetchErr) }
   if (!plantings) return { success: true, data: { count: 0 } }
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -291,13 +292,36 @@ export async function autoCloseAnnuals(
     (p: any) => p.varieties?.type_cycle === 'annuelle'
   )
 
-  let count = 0
-  for (const p of annuals) {
-    const result = await closeSeasonForPlanting(p.id, 'uproot', year)
-    if ('success' in result) count++
-  }
+  if (annuals.length === 0) return { success: true, data: { count: 0 } }
 
-  return { success: true, data: { count } }
+  // Filtrer ceux qui ont un row_id valide
+  const toUproot = annuals.filter((p: { row_id: string | null }) => p.row_id)
+  const ids = toUproot.map((p: { id: string }) => p.id)
+
+  // Batch update : passer actif = false
+  const { error: updateErr } = await admin
+    .from('plantings')
+    .update({ actif: false })
+    .in('id', ids)
+
+  if (updateErr) return { error: mapSupabaseError(updateErr) }
+
+  // Batch insert : créer les arrachages au 31/12
+  const uprootingRows = toUproot.map((p: { farm_id: string; row_id: string; variety_id: string }) => ({
+    farm_id: p.farm_id,
+    row_id: p.row_id,
+    variety_id: p.variety_id,
+    date: `${year}-12-31`,
+    commentaire: `Clôture de saison ${year} (admin)`,
+  }))
+
+  const { error: insertErr } = await admin
+    .from('uprootings')
+    .insert(uprootingRows)
+
+  if (insertErr) return { error: mapSupabaseError(insertErr) }
+
+  return { success: true, data: { count: toUproot.length } }
 }
 
 // ── Super data cross-tenant ─────────────────────────
@@ -340,43 +364,43 @@ export async function fetchSuperData(): Promise<SuperDataResult> {
     .from('organizations')
     .select('id, nom, farms(id)')
 
-  const activiteParOrg: SuperDataResult['activiteParOrg'] = []
+  // Paralléliser les requêtes par organisation
+  const activiteParOrg = await Promise.all(
+    (orgs ?? []).map(async (org) => {
+      const farmIds = ((org.farms as { id: string }[]) ?? []).map(f => f.id)
+      if (farmIds.length === 0) {
+        return { org_nom: org.nom, nb_cueillettes: 0, nb_lots: 0, nb_users: 0 }
+      }
 
-  for (const org of orgs ?? []) {
-    const farmIds = ((org.farms as { id: string }[]) ?? []).map(f => f.id)
-    if (farmIds.length === 0) {
-      activiteParOrg.push({ org_nom: org.nom, nb_cueillettes: 0, nb_lots: 0, nb_users: 0 })
-      continue
-    }
+      const [harvestRes, lotsRes, membersRes] = await Promise.all([
+        admin
+          .from('harvests')
+          .select('id', { count: 'exact', head: true })
+          .in('farm_id', farmIds)
+          .gte('date_cueillette', startOfMonth)
+          .lt('date_cueillette', endOfMonth)
+          .is('deleted_at', null),
+        admin
+          .from('production_lots')
+          .select('id', { count: 'exact', head: true })
+          .in('farm_id', farmIds)
+          .gte('date_production', startOfMonth)
+          .lt('date_production', endOfMonth)
+          .is('deleted_at', null),
+        admin
+          .from('memberships')
+          .select('user_id')
+          .eq('organization_id', org.id),
+      ])
 
-    const { count: nbCueillettes } = await admin
-      .from('harvests')
-      .select('id', { count: 'exact', head: true })
-      .in('farm_id', farmIds)
-      .gte('date_cueillette', startOfMonth)
-      .lt('date_cueillette', endOfMonth)
-      .is('deleted_at', null)
-
-    const { count: nbLots } = await admin
-      .from('production_lots')
-      .select('id', { count: 'exact', head: true })
-      .in('farm_id', farmIds)
-      .gte('date_production', startOfMonth)
-      .lt('date_production', endOfMonth)
-      .is('deleted_at', null)
-
-    const { data: members } = await admin
-      .from('memberships')
-      .select('user_id')
-      .eq('organization_id', org.id)
-
-    activiteParOrg.push({
-      org_nom: org.nom,
-      nb_cueillettes: nbCueillettes ?? 0,
-      nb_lots: nbLots ?? 0,
-      nb_users: (members ?? []).length,
+      return {
+        org_nom: org.nom,
+        nb_cueillettes: harvestRes.count ?? 0,
+        nb_lots: lotsRes.count ?? 0,
+        nb_users: (membersRes.data ?? []).length,
+      }
     })
-  }
+  )
 
   // 3. Top 10 variétés les plus cultivées (plantings actifs)
   const { data: plantingsData } = await admin
@@ -396,19 +420,17 @@ export async function fetchSuperData(): Promise<SuperDataResult> {
     .sort((a, b) => b[1].size - a[1].size)
     .slice(0, 10)
 
-  const topVarietes: SuperDataResult['topVarietes'] = []
-  for (const [vid, farms] of topVarietyIds) {
-    const { data: v } = await admin
-      .from('varieties')
-      .select('nom_vernaculaire')
-      .eq('id', vid)
-      .single()
+  // Récupérer les noms en une seule requête batch
+  const topVids = topVarietyIds.map(([vid]) => vid)
+  const { data: varietyNames } = topVids.length > 0
+    ? await admin.from('varieties').select('id, nom_vernaculaire').in('id', topVids)
+    : { data: [] }
 
-    topVarietes.push({
-      nom_vernaculaire: v?.nom_vernaculaire ?? 'Inconnue',
-      nb_fermes: farms.size,
-    })
-  }
+  const nameMap = new Map((varietyNames ?? []).map((v: { id: string; nom_vernaculaire: string }) => [v.id, v.nom_vernaculaire]))
+  const topVarietes = topVarietyIds.map(([vid, farms]) => ({
+    nom_vernaculaire: nameMap.get(vid) ?? 'Inconnue',
+    nb_fermes: farms.size,
+  }))
 
   // 4. Volume total par mois (année en cours)
   const currentYear = now.getFullYear()
@@ -454,22 +476,23 @@ export async function fetchArchivedCounts(farmId?: string, olderThanDays?: numbe
   await requireAdmin()
   const admin = createAdminClient()
 
-  const results: ArchivedCount[] = []
+  // Paralléliser les comptages sur toutes les tables
+  const results = await Promise.all(
+    SOFT_DELETE_TABLES.map(async ({ table, label }) => {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      let query = (admin as any).from(table).select('id', { count: 'exact', head: true }).not('deleted_at', 'is', null)
+      if (farmId) query = query.eq('farm_id', farmId)
+      if (olderThanDays) {
+        const cutoff = new Date()
+        cutoff.setDate(cutoff.getDate() - olderThanDays)
+        query = query.lt('deleted_at', cutoff.toISOString())
+      }
 
-  for (const { table, label } of SOFT_DELETE_TABLES) {
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    let query = (admin as any).from(table).select('id', { count: 'exact', head: true }).not('deleted_at', 'is', null)
-    if (farmId) query = query.eq('farm_id', farmId)
-    if (olderThanDays) {
-      const cutoff = new Date()
-      cutoff.setDate(cutoff.getDate() - olderThanDays)
-      query = query.lt('deleted_at', cutoff.toISOString())
-    }
-
-    const { count, error } = await query
-    if (error) throw new Error(`Erreur sur ${table} : ${error.message}`)
-    results.push({ table, label, count: count ?? 0 })
-  }
+      const { count, error } = await query
+      if (error) throw new Error(mapSupabaseError(error))
+      return { table, label, count: count ?? 0 }
+    })
+  )
 
   return results
 }
@@ -502,7 +525,7 @@ export async function purgeArchives(
   }
 
   const { data, error } = await query.select('id')
-  if (error) return { error: `Erreur : ${error.message}` }
+  if (error) return { error: mapSupabaseError(error) }
 
   return { success: true, data: { deleted: (data?.length ?? 0) + depCount, table } }
 }
@@ -594,20 +617,27 @@ async function deleteDependencies(
   }
 
   if (table === 'varieties') {
-    // Vérifier qu'aucune FK active ne pointe dessus
+    // Vérifier qu'aucune FK active ne pointe dessus (batch par table avec .in())
     const archivedIds = await getArchivedIds(admin, 'varieties', farmId, olderThanDays)
-    const fkTables = ['seed_lots', 'seedlings', 'plantings', 'harvests', 'stock_movements']
-    for (const vid of archivedIds) {
-      for (const fkTable of fkTables) {
-        const { count: fkCount } = await admin
-          .from(fkTable)
-          .select('id', { count: 'exact', head: true })
-          .eq('variety_id', vid)
-          .is('deleted_at', null)
+    if (archivedIds.length > 0) {
+      const fkTables = ['seed_lots', 'seedlings', 'plantings', 'harvests', 'stock_movements']
+      const fkChecks = await Promise.all(
+        fkTables.map(async (fkTable) => {
+          const { data: activeRefs } = await admin
+            .from(fkTable)
+            .select('variety_id', { count: 'exact', head: false })
+            .in('variety_id', archivedIds)
+            .is('deleted_at', null)
+            .limit(1)
 
-        if (fkCount && fkCount > 0) {
+          return { fkTable, activeRef: activeRefs?.[0] ?? null }
+        })
+      )
+
+      for (const { fkTable, activeRef } of fkChecks) {
+        if (activeRef) {
           throw new Error(
-            `Impossible de purger : la variété ${vid} a encore ${fkCount} enregistrement(s) actif(s) dans ${fkTable}.`,
+            `Impossible de purger : la variété ${activeRef.variety_id} a encore des enregistrement(s) actif(s) dans ${fkTable}.`,
           )
         }
       }

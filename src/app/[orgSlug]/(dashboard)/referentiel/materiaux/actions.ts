@@ -5,6 +5,7 @@ import { revalidatePath } from 'next/cache'
 import { getContext } from '@/lib/context'
 import { buildPath } from '@/lib/utils/path'
 import type { ActionResult, ExternalMaterial } from '@/lib/types'
+import { mapSupabaseError } from '@/lib/utils/error-messages'
 
 function parseMaterialForm(formData: FormData) {
   return {
@@ -29,7 +30,7 @@ export async function createMaterial(formData: FormData): Promise<ActionResult<E
 
   if (error) {
     if (error.code === '23505') return { error: 'Un matériau avec ce nom existe déjà.' }
-    return { error: `Erreur : ${error.message}` }
+    return { error: mapSupabaseError(error) }
   }
 
   revalidatePath(buildPath(orgSlug, '/referentiel/materiaux'))
@@ -50,7 +51,7 @@ export async function updateMaterial(id: string, formData: FormData): Promise<Ac
 
   if (error) {
     if (error.code === '23505') return { error: 'Un matériau avec ce nom existe déjà.' }
-    return { error: `Erreur : ${error.message}` }
+    return { error: mapSupabaseError(error) }
   }
 
   revalidatePath(buildPath(orgSlug, '/referentiel/materiaux'))
@@ -66,7 +67,7 @@ export async function archiveMaterial(id: string): Promise<ActionResult> {
     .update({ deleted_at: new Date().toISOString(), updated_by: userId })
     .eq('id', id)
 
-  if (error) return { error: `Erreur lors de l'archivage : ${error.message}` }
+  if (error) return { error: mapSupabaseError(error) }
   revalidatePath(buildPath(orgSlug, '/referentiel/materiaux'))
   return { success: true }
 }
@@ -80,7 +81,7 @@ export async function restoreMaterial(id: string): Promise<ActionResult> {
     .update({ deleted_at: null, updated_by: userId })
     .eq('id', id)
 
-  if (error) return { error: `Erreur lors de la restauration : ${error.message}` }
+  if (error) return { error: mapSupabaseError(error) }
   revalidatePath(buildPath(orgSlug, '/referentiel/materiaux'))
   return { success: true }
 }

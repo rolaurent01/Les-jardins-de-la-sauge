@@ -6,6 +6,7 @@ import { getContext } from '@/lib/context'
 import { buildPath } from '@/lib/utils/path'
 import { parseProductionLotForm, parseConditionnerForm } from '@/lib/utils/produits-parsers'
 import { generateProductionLotNumber, getRecipeCode } from '@/lib/utils/lots'
+import { mapSupabaseError } from '@/lib/utils/error-messages'
 import type {
   ActionResult,
   ProductionLotWithRelations,
@@ -151,7 +152,7 @@ export async function createProductionLot(
     p_ingredients: ingredientsJsonb,
   })
 
-  if (error) return { error: `Erreur : ${error.message}` }
+  if (error) return { error: mapSupabaseError(error) }
 
   revalidatePath(buildPath(orgSlug, '/produits/production'))
   return { success: true, data: { id: lotId as string, numero_lot: numeroLot } }
@@ -168,7 +169,7 @@ export async function archiveProductionLot(id: string): Promise<ActionResult> {
     p_updated_by: userId,
   })
 
-  if (error) return { error: `Erreur lors de l'archivage : ${error.message}` }
+  if (error) return { error: mapSupabaseError(error) }
 
   revalidatePath(buildPath(orgSlug, '/produits/production'))
   return { success: true }
@@ -185,7 +186,7 @@ export async function restoreProductionLot(id: string): Promise<ActionResult> {
     p_updated_by: userId,
   })
 
-  if (error) return { error: `Erreur lors de la restauration : ${error.message}` }
+  if (error) return { error: mapSupabaseError(error) }
 
   revalidatePath(buildPath(orgSlug, '/produits/production'))
   return { success: true }
@@ -209,7 +210,7 @@ export async function conditionnerLot(
     p_updated_by: userId,
   })
 
-  if (error) return { error: `Erreur : ${error.message}` }
+  if (error) return { error: mapSupabaseError(error) }
 
   revalidatePath(buildPath(orgSlug, '/produits/production'))
   return { success: true }

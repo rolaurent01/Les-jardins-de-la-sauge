@@ -5,6 +5,7 @@ import { revalidatePath } from 'next/cache'
 import { getContext } from '@/lib/context'
 import { buildPath } from '@/lib/utils/path'
 import type { ActionResult } from '@/lib/types'
+import { mapSupabaseError } from '@/lib/utils/error-messages'
 
 /** Variété enrichie du statut de sélection pour la ferme */
 export type VarietyWithSetting = {
@@ -97,7 +98,7 @@ export async function toggleVariety(
       { onConflict: 'farm_id,variety_id' },
     )
 
-  if (error) return { error: `Erreur lors de la mise à jour : ${error.message}` }
+  if (error) return { error: mapSupabaseError(error) }
 
   revalidatePath(buildPath(orgSlug, '/referentiel/mes-varietes'))
   return { success: true }
@@ -135,7 +136,7 @@ export async function bulkSetVarieties(
     .from('farm_variety_settings')
     .upsert(upserts, { onConflict: 'farm_id,variety_id' })
 
-  if (error) return { error: `Erreur lors de la sauvegarde : ${error.message}` }
+  if (error) return { error: mapSupabaseError(error) }
 
   revalidatePath(buildPath(orgSlug, '/referentiel/mes-varietes'))
   return { success: true }
@@ -158,7 +159,7 @@ export async function updateSeuilAlerte(
       { onConflict: 'farm_id,variety_id' },
     )
 
-  if (error) return { error: `Erreur lors de la mise à jour du seuil : ${error.message}` }
+  if (error) return { error: mapSupabaseError(error) }
 
   revalidatePath(buildPath(orgSlug, '/referentiel/mes-varietes'))
   return { success: true }
@@ -176,7 +177,7 @@ export async function resetFarmSettings(): Promise<ActionResult> {
     .delete()
     .eq('farm_id', farmId)
 
-  if (error) return { error: `Erreur lors de la réinitialisation : ${error.message}` }
+  if (error) return { error: mapSupabaseError(error) }
 
   revalidatePath(buildPath(orgSlug, '/referentiel/mes-varietes'))
   return { success: true }

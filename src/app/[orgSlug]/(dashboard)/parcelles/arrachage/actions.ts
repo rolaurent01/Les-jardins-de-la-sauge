@@ -6,6 +6,7 @@ import { getContext } from '@/lib/context'
 import { buildPath } from '@/lib/utils/path'
 import { parseUprootingForm } from '@/lib/utils/parcelles-parsers'
 import type { ActionResult, Uprooting, UprootingWithRelations } from '@/lib/types'
+import { mapSupabaseError } from '@/lib/utils/error-messages'
 
 // ---- Requetes ----
 
@@ -41,7 +42,7 @@ export async function createUprooting(formData: FormData): Promise<ActionResult<
     .select()
     .single()
 
-  if (error) return { error: `Erreur : ${error.message}` }
+  if (error) return { error: mapSupabaseError(error) }
 
   // Desactiver les plantings actifs correspondants
   const plantingFilter = supabase
@@ -87,7 +88,7 @@ export async function updateUprooting(
     .select()
     .single()
 
-  if (error) return { error: `Erreur : ${error.message}` }
+  if (error) return { error: mapSupabaseError(error) }
 
   revalidatePath(buildPath(orgSlug, '/parcelles/arrachage'))
   return { success: true, data: data as Uprooting }
@@ -129,7 +130,7 @@ export async function deleteUprooting(id: string): Promise<ActionResult> {
     .eq('id', id)
     .eq('farm_id', farmId)
 
-  if (error) return { error: `Erreur lors de la suppression : ${error.message}` }
+  if (error) return { error: mapSupabaseError(error) }
 
   revalidatePath(buildPath(orgSlug, '/parcelles/arrachage'))
   revalidatePath(buildPath(orgSlug, '/parcelles/plantations'))

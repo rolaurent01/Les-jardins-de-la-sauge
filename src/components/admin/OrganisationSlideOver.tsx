@@ -204,8 +204,9 @@ export default function OrganisationSlideOver({ open, item, onClose, onSubmit, o
 
           {/* Nom */}
           <div>
-            <label style={labelStyle}>Nom *</label>
+            <label htmlFor="admin-org-nom" style={labelStyle}>Nom *</label>
             <input
+              id="admin-org-nom"
               ref={firstInput}
               type="text"
               value={nom}
@@ -217,8 +218,9 @@ export default function OrganisationSlideOver({ open, item, onClose, onSubmit, o
 
           {/* Slug */}
           <div>
-            <label style={labelStyle}>Slug</label>
+            <label htmlFor="admin-org-slug" style={labelStyle}>Slug</label>
             <input
+              id="admin-org-slug"
               type="text"
               value={slug}
               onChange={e => setSlug(e.target.value)}
@@ -229,8 +231,9 @@ export default function OrganisationSlideOver({ open, item, onClose, onSubmit, o
 
           {/* Nom affiché */}
           <div>
-            <label style={labelStyle}>Nom affiché</label>
+            <label htmlFor="admin-org-nom-affiche" style={labelStyle}>Nom affiché</label>
             <input
+              id="admin-org-nom-affiche"
               type="text"
               value={nomAffiche}
               onChange={e => setNomAffiche(e.target.value)}
@@ -241,8 +244,9 @@ export default function OrganisationSlideOver({ open, item, onClose, onSubmit, o
 
           {/* Plan */}
           <div>
-            <label style={labelStyle}>Plan</label>
+            <label htmlFor="admin-org-plan" style={labelStyle}>Plan</label>
             <select
+              id="admin-org-plan"
               value={plan}
               onChange={e => setPlan(e.target.value)}
               style={inputStyle}
@@ -256,8 +260,9 @@ export default function OrganisationSlideOver({ open, item, onClose, onSubmit, o
           {/* Limites */}
           <div className="flex gap-3">
             <div className="flex-1">
-              <label style={labelStyle}>Max fermes</label>
+              <label htmlFor="admin-org-max-fermes" style={labelStyle}>Max fermes</label>
               <input
+                id="admin-org-max-fermes"
                 type="number"
                 min="1"
                 value={maxFarms}
@@ -266,8 +271,9 @@ export default function OrganisationSlideOver({ open, item, onClose, onSubmit, o
               />
             </div>
             <div className="flex-1">
-              <label style={labelStyle}>Max utilisateurs</label>
+              <label htmlFor="admin-org-max-utilisateurs" style={labelStyle}>Max utilisateurs</label>
               <input
+                id="admin-org-max-utilisateurs"
                 type="number"
                 min="1"
                 value={maxUsers}
@@ -280,7 +286,7 @@ export default function OrganisationSlideOver({ open, item, onClose, onSubmit, o
           {/* Couleurs */}
           <div className="flex gap-3">
             <div className="flex-1">
-              <label style={labelStyle}>Couleur primaire</label>
+              <label htmlFor="admin-org-couleur-primaire" style={labelStyle}>Couleur primaire</label>
               <div className="flex items-center gap-2">
                 <input
                   type="color"
@@ -288,8 +294,10 @@ export default function OrganisationSlideOver({ open, item, onClose, onSubmit, o
                   onChange={e => setCouleurPrimaire(e.target.value)}
                   className="w-8 h-8 rounded cursor-pointer border-0"
                   style={{ padding: 0 }}
+                  aria-label="Couleur primaire (sélecteur)"
                 />
                 <input
+                  id="admin-org-couleur-primaire"
                   type="text"
                   value={couleurPrimaire}
                   onChange={e => setCouleurPrimaire(e.target.value)}
@@ -298,7 +306,7 @@ export default function OrganisationSlideOver({ open, item, onClose, onSubmit, o
               </div>
             </div>
             <div className="flex-1">
-              <label style={labelStyle}>Couleur secondaire</label>
+              <label htmlFor="admin-org-couleur-secondaire" style={labelStyle}>Couleur secondaire</label>
               <div className="flex items-center gap-2">
                 <input
                   type="color"
@@ -306,8 +314,10 @@ export default function OrganisationSlideOver({ open, item, onClose, onSubmit, o
                   onChange={e => setCouleurSecondaire(e.target.value)}
                   className="w-8 h-8 rounded cursor-pointer border-0"
                   style={{ padding: 0 }}
+                  aria-label="Couleur secondaire (sélecteur)"
                 />
                 <input
+                  id="admin-org-couleur-secondaire"
                   type="text"
                   value={couleurSecondaire}
                   onChange={e => setCouleurSecondaire(e.target.value)}
@@ -320,7 +330,7 @@ export default function OrganisationSlideOver({ open, item, onClose, onSubmit, o
           {/* Logo (uniquement en édition) */}
           {item && (
             <div>
-              <label style={labelStyle}>Logo</label>
+              <label htmlFor="admin-org-logo" style={labelStyle}>Logo</label>
               <div className="flex items-center gap-3">
                 {item.logo_url ? (
                   // eslint-disable-next-line @next/next/no-img-element
@@ -339,6 +349,7 @@ export default function OrganisationSlideOver({ open, item, onClose, onSubmit, o
                   </div>
                 )}
                 <input
+                  id="admin-org-logo"
                   type="file"
                   accept="image/*"
                   onChange={handleLogoChange}

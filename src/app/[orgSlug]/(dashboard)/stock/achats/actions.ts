@@ -6,6 +6,7 @@ import { getContext } from '@/lib/context'
 import { buildPath } from '@/lib/utils/path'
 import { parsePurchaseForm } from '@/lib/utils/affinage-stock-parsers'
 import type { ActionResult, StockPurchase, StockPurchaseWithVariety } from '@/lib/types'
+import { mapSupabaseError } from '@/lib/utils/error-messages'
 
 // ---- Requetes ----
 
@@ -52,7 +53,7 @@ export async function createPurchase(formData: FormData): Promise<ActionResult<S
     p_uuid_client: null,
   })
 
-  if (error) return { error: `Erreur : ${error.message}` }
+  if (error) return { error: mapSupabaseError(error) }
 
   revalidatePath(buildPath(orgSlug, '/stock/achats'))
   return { success: true, data: { id: data } as unknown as StockPurchase }
@@ -84,7 +85,7 @@ export async function updatePurchase(
     p_updated_by: userId,
   })
 
-  if (error) return { error: `Erreur : ${error.message}` }
+  if (error) return { error: mapSupabaseError(error) }
 
   revalidatePath(buildPath(orgSlug, '/stock/achats'))
   return { success: true, data: { id } as unknown as StockPurchase }
@@ -100,7 +101,7 @@ export async function deletePurchase(id: string): Promise<ActionResult> {
     p_farm_id: farmId,
   })
 
-  if (error) return { error: `Erreur : ${error.message}` }
+  if (error) return { error: mapSupabaseError(error) }
 
   revalidatePath(buildPath(orgSlug, '/stock/achats'))
   return { success: true }

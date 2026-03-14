@@ -6,6 +6,7 @@ import { getContext } from '@/lib/context'
 import { buildPath } from '@/lib/utils/path'
 import { forecastSchema } from '@/lib/validation/previsionnel'
 import type { ActionResult, ForecastWithVariety } from '@/lib/types'
+import { mapSupabaseError } from '@/lib/utils/error-messages'
 
 // ---- Types retour ----
 
@@ -188,7 +189,7 @@ export async function upsertForecast(
     .select('id')
     .single()
 
-  if (error) return { error: `Erreur sauvegarde : ${error.message}` }
+  if (error) return { error: mapSupabaseError(error) }
 
   revalidatePath(buildPath(orgSlug, '/previsionnel'))
   return { success: true, data: { id: forecast.id } }
@@ -205,7 +206,7 @@ export async function deleteForecast(forecastId: string): Promise<ActionResult> 
     .eq('id', forecastId)
     .eq('farm_id', farmId)
 
-  if (error) return { error: `Erreur suppression : ${error.message}` }
+  if (error) return { error: mapSupabaseError(error) }
 
   revalidatePath(buildPath(orgSlug, '/previsionnel'))
   return { success: true }

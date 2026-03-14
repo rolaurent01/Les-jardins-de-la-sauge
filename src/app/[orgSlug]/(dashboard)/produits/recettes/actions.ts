@@ -6,6 +6,7 @@ import { getContext } from '@/lib/context'
 import { buildPath } from '@/lib/utils/path'
 import { parseRecipeForm } from '@/lib/utils/produits-parsers'
 import type { ActionResult, Recipe, RecipeWithRelations, PartiePlante } from '@/lib/types'
+import { mapSupabaseError } from '@/lib/utils/error-messages'
 
 // ---- Requetes ----
 
@@ -52,7 +53,7 @@ export async function createRecipe(formData: FormData): Promise<ActionResult<Rec
     .select('id')
     .single()
 
-  if (error) return { error: `Erreur : ${error.message}` }
+  if (error) return { error: mapSupabaseError(error) }
 
   // 2. Inserer les ingredients
   const ingredients = parsed.data.ingredients.map((ing, idx) => ({
@@ -100,7 +101,7 @@ export async function updateRecipe(
     .eq('id', id)
     .eq('farm_id', farmId)
 
-  if (error) return { error: `Erreur : ${error.message}` }
+  if (error) return { error: mapSupabaseError(error) }
 
   // 2. Supprimer les anciens ingredients
   const { error: delError } = await supabase
@@ -142,7 +143,7 @@ export async function archiveRecipe(id: string): Promise<ActionResult> {
     .eq('id', id)
     .eq('farm_id', farmId)
 
-  if (error) return { error: `Erreur lors de l'archivage : ${error.message}` }
+  if (error) return { error: mapSupabaseError(error) }
 
   revalidatePath(buildPath(orgSlug, '/produits/recettes'))
   return { success: true }
@@ -159,7 +160,7 @@ export async function restoreRecipe(id: string): Promise<ActionResult> {
     .eq('id', id)
     .eq('farm_id', farmId)
 
-  if (error) return { error: `Erreur lors de la restauration : ${error.message}` }
+  if (error) return { error: mapSupabaseError(error) }
 
   revalidatePath(buildPath(orgSlug, '/produits/recettes'))
   return { success: true }
@@ -186,7 +187,7 @@ export async function toggleRecipeActive(id: string): Promise<ActionResult> {
     .eq('id', id)
     .eq('farm_id', farmId)
 
-  if (error) return { error: `Erreur : ${error.message}` }
+  if (error) return { error: mapSupabaseError(error) }
 
   revalidatePath(buildPath(orgSlug, '/produits/recettes'))
   return { success: true }

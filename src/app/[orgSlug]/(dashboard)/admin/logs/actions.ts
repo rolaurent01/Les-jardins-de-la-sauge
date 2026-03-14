@@ -3,6 +3,7 @@
 import { createAdminClient, createClient } from '@/lib/supabase/server'
 import { isPlatformAdmin } from '@/lib/admin/is-platform-admin'
 import type { ActionResult } from '@/lib/types'
+import { mapSupabaseError } from '@/lib/utils/error-messages'
 
 /** Vérifie que l'utilisateur courant est super admin */
 async function requireAdmin(): Promise<string> {
@@ -76,7 +77,7 @@ export async function fetchLogs(filters: LogFilters = {}): Promise<{
 
   const { data, count, error } = await query
 
-  if (error) throw new Error(`Erreur : ${error.message}`)
+  if (error) throw new Error(mapSupabaseError(error))
 
   return {
     logs: (data ?? []) as AppLog[],
@@ -121,7 +122,7 @@ export async function fetchLogSources(): Promise<string[]> {
     .from('app_logs')
     .select('source')
 
-  if (error) throw new Error(`Erreur : ${error.message}`)
+  if (error) throw new Error(mapSupabaseError(error))
   if (!data) return []
 
   // Extraction des valeurs uniques côté JS
@@ -145,7 +146,7 @@ export async function purgeLogs(olderThanDays: number = 90): Promise<ActionResul
     .lt('created_at', cutoffDate.toISOString())
     .select('id')
 
-  if (error) return { error: `Erreur : ${error.message}` }
+  if (error) return { error: mapSupabaseError(error) }
 
   return { success: true, data: { deleted: data?.length ?? 0 } }
 }

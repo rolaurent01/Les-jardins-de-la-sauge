@@ -6,6 +6,7 @@ import { getContext } from '@/lib/context'
 import { buildPath } from '@/lib/utils/path'
 import { parseRowCareForm } from '@/lib/utils/parcelles-parsers'
 import type { ActionResult, RowCare, RowCareWithRelations } from '@/lib/types'
+import { mapSupabaseError } from '@/lib/utils/error-messages'
 
 // ---- Requêtes ----
 
@@ -41,7 +42,7 @@ export async function createRowCare(formData: FormData): Promise<ActionResult<Ro
     .select()
     .single()
 
-  if (error) return { error: `Erreur : ${error.message}` }
+  if (error) return { error: mapSupabaseError(error) }
 
   revalidatePath(buildPath(orgSlug, '/parcelles/suivi-rang'))
   return { success: true, data: data as RowCare }
@@ -66,7 +67,7 @@ export async function updateRowCare(
     .select()
     .single()
 
-  if (error) return { error: `Erreur : ${error.message}` }
+  if (error) return { error: mapSupabaseError(error) }
 
   revalidatePath(buildPath(orgSlug, '/parcelles/suivi-rang'))
   return { success: true, data: data as RowCare }
@@ -83,7 +84,7 @@ export async function deleteRowCare(id: string): Promise<ActionResult> {
     .eq('id', id)
     .eq('farm_id', farmId)
 
-  if (error) return { error: `Erreur lors de la suppression : ${error.message}` }
+  if (error) return { error: mapSupabaseError(error) }
 
   revalidatePath(buildPath(orgSlug, '/parcelles/suivi-rang'))
   return { success: true }

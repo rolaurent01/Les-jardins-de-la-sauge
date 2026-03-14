@@ -3,6 +3,7 @@
 import { createAdminClient, createClient } from '@/lib/supabase/server'
 import { isPlatformAdmin } from '@/lib/admin/is-platform-admin'
 import type { ActionResult } from '@/lib/types'
+import { mapSupabaseError } from '@/lib/utils/error-messages'
 
 /** Vérifie que l'utilisateur courant est super admin */
 async function requireAdmin(): Promise<string> {
@@ -68,7 +69,7 @@ export async function fetchAllVarieties(): Promise<VarietyOption[]> {
     .is('merged_into_id', null)
     .order('nom_vernaculaire')
 
-  if (error) throw new Error(`Erreur : ${error.message}`)
+  if (error) throw new Error(mapSupabaseError(error))
   return (data ?? []) as VarietyOption[]
 }
 
@@ -83,21 +84,22 @@ export async function previewMerge(
   if (sourceId === targetId) throw new Error('Source et cible identiques')
 
   const admin = createAdminClient()
-  const details: { table: string; count: number }[] = []
 
-  for (const table of FK_TABLES) {
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const { count, error } = await (admin as any)
-      .from(table)
-      .select('id', { count: 'exact', head: true })
-      .eq('variety_id', sourceId)
+  // Paralléliser les comptages sur toutes les tables FK
+  const results = await Promise.all(
+    FK_TABLES.map(async (table) => {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const { count, error } = await (admin as any)
+        .from(table)
+        .select('id', { count: 'exact', head: true })
+        .eq('variety_id', sourceId)
 
-    if (error) throw new Error(`Erreur sur ${table} : ${error.message}`)
-    if (count && count > 0) {
-      details.push({ table, count })
-    }
-  }
+      if (error) throw new Error(mapSupabaseError(error))
+      return { table, count: count ?? 0 }
+    })
+  )
 
+  const details = results.filter(d => d.count > 0)
   const total = details.reduce((sum, d) => sum + d.count, 0)
   return { details, total }
 }
@@ -132,17 +134,15 @@ export async function executeMerge(
 
   if (tgtErr || !target) return { error: 'Variété cible introuvable.' }
 
-  const tablesUpdated: { table: string; count: number }[] = []
-
   // Tables avec contrainte UNIQUE sur (farm_id, variety_id) ou similaire
   const UNIQUE_TABLES = ['farm_variety_settings', 'forecasts'] as const
 
-  for (const table of FK_TABLES) {
-    if (UNIQUE_TABLES.includes(table as typeof UNIQUE_TABLES[number])) {
-      // Gestion spéciale : supprimer les doublons potentiels
-      const updated = await handleUniqueTable(admin, table, sourceId, targetId)
-      if (updated > 0) tablesUpdated.push({ table, count: updated })
-    } else {
+  // Paralléliser les updates sur les tables sans contrainte UNIQUE
+  const normalTables = FK_TABLES.filter(
+    t => !UNIQUE_TABLES.includes(t as typeof UNIQUE_TABLES[number])
+  )
+  const normalResults = await Promise.all(
+    normalTables.map(async (table) => {
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const { data, error } = await (admin as any)
         .from(table)
@@ -150,12 +150,20 @@ export async function executeMerge(
         .eq('variety_id', sourceId)
         .select('id')
 
-      if (error) return { error: `Erreur sur ${table} : ${error.message}` }
-      if (data && data.length > 0) {
-        tablesUpdated.push({ table, count: data.length })
-      }
-    }
-  }
+      if (error) throw new Error(mapSupabaseError(error))
+      return { table, count: data?.length ?? 0 }
+    })
+  )
+
+  // Tables UNIQUE : gestion séquentielle (conflits possibles)
+  const uniqueResults = await Promise.all(
+    UNIQUE_TABLES.map(async (table) => {
+      const updated = await handleUniqueTable(admin, table, sourceId, targetId)
+      return { table, count: updated }
+    })
+  )
+
+  const tablesUpdated = [...normalResults, ...uniqueResults].filter(d => d.count > 0)
 
   // Fusionner les aliases : cible.aliases + source.aliases + source.nom_vernaculaire
   const currentAliases = target.aliases ?? []
@@ -178,7 +186,7 @@ export async function executeMerge(
     })
     .eq('id', sourceId)
 
-  if (mergeErr) return { error: `Erreur marquage source : ${mergeErr.message}` }
+  if (mergeErr) return { error: mapSupabaseError(mergeErr) }
 
   // Mettre à jour les aliases de la cible
   const { error: aliasErr } = await admin
@@ -186,7 +194,7 @@ export async function executeMerge(
     .update({ aliases: mergedAliases, updated_by: userId })
     .eq('id', targetId)
 
-  if (aliasErr) return { error: `Erreur aliases : ${aliasErr.message}` }
+  if (aliasErr) return { error: mapSupabaseError(aliasErr) }
 
   // Log dans audit_log
   await admin.from('audit_log').insert({

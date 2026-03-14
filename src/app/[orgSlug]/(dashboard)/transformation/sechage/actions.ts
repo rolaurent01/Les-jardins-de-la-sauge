@@ -6,6 +6,7 @@ import { getContext } from '@/lib/context'
 import { buildPath } from '@/lib/utils/path'
 import { parseDryingForm } from '@/lib/utils/transformation-parsers'
 import type { ActionResult, Drying, DryingWithVariety } from '@/lib/types'
+import { mapSupabaseError } from '@/lib/utils/error-messages'
 
 // ---- Requetes ----
 
@@ -50,7 +51,7 @@ export async function createDrying(formData: FormData): Promise<ActionResult<Dry
     p_uuid_client: null,
   })
 
-  if (error) return { error: `Erreur : ${error.message}` }
+  if (error) return { error: mapSupabaseError(error) }
 
   revalidatePath(buildPath(orgSlug, '/transformation/sechage'))
   return { success: true, data: { id: data } as unknown as Drying }
@@ -79,7 +80,7 @@ export async function updateDrying(
     p_updated_by: userId,
   })
 
-  if (error) return { error: `Erreur : ${error.message}` }
+  if (error) return { error: mapSupabaseError(error) }
 
   revalidatePath(buildPath(orgSlug, '/transformation/sechage'))
   return { success: true, data: { id } as unknown as Drying }
@@ -94,7 +95,7 @@ export async function deleteDrying(id: string): Promise<ActionResult> {
     p_drying_id: id,
   })
 
-  if (error) return { error: `Erreur : ${error.message}` }
+  if (error) return { error: mapSupabaseError(error) }
 
   revalidatePath(buildPath(orgSlug, '/transformation/sechage'))
   return { success: true }

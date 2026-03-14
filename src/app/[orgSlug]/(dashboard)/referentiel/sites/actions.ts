@@ -5,6 +5,7 @@ import { revalidatePath } from 'next/cache'
 import { getContext } from '@/lib/context'
 import { buildPath } from '@/lib/utils/path'
 import type { ActionResult, Site, ParcelWithSite, RowWithParcel } from '@/lib/types'
+import { mapSupabaseError } from '@/lib/utils/error-messages'
 
 // ============================================================
 // SITES
@@ -27,7 +28,7 @@ export async function createSite(formData: FormData): Promise<ActionResult<Site>
 
   if (error) {
     if (error.code === '23505') return { error: 'Un site avec ce nom existe déjà.' }
-    return { error: `Erreur : ${error.message}` }
+    return { error: mapSupabaseError(error) }
   }
 
   revalidatePath(buildPath(orgSlug, '/referentiel/sites'))
@@ -51,7 +52,7 @@ export async function updateSite(id: string, formData: FormData): Promise<Action
 
   if (error) {
     if (error.code === '23505') return { error: 'Un site avec ce nom existe déjà.' }
-    return { error: `Erreur : ${error.message}` }
+    return { error: mapSupabaseError(error) }
   }
 
   revalidatePath(buildPath(orgSlug, '/referentiel/sites'))
@@ -68,7 +69,7 @@ export async function archiveSite(id: string): Promise<ActionResult> {
     .eq('id', id)
     .eq('farm_id', farmId)
 
-  if (error) return { error: `Erreur lors de l'archivage : ${error.message}` }
+  if (error) return { error: mapSupabaseError(error) }
   revalidatePath(buildPath(orgSlug, '/referentiel/sites'))
   return { success: true }
 }
@@ -83,7 +84,7 @@ export async function restoreSite(id: string): Promise<ActionResult> {
     .eq('id', id)
     .eq('farm_id', farmId)
 
-  if (error) return { error: `Erreur lors de la restauration : ${error.message}` }
+  if (error) return { error: mapSupabaseError(error) }
   revalidatePath(buildPath(orgSlug, '/referentiel/sites'))
   return { success: true }
 }
@@ -119,7 +120,7 @@ export async function createParcel(formData: FormData): Promise<ActionResult<Par
 
   if (error) {
     if (error.code === '23505') return { error: 'Ce code de parcelle existe déjà.' }
-    return { error: `Erreur : ${error.message}` }
+    return { error: mapSupabaseError(error) }
   }
 
   revalidatePath(buildPath(orgSlug, '/referentiel/sites'))
@@ -143,7 +144,7 @@ export async function updateParcel(id: string, formData: FormData): Promise<Acti
 
   if (error) {
     if (error.code === '23505') return { error: 'Ce code de parcelle existe déjà.' }
-    return { error: `Erreur : ${error.message}` }
+    return { error: mapSupabaseError(error) }
   }
 
   revalidatePath(buildPath(orgSlug, '/referentiel/sites'))
@@ -160,7 +161,7 @@ export async function archiveParcel(id: string): Promise<ActionResult> {
     .eq('id', id)
     .eq('farm_id', farmId)
 
-  if (error) return { error: `Erreur lors de l'archivage : ${error.message}` }
+  if (error) return { error: mapSupabaseError(error) }
   revalidatePath(buildPath(orgSlug, '/referentiel/sites'))
   return { success: true }
 }
@@ -175,7 +176,7 @@ export async function restoreParcel(id: string): Promise<ActionResult> {
     .eq('id', id)
     .eq('farm_id', farmId)
 
-  if (error) return { error: `Erreur lors de la restauration : ${error.message}` }
+  if (error) return { error: mapSupabaseError(error) }
   revalidatePath(buildPath(orgSlug, '/referentiel/sites'))
   return { success: true }
 }
@@ -215,7 +216,7 @@ export async function createRow(formData: FormData): Promise<ActionResult<RowWit
 
   if (error) {
     if (error.code === '23505') return { error: 'Ce numéro de rang existe déjà dans cette parcelle.' }
-    return { error: `Erreur : ${error.message}` }
+    return { error: mapSupabaseError(error) }
   }
 
   revalidatePath(buildPath(orgSlug, '/referentiel/sites'))
@@ -238,7 +239,7 @@ export async function updateRow(id: string, formData: FormData): Promise<ActionR
 
   if (error) {
     if (error.code === '23505') return { error: 'Ce numéro de rang existe déjà dans cette parcelle.' }
-    return { error: `Erreur : ${error.message}` }
+    return { error: mapSupabaseError(error) }
   }
 
   revalidatePath(buildPath(orgSlug, '/referentiel/sites'))
@@ -255,7 +256,7 @@ export async function archiveRow(id: string): Promise<ActionResult> {
     .eq('id', id)
     .eq('farm_id', farmId)
 
-  if (error) return { error: `Erreur lors de l'archivage : ${error.message}` }
+  if (error) return { error: mapSupabaseError(error) }
   revalidatePath(buildPath(orgSlug, '/referentiel/sites'))
   return { success: true }
 }
@@ -270,7 +271,7 @@ export async function restoreRow(id: string): Promise<ActionResult> {
     .eq('id', id)
     .eq('farm_id', farmId)
 
-  if (error) return { error: `Erreur lors de la restauration : ${error.message}` }
+  if (error) return { error: mapSupabaseError(error) }
   revalidatePath(buildPath(orgSlug, '/referentiel/sites'))
   return { success: true }
 }

@@ -6,6 +6,7 @@ import { getContext } from '@/lib/context'
 import { buildPath } from '@/lib/utils/path'
 import { parseSortingForm } from '@/lib/utils/transformation-parsers'
 import type { ActionResult, Sorting, SortingWithVariety } from '@/lib/types'
+import { mapSupabaseError } from '@/lib/utils/error-messages'
 
 // ---- Requetes ----
 
@@ -50,7 +51,7 @@ export async function createSorting(formData: FormData): Promise<ActionResult<So
     p_uuid_client: null,
   })
 
-  if (error) return { error: `Erreur : ${error.message}` }
+  if (error) return { error: mapSupabaseError(error) }
 
   revalidatePath(buildPath(orgSlug, '/transformation/triage'))
   return { success: true, data: { id: data } as unknown as Sorting }
@@ -79,7 +80,7 @@ export async function updateSorting(
     p_updated_by: userId,
   })
 
-  if (error) return { error: `Erreur : ${error.message}` }
+  if (error) return { error: mapSupabaseError(error) }
 
   revalidatePath(buildPath(orgSlug, '/transformation/triage'))
   return { success: true, data: { id } as unknown as Sorting }
@@ -94,7 +95,7 @@ export async function deleteSorting(id: string): Promise<ActionResult> {
     p_sorting_id: id,
   })
 
-  if (error) return { error: `Erreur : ${error.message}` }
+  if (error) return { error: mapSupabaseError(error) }
 
   revalidatePath(buildPath(orgSlug, '/transformation/triage'))
   return { success: true }
