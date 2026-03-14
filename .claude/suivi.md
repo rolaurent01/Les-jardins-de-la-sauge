@@ -2,6 +2,29 @@
 
 ---
 
+## [2026-03-14 17:00] — MobileSearchSelect : plein écran + recherche par pertinence
+
+**Type :** `fix`
+**Fichiers concernés :** `src/components/mobile/fields/MobileSearchSelect.tsx`
+
+### Description
+Deux corrections sur le MobileSearchSelect :
+
+1. **Plein écran** — Le bottom-sheet (70vh max) était trop petit avec le clavier iOS ouvert, ne montrant que 4 résultats. Remplacé par une modale plein écran (`fixed inset 0`) avec header fixe (✕ + titre), input recherche fixe, et liste scrollable occupant tout l'espace restant. Le clavier iOS pousse le contenu naturellement.
+
+2. **Recherche par pertinence** — L'ancien `includes()` simple retournait les résultats dans l'ordre alphabétique. Nouvel algorithme avec scoring : nom commence par le terme (100) > mot du nom commence (80) > nom contient (60) > nom latin commence (40) > nom latin contient (20). À score égal, tri alphabétique. Ex: "Mar" → Marjolaine (100) avant Chardon marie (60).
+
+### Détails techniques
+- Modale `fixed inset 0 z-9999` — pas d'overlay séparé, fond blanc plein écran
+- Header : bouton ✕ + label du champ en titre
+- Options : `border-bottom 1px #F3F4F6`, nom en `fontWeight 500`, sublabel en italic gris
+- `WebkitOverflowScrolling: touch` pour scroll fluide iOS
+- `autoComplete="off" autoCorrect="off"` sur l'input recherche
+
+### Build : OK
+
+---
+
 ## [2026-03-14 16:15] — Sélecteur variété mobile avec recherche + tri alphabétique
 
 **Type :** `feature`
