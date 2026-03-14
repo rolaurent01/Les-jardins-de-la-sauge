@@ -1,6 +1,7 @@
 'use client'
 
 import { useMobileSync } from './MobileSyncContext'
+import { formatRelativeTime } from '@/lib/utils/format'
 
 /** Configuration visuelle pour chaque état de la barre de sync */
 interface SyncBarState {
@@ -99,7 +100,7 @@ interface SyncBarProps {
  * Cliquable → ouvre le SyncPanel.
  */
 export default function SyncBar({ onTap }: SyncBarProps) {
-  const { syncStatus, isProcessing, isAuditing, isOnline } = useMobileSync()
+  const { syncStatus, isProcessing, isAuditing, isOnline, lastSyncedAt, isRefreshing } = useMobileSync()
 
   const state = getSyncBarState({
     isAuditing,
@@ -109,11 +110,15 @@ export default function SyncBar({ onTap }: SyncBarProps) {
     pendingCount: syncStatus.pending,
   })
 
+  const cacheLabel = isRefreshing
+    ? 'Cache…'
+    : `Cache : ${formatRelativeTime(lastSyncedAt)}`
+
   return (
     <button
       type="button"
       onClick={onTap}
-      className="w-full flex items-center justify-center gap-2 flex-shrink-0"
+      className="w-full flex items-center justify-between px-3 flex-shrink-0"
       style={{
         height: 40,
         backgroundColor: state.bgColor,
@@ -124,17 +129,20 @@ export default function SyncBar({ onTap }: SyncBarProps) {
         cursor: 'pointer',
       }}
     >
-      {state.showSpinner && (
-        <span
-          className="inline-block w-3.5 h-3.5 border-2 rounded-full animate-spin"
-          style={{
-            borderColor: 'transparent',
-            borderTopColor: state.textColor,
-            borderRightColor: state.textColor,
-          }}
-        />
-      )}
-      <span>{state.text}</span>
+      <div className="flex items-center gap-2">
+        {state.showSpinner && (
+          <span
+            className="inline-block w-3.5 h-3.5 border-2 rounded-full animate-spin"
+            style={{
+              borderColor: 'transparent',
+              borderTopColor: state.textColor,
+              borderRightColor: state.textColor,
+            }}
+          />
+        )}
+        <span>{state.text}</span>
+      </div>
+      <span style={{ fontSize: 11, opacity: 0.75 }}>{cacheLabel}</span>
     </button>
   )
 }

@@ -2,6 +2,31 @@
 
 ---
 
+## [2026-03-14 — après-midi] — Bouton rafraîchissement cache offline + indicateur d'âge
+
+**Type :** `feature`
+
+### Résumé
+Ajout d'un bouton permettant à l'utilisatrice de forcer le rechargement du cache de référence (variétés, parcelles, rangs, recettes, semences, matériaux) depuis le SyncPanel mobile, et affichage de l'âge du cache dans la SyncBar.
+
+### Problème résolu
+Le cache IndexedDB n'était rechargé que si `isCacheValid()` retournait `false` (changement de ferme ou premier chargement). Si l'utilisatrice ajoutait des données le matin sur bureau, le cache mobile restait périmé car considéré "valide" — les nouvelles données n'étaient pas visibles sur le terrain.
+
+### Fichiers modifiés
+- `src/hooks/useOfflineCache.ts` — exposé `refreshCache()` et `isRefreshing`
+- `src/lib/utils/format.ts` — ajouté `formatRelativeTime()` (temps relatif FR)
+- `src/components/mobile/MobileSyncContext.tsx` — propagé `lastSyncedAt`, `refreshCache`, `isRefreshing`
+- `src/components/mobile/MobileShell.tsx` — passé les nouvelles props au contexte
+- `src/components/mobile/SyncBar.tsx` — affiché l'âge du cache à droite de la barre
+- `src/components/mobile/SyncPanel.tsx` — nouvelle section "Données de référence" avec bouton + date
+
+### Choix techniques
+- Pas de TTL automatique : l'utilisatrice garde le contrôle total du rechargement
+- L'envoi des saisies (syncQueue) reste automatique toutes les 30s (zéro perte de données)
+- Le bouton est grisé hors ligne avec message explicatif
+
+---
+
 ## [2026-03-14 11:15] — Polish / Revue complète du code
 
 **Type :** `refactor`

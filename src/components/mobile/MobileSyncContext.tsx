@@ -25,6 +25,9 @@ export interface MobileSyncContextValue {
 
   // Du hook useOfflineCache
   isOnline: boolean
+  lastSyncedAt: string | null
+  refreshCache: () => Promise<void>
+  isRefreshing: boolean
 
   // Contexte ferme
   farmId: string

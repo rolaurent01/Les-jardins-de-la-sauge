@@ -59,11 +59,14 @@ export default function MobileShell({
       lastAuditResult: sync.lastAuditResult,
       storageEstimate: sync.storageEstimate,
       isOnline,
+      lastSyncedAt: cache.lastSyncedAt,
+      refreshCache: cache.refreshCache,
+      isRefreshing: cache.isRefreshing,
       farmId,
       orgSlug,
       certifBio,
     }),
-    [sync, isOnline, farmId, orgSlug, certifBio],
+    [sync, isOnline, cache.lastSyncedAt, cache.refreshCache, cache.isRefreshing, farmId, orgSlug, certifBio],
   )
 
   // Cache en cours de chargement

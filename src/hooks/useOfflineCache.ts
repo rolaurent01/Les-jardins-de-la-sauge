@@ -14,6 +14,10 @@ interface UseOfflineCacheResult {
   error: string | null
   /** Timestamp ISO du dernier chargement réussi */
   lastSyncedAt: string | null
+  /** Force le rechargement du cache de référence (nécessite une connexion) */
+  refreshCache: () => Promise<void>
+  /** true pendant un rechargement forcé du cache */
+  isRefreshing: boolean
 }
 
 /**
@@ -41,6 +45,7 @@ export function useOfflineCache(
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [lastSyncedAt, setLastSyncedAt] = useState<string | null>(null)
+  const [isRefreshing, setIsRefreshing] = useState(false)
 
   // Éviter les doubles exécutions en mode strict
   const initRef = useRef(false)
@@ -98,5 +103,22 @@ export function useOfflineCache(
     initialize()
   }, [initialize])
 
-  return { isReady, isLoading, error, lastSyncedAt }
+  // Rechargement forcé du cache (bouton utilisateur)
+  const refreshCache = useCallback(async () => {
+    if (!farmId || !isOnline) return
+    setIsRefreshing(true)
+    setError(null)
+    try {
+      await loadReferenceData(farmId)
+      const ctx = await getOfflineContext()
+      setLastSyncedAt(ctx?.lastSyncedAt ?? null)
+    } catch (err) {
+      const message = err instanceof Error ? err.message : 'Erreur inconnue'
+      setError(message)
+    } finally {
+      setIsRefreshing(false)
+    }
+  }, [farmId, isOnline])
+
+  return { isReady, isLoading, error, lastSyncedAt, refreshCache, isRefreshing }
 }

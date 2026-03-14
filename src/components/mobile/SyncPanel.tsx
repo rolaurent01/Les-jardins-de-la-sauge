@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useState } from 'react'
 import { useMobileSync } from './MobileSyncContext'
 import { offlineDb, type SyncQueueEntry } from '@/lib/offline/db'
+import { formatRelativeTime } from '@/lib/utils/format'
 
 // --- Labels FR pour les tables ---
 
@@ -43,6 +44,9 @@ export default function SyncPanel({ open, onClose }: SyncPanelProps) {
     lastAuditResult,
     storageEstimate,
     orgSlug,
+    lastSyncedAt,
+    refreshCache,
+    isRefreshing,
   } = useMobileSync()
 
   const [errorEntries, setErrorEntries] = useState<SyncQueueEntry[]>([])
@@ -164,7 +168,39 @@ export default function SyncPanel({ open, onClose }: SyncPanelProps) {
             </div>
           </Section>
 
-          {/* Section 2 — Actions */}
+          {/* Section 2 — Données de référence (cache offline) */}
+          <Section title="Données de référence">
+            <div className="flex flex-col gap-2">
+              <p className="text-sm" style={{ color: '#374151' }}>
+                Dernière mise à jour : <strong>{formatRelativeTime(lastSyncedAt)}</strong>
+              </p>
+              <p className="text-xs" style={{ color: '#6B7280' }}>
+                Variétés, parcelles, rangs, recettes, semences…
+              </p>
+              <button
+                type="button"
+                onClick={() => refreshCache()}
+                disabled={!isOnline || isRefreshing}
+                className="w-full font-medium text-sm disabled:opacity-50"
+                style={{
+                  backgroundColor: '#EFF6FF',
+                  color: '#1D4ED8',
+                  borderRadius: 10,
+                  minHeight: 44,
+                  border: 'none',
+                }}
+              >
+                {isRefreshing ? '⏳ Chargement…' : '🔄 Mettre à jour les données'}
+              </button>
+              {!isOnline && (
+                <p className="text-xs" style={{ color: '#9CA3AF' }}>
+                  Connexion requise pour mettre à jour
+                </p>
+              )}
+            </div>
+          </Section>
+
+          {/* Section 3 — Actions */}
           <Section title="Actions">
             <div className="flex flex-col gap-2">
               <button
@@ -199,14 +235,14 @@ export default function SyncPanel({ open, onClose }: SyncPanelProps) {
             </div>
           </Section>
 
-          {/* Section 3 — Dernier audit */}
+          {/* Section 4 — Dernier audit */}
           {lastAuditResult && (
             <Section title="Dernier audit">
               <AuditResultDisplay result={lastAuditResult} />
             </Section>
           )}
 
-          {/* Section 4 — Stockage */}
+          {/* Section 5 — Stockage */}
           {storageEstimate && (
             <Section title="Stockage">
               <div className="flex flex-col gap-2">
@@ -287,7 +323,7 @@ export default function SyncPanel({ open, onClose }: SyncPanelProps) {
             </Section>
           )}
 
-          {/* Section 5 — Erreurs détaillées */}
+          {/* Section 6 — Erreurs détaillées */}
           {syncStatus.error > 0 && (
             <Section title="Erreurs">
               <div className="flex flex-col gap-2">
