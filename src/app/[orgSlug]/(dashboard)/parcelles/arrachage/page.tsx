@@ -2,7 +2,7 @@ import { fetchUprootings } from './actions'
 import { fetchRowsForSelect, fetchVarietiesForSelect } from '@/app/[orgSlug]/(dashboard)/parcelles/shared-actions'
 import ArrachageClient from '@/components/parcelles/ArrachageClient'
 
-export const metadata = { title: 'Arrachage — LJS' }
+export const metadata = { title: 'Arrachage — Carnet Culture' }
 
 export default async function ArrachagePage() {
   try {

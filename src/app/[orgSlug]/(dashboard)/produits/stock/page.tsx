@@ -5,7 +5,7 @@ import {
 } from './actions'
 import ProductStockClient from '@/components/produits/ProductStockClient'
 
-export const metadata = { title: 'Stock produits finis — LJS' }
+export const metadata = { title: 'Stock produits finis — Carnet Culture' }
 
 export default async function ProductStockPage() {
   try {

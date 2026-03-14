@@ -2,7 +2,7 @@ import type { Variety } from '@/lib/types'
 import { fetchVarieties } from './actions'
 import VarietesClient from '@/components/referentiel/VarietesClient'
 
-export const metadata = { title: 'Variétés — LJS' }
+export const metadata = { title: 'Variétés — Carnet Culture' }
 
 export default async function VarietesPage() {
   let varieties: Variety[]

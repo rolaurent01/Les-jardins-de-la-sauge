@@ -1,7 +1,7 @@
 import { fetchVarietiesWithSettings, hasExistingSettings } from './actions'
 import MesVarietesClient from '@/components/referentiel/MesVarietesClient'
 
-export const metadata = { title: 'Mes variétés — LJS' }
+export const metadata = { title: 'Mes variétés — Carnet Culture' }
 
 export default async function MesVarietesPage() {
   try {

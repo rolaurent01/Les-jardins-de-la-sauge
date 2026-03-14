@@ -2,7 +2,7 @@ import { fetchProductionLots, fetchRecipesForSelect } from './actions'
 import { fetchProductCategories, fetchStockLevels } from '@/app/[orgSlug]/(dashboard)/produits/shared-actions'
 import ProductionClient from '@/components/produits/ProductionClient'
 
-export const metadata = { title: 'Production — LJS' }
+export const metadata = { title: 'Production — Carnet Culture' }
 
 export default async function ProductionPage() {
   try {

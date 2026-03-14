@@ -2,7 +2,7 @@ import { fetchRowCare } from './actions'
 import { fetchRowsForSelect, fetchVarietiesForSelect } from '@/app/[orgSlug]/(dashboard)/parcelles/shared-actions'
 import SuiviRangClient from '@/components/parcelles/SuiviRangClient'
 
-export const metadata = { title: 'Suivi de rang — LJS' }
+export const metadata = { title: 'Suivi de rang — Carnet Culture' }
 
 export default async function SuiviRangPage() {
   try {

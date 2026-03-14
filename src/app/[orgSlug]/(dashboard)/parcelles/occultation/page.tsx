@@ -3,7 +3,7 @@ import { fetchRowsForSelect } from '@/app/[orgSlug]/(dashboard)/parcelles/shared
 import { getContext } from '@/lib/context'
 import OccultationClient from '@/components/parcelles/OccultationClient'
 
-export const metadata = { title: 'Occultation — LJS' }
+export const metadata = { title: 'Occultation — Carnet Culture' }
 
 export default async function OccultationPage() {
   try {

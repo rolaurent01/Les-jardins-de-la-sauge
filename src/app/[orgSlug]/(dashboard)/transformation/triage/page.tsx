@@ -4,7 +4,7 @@ import TransformationClient from '@/components/transformation/TransformationClie
 import { TRIAGE_CONFIG } from '@/components/transformation/types'
 import type { TransformationItem } from '@/components/transformation/types'
 
-export const metadata = { title: 'Triage — LJS' }
+export const metadata = { title: 'Triage — Carnet Culture' }
 
 export default async function TriagePage() {
   try {

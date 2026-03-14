@@ -3,7 +3,7 @@ import { fetchVarietiesForAffinage, fetchStockLevelsForAffinage } from '../share
 import { getContext } from '@/lib/context'
 import AchatsClient from '@/components/affinage-stock/AchatsClient'
 
-export const metadata = { title: 'Achats — LJS' }
+export const metadata = { title: 'Achats — Carnet Culture' }
 
 export default async function AchatsPage() {
   try {

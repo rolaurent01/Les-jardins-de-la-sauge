@@ -2,7 +2,7 @@ import { fetchSeedLots, fetchVarieties } from './actions'
 import { getContext } from '@/lib/context'
 import SachetsClient from '@/components/semis/SachetsClient'
 
-export const metadata = { title: 'Sachets de graines — LJS' }
+export const metadata = { title: 'Sachets de graines — Carnet Culture' }
 
 export default async function SachetsPage() {
   try {

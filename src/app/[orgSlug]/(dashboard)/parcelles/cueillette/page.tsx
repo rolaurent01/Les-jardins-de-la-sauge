@@ -2,7 +2,7 @@ import { fetchHarvests, fetchLieuxSauvages } from './actions'
 import { fetchRowsForSelect, fetchVarietiesForSelect } from '@/app/[orgSlug]/(dashboard)/parcelles/shared-actions'
 import CueilletteClient from '@/components/parcelles/CueilletteClient'
 
-export const metadata = { title: 'Cueillette — LJS' }
+export const metadata = { title: 'Cueillette — Carnet Culture' }
 
 export default async function CueillettePage() {
   try {

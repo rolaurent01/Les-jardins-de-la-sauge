@@ -9,13 +9,13 @@ const geist = Geist({
 })
 
 export const metadata: Metadata = {
-  title: 'Les Jardins de la Sauge',
+  title: 'Carnet Culture',
   description: 'Traçabilité de la graine au produit fini',
   manifest: '/manifest.json',
   appleWebApp: {
     capable: true,
     statusBarStyle: 'black-translucent',
-    title: 'LJS',
+    title: 'Carnet Culture',
   },
   formatDetection: { telephone: false },
 }

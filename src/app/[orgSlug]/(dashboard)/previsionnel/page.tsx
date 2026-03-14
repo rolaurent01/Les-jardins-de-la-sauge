@@ -1,7 +1,7 @@
 import { fetchForecasts, fetchForecastYears, fetchVarietiesForForecast, fetchRealisedData } from './actions'
 import PrevisionnelClient from '@/components/previsionnel/PrevisionnelClient'
 
-export const metadata = { title: 'Prévisionnel — LJS' }
+export const metadata = { title: 'Prévisionnel — Carnet Culture' }
 
 export default async function PrevisionnelPage() {
   try {

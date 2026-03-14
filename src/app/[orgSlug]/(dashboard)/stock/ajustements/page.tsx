@@ -2,7 +2,7 @@ import { fetchAdjustments, createAdjustment, updateAdjustment, deleteAdjustment 
 import { fetchVarietiesForAffinage, fetchStockLevelsForAffinage } from '../shared-actions'
 import AjustementsClient from '@/components/affinage-stock/AjustementsClient'
 
-export const metadata = { title: 'Ajustements — LJS' }
+export const metadata = { title: 'Ajustements — Carnet Culture' }
 
 export default async function AjustementsPage() {
   try {

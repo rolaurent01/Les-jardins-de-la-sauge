@@ -1,6 +1,6 @@
 {
-  "name": "Les Jardins de la Sauge",
-  "short_name": "LJS",
+  "name": "Carnet Culture",
+  "short_name": "Carnet Culture",
   "description": "Gestion de la ferme — de la graine au produit fini",
   "start_url": "/",
   "display": "standalone",

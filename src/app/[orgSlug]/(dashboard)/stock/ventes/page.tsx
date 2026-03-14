@@ -2,7 +2,7 @@ import { fetchDirectSales, createDirectSale, updateDirectSale, deleteDirectSale 
 import { fetchVarietiesForAffinage, fetchStockLevelsForAffinage } from '../shared-actions'
 import VentesClient from '@/components/affinage-stock/VentesClient'
 
-export const metadata = { title: 'Ventes directes — LJS' }
+export const metadata = { title: 'Ventes directes — Carnet Culture' }
 
 export default async function VentesPage() {
   try {

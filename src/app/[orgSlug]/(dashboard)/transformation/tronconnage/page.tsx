@@ -4,7 +4,7 @@ import TransformationClient from '@/components/transformation/TransformationClie
 import { TRONCONNAGE_CONFIG } from '@/components/transformation/types'
 import type { TransformationItem } from '@/components/transformation/types'
 
-export const metadata = { title: 'Tronconnage — LJS' }
+export const metadata = { title: 'Tronconnage — Carnet Culture' }
 
 export default async function TronconnagePage() {
   try {

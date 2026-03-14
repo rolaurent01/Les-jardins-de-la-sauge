@@ -3,7 +3,7 @@ import { fetchRowsForSelect, fetchVarietiesForSelect } from '@/app/[orgSlug]/(da
 import { getContext } from '@/lib/context'
 import PlantationsClient from '@/components/parcelles/PlantationsClient'
 
-export const metadata = { title: 'Plantations — LJS' }
+export const metadata = { title: 'Plantations — Carnet Culture' }
 
 export default async function PlantationsPage() {
   try {

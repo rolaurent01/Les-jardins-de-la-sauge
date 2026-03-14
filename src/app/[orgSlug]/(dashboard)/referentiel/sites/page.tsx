@@ -3,7 +3,7 @@ import { getContext } from '@/lib/context'
 import type { Site, ParcelWithSite, RowWithParcel } from '@/lib/types'
 import SitesParcelsClient from '@/components/referentiel/SitesParcelsClient'
 
-export const metadata = { title: 'Sites & Parcelles — LJS' }
+export const metadata = { title: 'Sites & Parcelles — Carnet Culture' }
 
 export default async function SitesPage() {
   const supabase = await createClient()

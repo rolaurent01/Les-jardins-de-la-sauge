@@ -2,7 +2,7 @@ import { createClient } from '@/lib/supabase/server'
 import type { ExternalMaterial } from '@/lib/types'
 import MateriauxClient from '@/components/referentiel/MateriauxClient'
 
-export const metadata = { title: 'Produits complémentaires — LJS' }
+export const metadata = { title: 'Produits complémentaires — Carnet Culture' }
 
 export default async function MateriauxPage() {
   const supabase = await createClient()

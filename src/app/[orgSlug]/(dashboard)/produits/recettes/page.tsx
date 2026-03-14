@@ -2,7 +2,7 @@ import { fetchRecipes } from './actions'
 import { fetchProductCategories, fetchVarietiesWithStock, fetchExternalMaterials } from '@/app/[orgSlug]/(dashboard)/produits/shared-actions'
 import RecettesClient from '@/components/produits/RecettesClient'
 
-export const metadata = { title: 'Recettes — LJS' }
+export const metadata = { title: 'Recettes — Carnet Culture' }
 
 export default async function RecettesPage() {
   try {
