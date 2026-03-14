@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useState, useSyncExternalStore } from "react";
+import { useEffect, useState, useSyncExternalStore } from "react";
 
 /** Retourne l'état réseau en temps réel via navigator.onLine + événements */
 function subscribe(callback: () => void): () => void {

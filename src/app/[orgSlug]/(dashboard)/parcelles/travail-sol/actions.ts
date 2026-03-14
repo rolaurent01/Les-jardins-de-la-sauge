@@ -56,12 +56,13 @@ export async function updateSoilWork(
   if ('error' in parsed) return parsed
 
   const supabase = await createClient()
-  const { userId, orgSlug } = await getContext()
+  const { userId, farmId, orgSlug } = await getContext()
 
   const { data, error } = await supabase
     .from('soil_works')
     .update({ ...parsed.data, updated_by: userId })
     .eq('id', id)
+    .eq('farm_id', farmId)
     .select()
     .single()
 
@@ -74,12 +75,13 @@ export async function updateSoilWork(
 /** Supprime définitivement un travail de sol (pas de soft delete sur cette table) */
 export async function deleteSoilWork(id: string): Promise<ActionResult> {
   const supabase = await createClient()
-  const { orgSlug } = await getContext()
+  const { farmId, orgSlug } = await getContext()
 
   const { error } = await supabase
     .from('soil_works')
     .delete()
     .eq('id', id)
+    .eq('farm_id', farmId)
 
   if (error) return { error: `Erreur lors de la suppression : ${error.message}` }
 

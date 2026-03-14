@@ -137,7 +137,7 @@ export default function UserCreateSlideOver({ open, orgsWithFarms, onClose, onSu
           <h2 className="text-[15px] font-semibold" style={{ color: '#2C3E2D' }}>
             Nouvel utilisateur
           </h2>
-          <button onClick={onClose} disabled={isPending} className="text-[18px]" style={{ color: '#9CA3AF', lineHeight: 1 }}>
+          <button onClick={onClose} disabled={isPending} className="text-[18px]" style={{ color: '#9CA3AF', lineHeight: 1 }} aria-label="Fermer">
             &#x2715;
           </button>
         </div>

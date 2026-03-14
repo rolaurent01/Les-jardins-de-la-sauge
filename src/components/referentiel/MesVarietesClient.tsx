@@ -210,6 +210,7 @@ export default function MesVarietesClient({ initialVarieties, initialHasSettings
             }}
             onFocus={(e) => (e.target.style.borderColor = 'var(--color-primary)')}
             onBlur={(e) => (e.target.style.borderColor = '#D8E0D9')}
+            aria-label="Rechercher"
           />
         </div>
 

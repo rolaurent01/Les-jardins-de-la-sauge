@@ -75,12 +75,13 @@ export async function updateOccultation(
   if ('error' in parsed) return parsed
 
   const supabase = await createClient()
-  const { userId, orgSlug } = await getContext()
+  const { userId, farmId, orgSlug } = await getContext()
 
   const { data, error } = await supabase
     .from('occultations')
     .update({ ...parsed.data, updated_by: userId })
     .eq('id', id)
+    .eq('farm_id', farmId)
     .select()
     .single()
 
@@ -93,12 +94,13 @@ export async function updateOccultation(
 /** Supprime definitivement une occultation (pas de soft delete) */
 export async function deleteOccultation(id: string): Promise<ActionResult> {
   const supabase = await createClient()
-  const { orgSlug } = await getContext()
+  const { farmId, orgSlug } = await getContext()
 
   const { error } = await supabase
     .from('occultations')
     .delete()
     .eq('id', id)
+    .eq('farm_id', farmId)
 
   if (error) return { error: `Erreur lors de la suppression : ${error.message}` }
 

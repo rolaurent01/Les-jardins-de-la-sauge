@@ -77,12 +77,13 @@ export async function updateUprooting(
   if ('error' in parsed) return parsed
 
   const supabase = await createClient()
-  const { userId, orgSlug } = await getContext()
+  const { userId, farmId, orgSlug } = await getContext()
 
   const { data, error } = await supabase
     .from('uprootings')
     .update({ ...parsed.data, updated_by: userId })
     .eq('id', id)
+    .eq('farm_id', farmId)
     .select()
     .single()
 
@@ -95,13 +96,14 @@ export async function updateUprooting(
 /** Supprime definitivement un arrachage et reactive les plantings desactives */
 export async function deleteUprooting(id: string): Promise<ActionResult> {
   const supabase = await createClient()
-  const { userId, orgSlug } = await getContext()
+  const { userId, farmId, orgSlug } = await getContext()
 
   // 1. Recuperer l'arrachage pour connaitre row_id et variety_id
   const { data: uprooting } = await supabase
     .from('uprootings')
     .select('row_id, variety_id')
     .eq('id', id)
+    .eq('farm_id', farmId)
     .single()
 
   if (uprooting) {
@@ -125,6 +127,7 @@ export async function deleteUprooting(id: string): Promise<ActionResult> {
     .from('uprootings')
     .delete()
     .eq('id', id)
+    .eq('farm_id', farmId)
 
   if (error) return { error: `Erreur lors de la suppression : ${error.message}` }
 

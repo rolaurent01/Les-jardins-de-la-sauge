@@ -190,6 +190,7 @@ export default function TransformationClient({ config, items: initialItems, vari
             style={{ backgroundColor: '#FAF5E9', borderColor: '#D8E0D9', color: '#2C3E2D' }}
             onFocus={e => (e.target.style.borderColor = 'var(--color-primary)')}
             onBlur={e => (e.target.style.borderColor = '#D8E0D9')}
+            aria-label="Rechercher"
           />
         </div>
 

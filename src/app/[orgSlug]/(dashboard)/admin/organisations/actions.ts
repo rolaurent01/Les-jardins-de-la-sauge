@@ -63,7 +63,6 @@ export async function fetchOrganizations(): Promise<OrganizationWithCounts[]> {
       const memberships = membershipsRes.data ?? []
       let members: OrgMember[] = []
       if (memberships.length > 0) {
-        const userIds = memberships.map(m => m.user_id)
         const { data: { users } } = await admin.auth.admin.listUsers({ perPage: 1000 })
         const userMap = new Map(users.map(u => [u.id, u.email ?? '']))
         members = memberships.map(m => ({

@@ -141,7 +141,7 @@ export default function FermeSlideOver({ open, item, organizations, onClose, onS
           <h2 className="text-[15px] font-semibold" style={{ color: '#2C3E2D' }}>
             {item ? 'Modifier la ferme' : 'Nouvelle ferme'}
           </h2>
-          <button onClick={onClose} disabled={isPending} className="text-[18px]" style={{ color: '#9CA3AF', lineHeight: 1 }}>
+          <button onClick={onClose} disabled={isPending} className="text-[18px]" style={{ color: '#9CA3AF', lineHeight: 1 }} aria-label="Fermer">
             &#x2715;
           </button>
         </div>

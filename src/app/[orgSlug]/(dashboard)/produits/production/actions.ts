@@ -9,8 +9,6 @@ import { generateProductionLotNumber, getRecipeCode } from '@/lib/utils/lots'
 import type {
   ActionResult,
   ProductionLotWithRelations,
-  RecipeWithRelations,
-  PartiePlante,
 } from '@/lib/types'
 
 // ---- Types internes ----
@@ -48,6 +46,7 @@ export async function fetchProductionLots(): Promise<ProductionLotWithRelations[
       '*, recipes(id, nom, poids_sachet_g, numero_tisane), production_lot_ingredients(*, varieties(id, nom_vernaculaire), external_materials(id, nom))',
     )
     .eq('farm_id', farmId)
+    .is('deleted_at', null)
     .order('date_production', { ascending: false })
     .order('created_at', { ascending: false })
 

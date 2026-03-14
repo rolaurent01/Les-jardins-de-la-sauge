@@ -36,7 +36,7 @@ export async function createSite(formData: FormData): Promise<ActionResult<Site>
 
 export async function updateSite(id: string, formData: FormData): Promise<ActionResult> {
   const supabase = await createClient()
-  const { userId, orgSlug } = await getContext()
+  const { userId, farmId, orgSlug } = await getContext()
 
   const nom = (formData.get('nom') as string).trim()
   const description = (formData.get('description') as string)?.trim() || null
@@ -47,6 +47,7 @@ export async function updateSite(id: string, formData: FormData): Promise<Action
     .from('sites')
     .update({ nom, description, updated_by: userId })
     .eq('id', id)
+    .eq('farm_id', farmId)
 
   if (error) {
     if (error.code === '23505') return { error: 'Un site avec ce nom existe déjà.' }
@@ -59,12 +60,13 @@ export async function updateSite(id: string, formData: FormData): Promise<Action
 
 export async function archiveSite(id: string): Promise<ActionResult> {
   const supabase = await createClient()
-  const { userId, orgSlug } = await getContext()
+  const { userId, farmId, orgSlug } = await getContext()
 
   const { error } = await supabase
     .from('sites')
     .update({ deleted_at: new Date().toISOString(), updated_by: userId })
     .eq('id', id)
+    .eq('farm_id', farmId)
 
   if (error) return { error: `Erreur lors de l'archivage : ${error.message}` }
   revalidatePath(buildPath(orgSlug, '/referentiel/sites'))
@@ -73,12 +75,13 @@ export async function archiveSite(id: string): Promise<ActionResult> {
 
 export async function restoreSite(id: string): Promise<ActionResult> {
   const supabase = await createClient()
-  const { userId, orgSlug } = await getContext()
+  const { userId, farmId, orgSlug } = await getContext()
 
   const { error } = await supabase
     .from('sites')
     .update({ deleted_at: null, updated_by: userId })
     .eq('id', id)
+    .eq('farm_id', farmId)
 
   if (error) return { error: `Erreur lors de la restauration : ${error.message}` }
   revalidatePath(buildPath(orgSlug, '/referentiel/sites'))
@@ -125,7 +128,7 @@ export async function createParcel(formData: FormData): Promise<ActionResult<Par
 
 export async function updateParcel(id: string, formData: FormData): Promise<ActionResult> {
   const supabase = await createClient()
-  const { userId, orgSlug } = await getContext()
+  const { userId, farmId, orgSlug } = await getContext()
   const fields = parseParcelForm(formData)
 
   if (!fields.nom) return { error: 'Le nom de la parcelle est obligatoire.' }
@@ -136,6 +139,7 @@ export async function updateParcel(id: string, formData: FormData): Promise<Acti
     .from('parcels')
     .update({ ...fields, updated_by: userId })
     .eq('id', id)
+    .eq('farm_id', farmId)
 
   if (error) {
     if (error.code === '23505') return { error: 'Ce code de parcelle existe déjà.' }
@@ -148,12 +152,13 @@ export async function updateParcel(id: string, formData: FormData): Promise<Acti
 
 export async function archiveParcel(id: string): Promise<ActionResult> {
   const supabase = await createClient()
-  const { userId, orgSlug } = await getContext()
+  const { userId, farmId, orgSlug } = await getContext()
 
   const { error } = await supabase
     .from('parcels')
     .update({ deleted_at: new Date().toISOString(), updated_by: userId })
     .eq('id', id)
+    .eq('farm_id', farmId)
 
   if (error) return { error: `Erreur lors de l'archivage : ${error.message}` }
   revalidatePath(buildPath(orgSlug, '/referentiel/sites'))
@@ -162,12 +167,13 @@ export async function archiveParcel(id: string): Promise<ActionResult> {
 
 export async function restoreParcel(id: string): Promise<ActionResult> {
   const supabase = await createClient()
-  const { userId, orgSlug } = await getContext()
+  const { userId, farmId, orgSlug } = await getContext()
 
   const { error } = await supabase
     .from('parcels')
     .update({ deleted_at: null, updated_by: userId })
     .eq('id', id)
+    .eq('farm_id', farmId)
 
   if (error) return { error: `Erreur lors de la restauration : ${error.message}` }
   revalidatePath(buildPath(orgSlug, '/referentiel/sites'))
@@ -218,7 +224,7 @@ export async function createRow(formData: FormData): Promise<ActionResult<RowWit
 
 export async function updateRow(id: string, formData: FormData): Promise<ActionResult> {
   const supabase = await createClient()
-  const { userId, orgSlug } = await getContext()
+  const { userId, farmId, orgSlug } = await getContext()
   const fields = parseRowForm(formData)
 
   if (!fields.numero) return { error: 'Le numéro de rang est obligatoire.' }
@@ -228,6 +234,7 @@ export async function updateRow(id: string, formData: FormData): Promise<ActionR
     .from('rows')
     .update({ ...fields, updated_by: userId })
     .eq('id', id)
+    .eq('farm_id', farmId)
 
   if (error) {
     if (error.code === '23505') return { error: 'Ce numéro de rang existe déjà dans cette parcelle.' }
@@ -240,12 +247,13 @@ export async function updateRow(id: string, formData: FormData): Promise<ActionR
 
 export async function archiveRow(id: string): Promise<ActionResult> {
   const supabase = await createClient()
-  const { userId, orgSlug } = await getContext()
+  const { userId, farmId, orgSlug } = await getContext()
 
   const { error } = await supabase
     .from('rows')
     .update({ deleted_at: new Date().toISOString(), updated_by: userId })
     .eq('id', id)
+    .eq('farm_id', farmId)
 
   if (error) return { error: `Erreur lors de l'archivage : ${error.message}` }
   revalidatePath(buildPath(orgSlug, '/referentiel/sites'))
@@ -254,12 +262,13 @@ export async function archiveRow(id: string): Promise<ActionResult> {
 
 export async function restoreRow(id: string): Promise<ActionResult> {
   const supabase = await createClient()
-  const { userId, orgSlug } = await getContext()
+  const { userId, farmId, orgSlug } = await getContext()
 
   const { error } = await supabase
     .from('rows')
     .update({ deleted_at: null, updated_by: userId })
     .eq('id', id)
+    .eq('farm_id', farmId)
 
   if (error) return { error: `Erreur lors de la restauration : ${error.message}` }
   revalidatePath(buildPath(orgSlug, '/referentiel/sites'))

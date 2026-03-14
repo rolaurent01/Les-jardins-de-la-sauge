@@ -9,7 +9,6 @@ import {
   deleteOrganization,
   uploadOrganizationLogo,
 } from '@/app/[orgSlug]/(dashboard)/admin/organisations/actions'
-import type { Organization } from '@/lib/types'
 import OrganisationSlideOver from './OrganisationSlideOver'
 
 function normalize(str: string): string {

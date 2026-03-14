@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect } from 'react'
 import { useFarmSwitchGuard } from '@/hooks/useFarmSwitchGuard'
 import FarmSwitchAlert from '@/components/layout/FarmSwitchAlert'
 

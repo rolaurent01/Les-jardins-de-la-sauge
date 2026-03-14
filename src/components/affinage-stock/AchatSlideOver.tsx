@@ -1,7 +1,6 @@
 'use client'
 
 import { useState, useTransition, useEffect, useRef } from 'react'
-import { useRouter } from 'next/navigation'
 import type { Variety, PartiePlante, ActionResult, StockLevel } from '@/lib/types'
 import { PARTIES_PLANTE, PARTIE_PLANTE_LABELS } from '@/lib/types'
 import { useVarietyParts } from '@/hooks/useVarietyParts'
@@ -16,7 +15,7 @@ type Props = {
   onClose: () => void
   item: StockPurchaseWithVariety | null
   varieties: Pick<Variety, 'id' | 'nom_vernaculaire' | 'parties_utilisees'>[]
-  stockLevels: StockLevel[]
+  stockLevels?: StockLevel[]
   certifBio?: boolean
   onSubmit: (fd: FormData) => Promise<ActionResult>
   onSuccess: () => void
@@ -27,12 +26,10 @@ export default function AchatSlideOver({
   onClose,
   item,
   varieties: catalogVarieties,
-  stockLevels,
   certifBio = false,
   onSubmit,
   onSuccess,
 }: Props) {
-  const router = useRouter()
   const [isPending, startTransition] = useTransition()
   const [error, setError] = useState<string | null>(null)
 

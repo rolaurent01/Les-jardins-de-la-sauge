@@ -7,7 +7,6 @@ import type { RecipeForSelect } from '@/app/[orgSlug]/(dashboard)/produits/produ
 import {
   archiveProductionLot,
   restoreProductionLot,
-  conditionnerLot,
 } from '@/app/[orgSlug]/(dashboard)/produits/production/actions'
 import { formatDate, formatDuration } from '@/lib/utils/format'
 import { MODE_LABELS } from './types'

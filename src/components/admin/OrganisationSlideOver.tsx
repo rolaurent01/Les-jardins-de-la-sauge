@@ -185,6 +185,7 @@ export default function OrganisationSlideOver({ open, item, onClose, onSubmit, o
             disabled={isPending}
             className="text-[18px]"
             style={{ color: '#9CA3AF', lineHeight: 1 }}
+            aria-label="Fermer"
           >
             &#x2715;
           </button>

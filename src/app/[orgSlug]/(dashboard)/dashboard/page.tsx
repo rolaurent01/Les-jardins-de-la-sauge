@@ -18,17 +18,18 @@ import { DashboardActiviteWidget } from '@/components/dashboard/DashboardActivit
  * Page dashboard — centre de commande avec 6 widgets.
  */
 export default async function DashboardPage() {
-  const { farmId, orgSlug } = await getContext()
+  const { orgSlug } = await getContext()
   const currentYear = new Date().getFullYear()
 
   // Chargement parallèle — chaque widget est indépendant
+  // Chaque action appelle getContext() en interne pour valider l'auth
   const [stock, production, parcelles, temps, avancement, activite] = await Promise.allSettled([
-    fetchDashboardStock(farmId),
-    fetchDashboardProduction(farmId, currentYear),
-    fetchDashboardParcelles(farmId),
-    fetchDashboardTemps(farmId, currentYear),
-    fetchDashboardAvancement(farmId, currentYear),
-    fetchDashboardActiviteRecente(farmId),
+    fetchDashboardStock(),
+    fetchDashboardProduction(undefined, currentYear),
+    fetchDashboardParcelles(),
+    fetchDashboardTemps(undefined, currentYear),
+    fetchDashboardAvancement(undefined, currentYear),
+    fetchDashboardActiviteRecente(),
   ])
 
   return (

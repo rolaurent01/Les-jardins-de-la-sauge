@@ -24,7 +24,7 @@ function findStock(
   return match?.stock_g ?? 0
 }
 
-export default function WizardStepStock({ state, stockLevels, onChange, onPrev, onNext }: Props) {
+export default function WizardStepStock({ state, stockLevels, onPrev, onNext }: Props) {
   // Enrichir les ingredients avec le stock disponible
   const enriched: (WizardIngredient & { stockDispo: number | null; manque: number })[] =
     state.ingredients.map(ing => {

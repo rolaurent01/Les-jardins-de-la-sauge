@@ -112,7 +112,7 @@ export default function UserEditSlideOver({
             </h2>
             <p className="text-[12px] mt-0.5" style={{ color: '#6B7280' }}>{user.email}</p>
           </div>
-          <button onClick={onClose} className="text-[18px]" style={{ color: '#9CA3AF', lineHeight: 1 }}>
+          <button onClick={onClose} className="text-[18px]" style={{ color: '#9CA3AF', lineHeight: 1 }} aria-label="Fermer">
             &#x2715;
           </button>
         </div>

@@ -2,6 +2,63 @@
 
 ---
 
+## [2026-03-14 11:15] — Polish / Revue complète du code
+
+**Type :** `refactor`
+
+### Résumé
+- 30+ fichiers modifiés
+- 9 imports inutilisés supprimés (RecipeWithRelations, PartiePlante, SeedlingStatut, Organization, formatDate, conditionnerLot, SeedlingWithRelations, Processus, useCallback ×2)
+- 11 variables inutilisées nettoyées (router ×4, userIds, stockLevels, isMobile, year, selectedLot, onChange)
+- 0 console.log supprimés (seulement 2 console.error légitimes dans des catch serveur — conservés)
+- 30 filtres farm_id manquants ajoutés sur mutations UPDATE/DELETE
+- 1 filtre deleted_at manquant ajouté (fetchProductionLots)
+- 12 corrections de types (types.ts aligné avec migrations SQL 029)
+- 6 corrections auth (dashboard/actions.ts sécurisé avec getContext())
+- 9 améliorations accessibilité (4 aria-label "Fermer" + 5 aria-label "Rechercher")
+
+### Problèmes trouvés et corrigés
+
+**Sécurité (CRITIQUE)**
+- `dashboard/actions.ts` : aucune vérification d'auth, utilisait `createAdminClient()` avec un `farmId` fourni par le client → ajout de `getContext()` dans les 6 fonctions
+- 30 mutations UPDATE/DELETE sur tables métier (sites, parcels, rows, soil_works, row_care, occultations, uprootings, harvests, stock_movements, plantings, seedlings, seed_lots) n'avaient pas de filtre `.eq('farm_id', farmId)` → corrigé
+
+**Données**
+- `fetchProductionLots()` retournait les lots archivés (manquait `.is('deleted_at', null)`) → corrigé
+
+**Types (types.ts ↔ SQL)**
+- stock_adjustments : ajouté `commentaire`
+- production_lots : ajouté `mode`, corrigé nullabilité `nb_unites`/`poids_total_g`
+- product_stock_movements : ajouté `deleted_at`
+- dryings/sortings : supprimé `deleted_at` fantôme
+- recipe_ingredients/production_lot_ingredients : supprimé `farm_id` fantôme
+- audit_log : corrigé nullabilité `user_id`/`record_id`
+- notifications : renommé `titre`→`title`, `lu`→`read`
+- farm_modules : supprimé `actif`/`created_at`, ajouté `activated_at`
+- farm_material_settings : supprimé `actif`/`notes`/`created_at`/`updated_at`, ajouté `hidden`
+- app_logs : supprimé `farm_id`/`created_by` fantômes
+
+**Code mort**
+- 9 imports inutilisés supprimés, 11 variables déclarées-non-lues nettoyées
+
+**Accessibilité**
+- 4 boutons fermer (✕) admin sans aria-label → ajouté `aria-label="Fermer"`
+- 5 champs recherche sans label → ajouté `aria-label="Rechercher"`
+
+### Problèmes trouvés NON corrigés (à traiter plus tard)
+- **~60 endroits** retournent `error.message` Supabase brut au client (risque fuite info interne) — trop de changements pour cette passe, nécessite un mapping d'erreurs centralisé
+- **Labels htmlFor** manquants dans les formulaires admin (~25 paires label/input) — faible priorité, admin-only
+- **N+1 séquentiel** dans 3 actions admin (merge-varietes, outils, utilisateurs) — faible volume
+- **Requêtes de résolution de noms** (varieties, recipes par ID) sans `deleted_at` dans dashboard/stock/tracabilite — pas bloquant car elles résolvent des IDs venant de données déjà filtrées
+- **v_stock** manque `nom_vernaculaire` dans types.ts — la vue SQL l'inclut mais le code ne l'utilise pas directement
+- **referentiel/materiaux/page.tsx** : SELECT sur external_materials sans filtre farm_id — table catalogue partagée, à revoir avec `created_by_farm_id` + `farm_material_settings`
+
+### Build : OK
+### Tests unitaires : 376/376 passants (22 suites)
+### Tests intégration : 66/66 passants (1 skipped)
+
+---
+
 ## [2026-03-14 10:45] — Fonctionnalité "Ferme Bio" — pré-cochage certif_ab
 
 **Type :** `feature`

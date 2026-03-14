@@ -59,7 +59,6 @@ export default function ProductStockSlideOver({ open, lots, stockByLot, onClose,
     }
   }, [open])
 
-  const selectedLot = lots.find(l => l.id === lotId)
   const currentStock = lotId ? (stockByLot.get(lotId) ?? 0) : null
   const qteNum = parseInt(quantite, 10)
   const isStockInsuffisant = typeMouvement === 'sortie' && currentStock != null && !isNaN(qteNum) && qteNum > currentStock

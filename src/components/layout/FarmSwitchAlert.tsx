@@ -22,7 +22,7 @@ type Props = {
  */
 export default function FarmSwitchAlert({
   pendingCount,
-  isMobile,
+  isMobile: _isMobile,
   targetFarmName,
   onCancel,
   onConfirm,

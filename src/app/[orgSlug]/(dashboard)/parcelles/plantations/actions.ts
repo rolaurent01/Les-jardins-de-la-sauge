@@ -263,7 +263,7 @@ export async function updatePlanting(
 
   const supabase = await createClient()
   const admin = createAdminClient()
-  const { userId, orgSlug } = await getContext()
+  const { userId, farmId, orgSlug } = await getContext()
 
   // Récupérer l'ancien seedling_id pour recalculer son statut si nécessaire
   const { data: oldPlanting } = await admin
@@ -306,6 +306,7 @@ export async function updatePlanting(
     .from('plantings')
     .update({ ...parsed.data, updated_by: userId })
     .eq('id', id)
+    .eq('farm_id', farmId)
     .select()
     .single()
 
@@ -330,7 +331,7 @@ export async function updatePlanting(
 export async function archivePlanting(id: string): Promise<ActionResult> {
   const supabase = await createClient()
   const admin = createAdminClient()
-  const { userId, orgSlug } = await getContext()
+  const { userId, farmId, orgSlug } = await getContext()
 
   // Récupérer le seedling_id avant l'archivage
   const { data: planting } = await admin
@@ -343,6 +344,7 @@ export async function archivePlanting(id: string): Promise<ActionResult> {
     .from('plantings')
     .update({ deleted_at: new Date().toISOString(), updated_by: userId })
     .eq('id', id)
+    .eq('farm_id', farmId)
 
   if (error) return { error: `Erreur lors de l'archivage : ${error.message}` }
 
@@ -361,7 +363,7 @@ export async function archivePlanting(id: string): Promise<ActionResult> {
 export async function restorePlanting(id: string): Promise<ActionResult> {
   const supabase = await createClient()
   const admin = createAdminClient()
-  const { userId, orgSlug } = await getContext()
+  const { userId, farmId, orgSlug } = await getContext()
 
   // Récupérer le seedling_id
   const { data: planting } = await admin
@@ -374,6 +376,7 @@ export async function restorePlanting(id: string): Promise<ActionResult> {
     .from('plantings')
     .update({ deleted_at: null, updated_by: userId })
     .eq('id', id)
+    .eq('farm_id', farmId)
 
   if (error) return { error: `Erreur lors de la restauration : ${error.message}` }
 

@@ -269,6 +269,7 @@ export default function PrevisionnelClient({
           className="flex-1 min-w-[200px] text-sm border border-gray-300 rounded-md px-3 py-1.5"
           value={search}
           onChange={e => setSearch(e.target.value)}
+          aria-label="Rechercher"
         />
         <select
           className="text-sm border border-gray-300 rounded-md px-2 py-1.5"
@@ -705,7 +706,7 @@ function ForecastRow({
 function AddForecastForm({
   varieties,
   existingForecasts,
-  year,
+  year: _year,
   onAdd,
   onClose,
 }: {
@@ -793,6 +794,7 @@ function AddForecastForm({
           className="w-full text-sm border border-gray-200 rounded-md px-2.5 py-1.5 mb-1"
           value={varietySearch}
           onChange={e => setVarietySearch(e.target.value)}
+          aria-label="Rechercher"
         />
         <select
           className="w-full text-sm border border-gray-300 rounded-md px-2.5 py-1.5"

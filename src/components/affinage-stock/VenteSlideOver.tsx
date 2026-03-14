@@ -1,7 +1,6 @@
 'use client'
 
 import { useState, useTransition, useEffect, useRef, useMemo } from 'react'
-import { useRouter } from 'next/navigation'
 import type { Variety, PartiePlante, ActionResult, StockLevel } from '@/lib/types'
 import { PARTIES_PLANTE, PARTIE_PLANTE_LABELS } from '@/lib/types'
 import { useVarietyParts } from '@/hooks/useVarietyParts'
@@ -35,7 +34,6 @@ export default function VenteSlideOver({
   onSubmit,
   onSuccess,
 }: Props) {
-  const router = useRouter()
   const [isPending, startTransition] = useTransition()
   const [error, setError] = useState<string | null>(null)
 

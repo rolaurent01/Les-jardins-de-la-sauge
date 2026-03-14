@@ -105,13 +105,14 @@ export async function updateSeedLot(
   if ('error' in parsed) return parsed
 
   const supabase = await createClient()
-  const { userId, orgSlug } = await getContext()
+  const { userId, farmId, orgSlug } = await getContext()
 
   // lot_interne est intentionnellement exclu : il ne doit jamais être modifié après création
   const { data, error } = await supabase
     .from('seed_lots')
     .update({ ...parsed.data, updated_by: userId })
     .eq('id', id)
+    .eq('farm_id', farmId)
     .select()
     .single()
 
@@ -124,12 +125,13 @@ export async function updateSeedLot(
 /** Archive un sachet (soft delete) */
 export async function archiveSeedLot(id: string): Promise<ActionResult> {
   const supabase = await createClient()
-  const { userId, orgSlug } = await getContext()
+  const { userId, farmId, orgSlug } = await getContext()
 
   const { error } = await supabase
     .from('seed_lots')
     .update({ deleted_at: new Date().toISOString(), updated_by: userId })
     .eq('id', id)
+    .eq('farm_id', farmId)
 
   if (error) return { error: `Erreur lors de l'archivage : ${error.message}` }
 
@@ -140,12 +142,13 @@ export async function archiveSeedLot(id: string): Promise<ActionResult> {
 /** Restaure un sachet archivé */
 export async function restoreSeedLot(id: string): Promise<ActionResult> {
   const supabase = await createClient()
-  const { userId, orgSlug } = await getContext()
+  const { userId, farmId, orgSlug } = await getContext()
 
   const { error } = await supabase
     .from('seed_lots')
     .update({ deleted_at: null, updated_by: userId })
     .eq('id', id)
+    .eq('farm_id', farmId)
 
   if (error) return { error: `Erreur lors de la restauration : ${error.message}` }
 

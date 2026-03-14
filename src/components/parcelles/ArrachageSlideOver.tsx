@@ -3,7 +3,6 @@
 import { useState, useTransition, useEffect, useRef } from 'react'
 import type { UprootingWithRelations, RowWithParcel, Variety, ActionResult } from '@/lib/types'
 import { useRowVarieties } from '@/hooks/useRowVarieties'
-import { formatDate } from '@/lib/utils/format'
 
 type Props = {
   open: boolean

@@ -8,7 +8,7 @@ import { buildPath } from '@/lib/utils/path'
 import { seedlingSchema } from '@/lib/validation/semis'
 import { parseSeedlingForm } from '@/lib/utils/semis-parsers'
 import { computeSeedlingStatut } from '@/lib/utils/seedling-statut'
-import type { ActionResult, Seedling, SeedlingWithRelations, SeedlingStatut } from '@/lib/types'
+import type { ActionResult, Seedling, SeedlingWithRelations } from '@/lib/types'
 
 // ---- Helpers ----
 
@@ -202,7 +202,7 @@ export async function updateSeedling(
   if ('error' in parsed) return parsed
 
   const supabase = await createClient()
-  const { userId, orgSlug } = await getContext()
+  const { userId, farmId, orgSlug } = await getContext()
 
   // Calculer le nombre de plants plantés pour recalculer le statut
   const plantsPlantes = await getPlantsPlantes(id)
@@ -221,6 +221,7 @@ export async function updateSeedling(
     .from('seedlings')
     .update({ ...normalizeMortesFields(parsed.data), statut, updated_by: userId })
     .eq('id', id)
+    .eq('farm_id', farmId)
     .select()
     .single()
 
@@ -233,12 +234,13 @@ export async function updateSeedling(
 /** Archive un semis (soft delete) */
 export async function archiveSeedling(id: string): Promise<ActionResult> {
   const supabase = await createClient()
-  const { userId, orgSlug } = await getContext()
+  const { userId, farmId, orgSlug } = await getContext()
 
   const { error } = await supabase
     .from('seedlings')
     .update({ deleted_at: new Date().toISOString(), updated_by: userId })
     .eq('id', id)
+    .eq('farm_id', farmId)
 
   if (error) return { error: `Erreur lors de l'archivage du semis : ${error.message}` }
 
@@ -249,12 +251,13 @@ export async function archiveSeedling(id: string): Promise<ActionResult> {
 /** Restaure un semis archivé */
 export async function restoreSeedling(id: string): Promise<ActionResult> {
   const supabase = await createClient()
-  const { userId, orgSlug } = await getContext()
+  const { userId, farmId, orgSlug } = await getContext()
 
   const { error } = await supabase
     .from('seedlings')
     .update({ deleted_at: null, updated_by: userId })
     .eq('id', id)
+    .eq('farm_id', farmId)
 
   if (error) return { error: `Erreur lors de la restauration du semis : ${error.message}` }
 

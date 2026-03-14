@@ -204,22 +204,19 @@ export type Database = {
           id: string
           farm_id: string
           module: string
-          actif: boolean
-          created_at: string
+          activated_at: string
         }
         Insert: {
           id?: string
           farm_id: string
           module: string
-          actif?: boolean
-          created_at?: string
+          activated_at?: string
         }
         Update: {
           id?: string
           farm_id?: string
           module?: string
-          actif?: boolean
-          created_at?: string
+          activated_at?: string
         }
         Relationships: [
           {
@@ -293,28 +290,19 @@ export type Database = {
           id: string
           farm_id: string
           external_material_id: string
-          actif: boolean
-          notes: string | null
-          created_at: string
-          updated_at: string
+          hidden: boolean
         }
         Insert: {
           id?: string
           farm_id: string
           external_material_id: string
-          actif?: boolean
-          notes?: string | null
-          created_at?: string
-          updated_at?: string
+          hidden?: boolean
         }
         Update: {
           id?: string
           farm_id?: string
           external_material_id?: string
-          actif?: boolean
-          notes?: string | null
-          created_at?: string
-          updated_at?: string
+          hidden?: boolean
         }
         Relationships: [
           {
@@ -340,9 +328,9 @@ export type Database = {
           farm_id: string
           user_id: string | null
           type: string
-          titre: string
+          title: string
           message: string | null
-          lu: boolean
+          read: boolean
           metadata: Record<string, unknown> | null
           created_at: string
         }
@@ -351,9 +339,9 @@ export type Database = {
           farm_id: string
           user_id?: string | null
           type: string
-          titre: string
+          title: string
           message?: string | null
-          lu?: boolean
+          read?: boolean
           metadata?: Record<string, unknown> | null
           created_at?: string
         }
@@ -362,9 +350,9 @@ export type Database = {
           farm_id?: string
           user_id?: string | null
           type?: string
-          titre?: string
+          title?: string
           message?: string | null
-          lu?: boolean
+          read?: boolean
           metadata?: Record<string, unknown> | null
           created_at?: string
         }
@@ -383,10 +371,10 @@ export type Database = {
         Row: {
           id: string
           farm_id: string | null
-          user_id: string | null
+          user_id: string
           action: string
           table_name: string
-          record_id: string | null
+          record_id: string
           old_data: Record<string, unknown> | null
           new_data: Record<string, unknown> | null
           created_at: string
@@ -394,10 +382,10 @@ export type Database = {
         Insert: {
           id?: string
           farm_id?: string | null
-          user_id?: string | null
+          user_id: string
           action: string
           table_name: string
-          record_id?: string | null
+          record_id: string
           old_data?: Record<string, unknown> | null
           new_data?: Record<string, unknown> | null
           created_at?: string
@@ -405,10 +393,10 @@ export type Database = {
         Update: {
           id?: string
           farm_id?: string | null
-          user_id?: string | null
+          user_id?: string
           action?: string
           table_name?: string
-          record_id?: string | null
+          record_id?: string
           old_data?: Record<string, unknown> | null
           new_data?: Record<string, unknown> | null
           created_at?: string
@@ -1253,7 +1241,6 @@ export type Database = {
           poids_g: number
           temps_min: number | null
           commentaire: string | null
-          deleted_at: string | null
           created_by: string | null
           updated_by: string | null
           created_at: string
@@ -1270,7 +1257,6 @@ export type Database = {
           poids_g: number
           temps_min?: number | null
           commentaire?: string | null
-          deleted_at?: string | null
           created_by?: string | null
           updated_by?: string | null
           created_at?: string
@@ -1287,7 +1273,6 @@ export type Database = {
           poids_g?: number
           temps_min?: number | null
           commentaire?: string | null
-          deleted_at?: string | null
           created_by?: string | null
           updated_by?: string | null
           created_at?: string
@@ -1308,7 +1293,6 @@ export type Database = {
           poids_g: number
           temps_min: number | null
           commentaire: string | null
-          deleted_at: string | null
           created_by: string | null
           updated_by: string | null
           created_at: string
@@ -1325,7 +1309,6 @@ export type Database = {
           poids_g: number
           temps_min?: number | null
           commentaire?: string | null
-          deleted_at?: string | null
           created_by?: string | null
           updated_by?: string | null
           created_at?: string
@@ -1342,7 +1325,6 @@ export type Database = {
           poids_g?: number
           temps_min?: number | null
           commentaire?: string | null
-          deleted_at?: string | null
           created_by?: string | null
           updated_by?: string | null
           created_at?: string
@@ -1526,6 +1508,7 @@ export type Database = {
           etat_plante: string
           poids_g: number
           motif: string
+          commentaire: string | null
           created_by: string | null
           updated_by: string | null
           created_at: string
@@ -1541,6 +1524,7 @@ export type Database = {
           etat_plante: string
           poids_g: number
           motif: string
+          commentaire?: string | null
           created_by?: string | null
           updated_by?: string | null
           created_at?: string
@@ -1556,6 +1540,7 @@ export type Database = {
           etat_plante?: string
           poids_g?: number
           motif?: string
+          commentaire?: string | null
           created_by?: string | null
           updated_by?: string | null
           created_at?: string
@@ -1648,7 +1633,6 @@ export type Database = {
       recipe_ingredients: {
         Row: {
           id: string
-          farm_id: string
           recipe_id: string | null
           variety_id: string | null
           external_material_id: string | null
@@ -1660,7 +1644,6 @@ export type Database = {
         }
         Insert: {
           id?: string
-          farm_id?: string
           recipe_id?: string | null
           variety_id?: string | null
           external_material_id?: string | null
@@ -1672,7 +1655,6 @@ export type Database = {
         }
         Update: {
           id?: string
-          farm_id?: string
           recipe_id?: string | null
           variety_id?: string | null
           external_material_id?: string | null
@@ -1694,8 +1676,9 @@ export type Database = {
           numero_lot: string
           date_production: string
           ddm: string
-          nb_unites: number
-          poids_total_g: number
+          mode: string
+          nb_unites: number | null
+          poids_total_g: number | null
           temps_min: number | null
           commentaire: string | null
           deleted_at: string | null
@@ -1711,8 +1694,9 @@ export type Database = {
           numero_lot: string
           date_production: string
           ddm: string
-          nb_unites: number
-          poids_total_g: number
+          mode?: string
+          nb_unites?: number | null
+          poids_total_g?: number | null
           temps_min?: number | null
           commentaire?: string | null
           deleted_at?: string | null
@@ -1728,8 +1712,9 @@ export type Database = {
           numero_lot?: string
           date_production?: string
           ddm?: string
-          nb_unites?: number
-          poids_total_g?: number
+          mode?: string
+          nb_unites?: number | null
+          poids_total_g?: number | null
           temps_min?: number | null
           commentaire?: string | null
           deleted_at?: string | null
@@ -1743,7 +1728,6 @@ export type Database = {
       production_lot_ingredients: {
         Row: {
           id: string
-          farm_id: string
           production_lot_id: string | null
           variety_id: string | null
           external_material_id: string | null
@@ -1757,7 +1741,6 @@ export type Database = {
         }
         Insert: {
           id?: string
-          farm_id?: string
           production_lot_id?: string | null
           variety_id?: string | null
           external_material_id?: string | null
@@ -1771,7 +1754,6 @@ export type Database = {
         }
         Update: {
           id?: string
-          farm_id?: string
           production_lot_id?: string | null
           variety_id?: string | null
           external_material_id?: string | null
@@ -1795,6 +1777,7 @@ export type Database = {
           type_mouvement: 'entree' | 'sortie'
           quantite: number
           commentaire: string | null
+          deleted_at: string | null
           created_by: string | null
           updated_by: string | null
           created_at: string
@@ -1807,6 +1790,7 @@ export type Database = {
           type_mouvement: 'entree' | 'sortie'
           quantite: number
           commentaire?: string | null
+          deleted_at?: string | null
           created_by?: string | null
           updated_by?: string | null
           created_at?: string
@@ -1819,6 +1803,7 @@ export type Database = {
           type_mouvement?: 'entree' | 'sortie'
           quantite?: number
           commentaire?: string | null
+          deleted_at?: string | null
           created_by?: string | null
           updated_by?: string | null
           created_at?: string
@@ -1949,32 +1934,26 @@ export type Database = {
       app_logs: {
         Row: {
           id: string
-          farm_id: string
           level: 'info' | 'warn' | 'error'
           source: string
           message: string
           metadata: Record<string, unknown> | null
-          created_by: string | null
           created_at: string
         }
         Insert: {
           id?: string
-          farm_id?: string
           level: 'info' | 'warn' | 'error'
           source: string
           message: string
           metadata?: Record<string, unknown> | null
-          created_by?: string | null
           created_at?: string
         }
         Update: {
           id?: string
-          farm_id?: string
           level?: 'info' | 'warn' | 'error'
           source?: string
           message?: string
           metadata?: Record<string, unknown> | null
-          created_by?: string | null
           created_at?: string
         }
         Relationships: []

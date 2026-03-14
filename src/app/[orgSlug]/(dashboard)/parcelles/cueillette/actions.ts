@@ -119,7 +119,7 @@ export async function updateHarvest(
 /** Soft delete d'une cueillette + archivage du stock_movement correspondant */
 export async function archiveHarvest(id: string): Promise<ActionResult> {
   const supabase = await createClient()
-  const { userId, orgSlug } = await getContext()
+  const { userId, farmId, orgSlug } = await getContext()
 
   const now = new Date().toISOString()
 
@@ -128,6 +128,7 @@ export async function archiveHarvest(id: string): Promise<ActionResult> {
     .from('harvests')
     .update({ deleted_at: now, updated_by: userId })
     .eq('id', id)
+    .eq('farm_id', farmId)
 
   if (error) return { error: `Erreur lors de l'archivage : ${error.message}` }
 
@@ -137,6 +138,7 @@ export async function archiveHarvest(id: string): Promise<ActionResult> {
     .update({ deleted_at: now })
     .eq('source_type', 'cueillette')
     .eq('source_id', id)
+    .eq('farm_id', farmId)
 
   if (stockError) return { error: `Erreur archivage stock : ${stockError.message}` }
 
@@ -147,13 +149,14 @@ export async function archiveHarvest(id: string): Promise<ActionResult> {
 /** Restaure une cueillette archivee + son stock_movement */
 export async function restoreHarvest(id: string): Promise<ActionResult> {
   const supabase = await createClient()
-  const { userId, orgSlug } = await getContext()
+  const { userId, farmId, orgSlug } = await getContext()
 
   // 1. Restaurer le harvest
   const { error } = await supabase
     .from('harvests')
     .update({ deleted_at: null, updated_by: userId })
     .eq('id', id)
+    .eq('farm_id', farmId)
 
   if (error) return { error: `Erreur lors de la restauration : ${error.message}` }
 
@@ -163,6 +166,7 @@ export async function restoreHarvest(id: string): Promise<ActionResult> {
     .update({ deleted_at: null })
     .eq('source_type', 'cueillette')
     .eq('source_id', id)
+    .eq('farm_id', farmId)
 
   if (stockError) return { error: `Erreur restauration stock : ${stockError.message}` }
 

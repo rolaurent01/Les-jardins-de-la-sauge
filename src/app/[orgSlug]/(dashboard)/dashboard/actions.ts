@@ -1,6 +1,7 @@
 'use server'
 
 import { createAdminClient } from '@/lib/supabase/server'
+import { getContext } from '@/lib/context'
 
 /* ─── Types ─── */
 
@@ -58,7 +59,8 @@ export interface DashboardActiviteItem {
 
 /* ─── Widget Stock ─── */
 
-export async function fetchDashboardStock(farmId: string): Promise<TopStockRow[]> {
+export async function fetchDashboardStock(_farmId?: string): Promise<TopStockRow[]> {
+  const { farmId } = await getContext()
   const supabase = createAdminClient()
 
   const { data, error } = await supabase
@@ -107,7 +109,8 @@ export async function fetchDashboardStock(farmId: string): Promise<TopStockRow[]
 
 /* ─── Widget Production ─── */
 
-export async function fetchDashboardProduction(farmId: string, annee: number): Promise<ProductionStats> {
+export async function fetchDashboardProduction(_farmId: string | undefined, annee: number): Promise<ProductionStats> {
+  const { farmId } = await getContext()
   const supabase = createAdminClient()
 
   const { data, error } = await supabase
@@ -140,7 +143,8 @@ export async function fetchDashboardProduction(farmId: string, annee: number): P
 
 /* ─── Widget Vue Parcelles ─── */
 
-export async function fetchDashboardParcelles(farmId: string): Promise<DashboardParcelleData[]> {
+export async function fetchDashboardParcelles(_farmId?: string): Promise<DashboardParcelleData[]> {
+  const { farmId } = await getContext()
   const supabase = createAdminClient()
 
   // Récupérer sites → parcelles → rangs
@@ -259,7 +263,8 @@ export async function fetchDashboardParcelles(farmId: string): Promise<Dashboard
 
 /* ─── Widget Temps de travail ─── */
 
-export async function fetchDashboardTemps(farmId: string, annee: number): Promise<DashboardTempsData> {
+export async function fetchDashboardTemps(_farmId: string | undefined, annee: number): Promise<DashboardTempsData> {
+  const { farmId } = await getContext()
   const supabase = createAdminClient()
 
   const { data, error } = await supabase
@@ -326,7 +331,8 @@ export async function fetchDashboardTemps(farmId: string, annee: number): Promis
 
 /* ─── Widget Avancement prévisionnel ─── */
 
-export async function fetchDashboardAvancement(farmId: string, annee: number): Promise<DashboardAvancementData> {
+export async function fetchDashboardAvancement(_farmId: string | undefined, annee: number): Promise<DashboardAvancementData> {
+  const { farmId } = await getContext()
   const supabase = createAdminClient()
 
   // Forecasts frais pour l'année
@@ -389,7 +395,8 @@ export async function fetchDashboardAvancement(farmId: string, annee: number): P
 
 /* ─── Widget Activité récente ─── */
 
-export async function fetchDashboardActiviteRecente(farmId: string): Promise<DashboardActiviteItem[]> {
+export async function fetchDashboardActiviteRecente(_farmId?: string): Promise<DashboardActiviteItem[]> {
+  const { farmId } = await getContext()
   const supabase = createAdminClient()
 
   // Requêtes parallèles sur les 5 tables sources
@@ -503,8 +510,8 @@ export async function fetchDashboardActiviteRecente(farmId: string): Promise<Das
       type: 'Production',
       variete: recipeName,
       date: p.date_production,
-      nb_unites: p.nb_unites,
-      poids_g: Number(p.poids_total_g),
+      nb_unites: p.nb_unites ?? undefined,
+      poids_g: p.poids_total_g != null ? Number(p.poids_total_g) : undefined,
       _sortDate: p.created_at,
     })
   }

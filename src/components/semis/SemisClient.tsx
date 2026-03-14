@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useTransition } from 'react'
 import { useRouter } from 'next/navigation'
-import type { SeedlingWithRelations, Variety, Processus, SeedlingStatut } from '@/lib/types'
+import type { Variety, SeedlingStatut } from '@/lib/types'
 import { SEEDLING_STATUT_LABELS } from '@/lib/types'
 import type { SeedlingWithPlantsInfo } from '@/app/[orgSlug]/(dashboard)/semis/suivi/actions'
 import {
