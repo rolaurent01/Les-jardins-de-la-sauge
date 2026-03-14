@@ -97,7 +97,7 @@ const NAV: NavSection[] = [
 type MobileHeaderProps = {
   userEmail?: string
   organization: { nom_affiche: string | null; logo_url: string | null }
-  farms: { id: string; nom: string }[]
+  farms: { id: string; nom: string; certif_bio?: boolean }[]
   activeFarmId: string
   orgSlug: string
 }

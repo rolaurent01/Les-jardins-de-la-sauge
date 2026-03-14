@@ -39,6 +39,7 @@ type Props = {
   purchases: StockPurchaseWithVariety[]
   varieties: Pick<Variety, 'id' | 'nom_vernaculaire' | 'parties_utilisees'>[]
   stockLevels: StockLevel[]
+  certifBio?: boolean
   actions: {
     create: (fd: FormData) => Promise<ActionResult>
     update: (id: string, fd: FormData) => Promise<ActionResult>
@@ -46,7 +47,7 @@ type Props = {
   }
 }
 
-export default function AchatsClient({ purchases: initialPurchases, varieties, stockLevels, actions }: Props) {
+export default function AchatsClient({ purchases: initialPurchases, varieties, stockLevels, certifBio = false, actions }: Props) {
   const router = useRouter()
   const [, startTransition] = useTransition()
 
@@ -326,6 +327,7 @@ export default function AchatsClient({ purchases: initialPurchases, varieties, s
         item={editingItem}
         varieties={varieties}
         stockLevels={stockLevels}
+        certifBio={certifBio}
         onSubmit={handleSave}
         onSuccess={handleSaveSuccess}
       />

@@ -49,9 +49,9 @@ interface OccultationFormProps {
 
 /** Formulaire mobile — Occultation (occultations). Adaptatif selon la méthode. */
 export default function OccultationForm({ orgSlug }: OccultationFormProps) {
-  const { addEntry, farmId } = useMobileSync()
+  const { addEntry, farmId, certifBio } = useMobileSync()
 
-  const [form, setForm] = useState(initialState)
+  const [form, setForm] = useState(() => ({ ...initialState(), engrais_vert_certif_ab: certifBio }))
   const [errors, setErrors] = useState<Record<string, string>>({})
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [success, setSuccess] = useState(false)
@@ -122,7 +122,7 @@ export default function OccultationForm({ orgSlug }: OccultationFormProps) {
   }
 
   const handleReset = () => {
-    setForm(initialState())
+    setForm({ ...initialState(), engrais_vert_certif_ab: certifBio })
     setErrors({})
     setSuccess(false)
     setGlobalError(null)
@@ -218,6 +218,11 @@ export default function OccultationForm({ orgSlug }: OccultationFormProps) {
             checked={form.engrais_vert_certif_ab}
             onChange={(v) => set('engrais_vert_certif_ab', v)}
           />
+          {certifBio && (
+            <p className="text-xs" style={{ color: '#9CA89D', marginTop: -8 }}>
+              Pré-coché (ferme bio)
+            </p>
+          )}
         </>
       )}
 

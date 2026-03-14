@@ -39,10 +39,10 @@ interface SachetFormProps {
  * Validation Zod partagée avec le bureau.
  */
 export default function SachetForm({ orgSlug }: SachetFormProps) {
-  const { addEntry, farmId } = useMobileSync()
+  const { addEntry, farmId, certifBio } = useMobileSync()
   const { varieties, isLoading: varietiesLoading } = useCachedVarieties()
 
-  const [form, setForm] = useState(initialState)
+  const [form, setForm] = useState(() => ({ ...initialState(), certif_ab: certifBio }))
   const [errors, setErrors] = useState<Record<string, string>>({})
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [success, setSuccess] = useState(false)
@@ -107,7 +107,7 @@ export default function SachetForm({ orgSlug }: SachetFormProps) {
   }
 
   const handleReset = () => {
-    setForm(initialState())
+    setForm({ ...initialState(), certif_ab: certifBio })
     setErrors({})
     setSuccess(false)
     setGlobalError(null)
@@ -202,6 +202,11 @@ export default function SachetForm({ orgSlug }: SachetFormProps) {
         checked={form.certif_ab}
         onChange={(v) => set('certif_ab', v)}
       />
+      {certifBio && (
+        <p className="text-xs" style={{ color: '#9CA89D', marginTop: -8 }}>
+          Pré-coché (ferme bio)
+        </p>
+      )}
 
       <MobileTextarea
         label="Commentaire"

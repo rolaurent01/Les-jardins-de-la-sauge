@@ -26,6 +26,7 @@ describe('isCacheValid', () => {
       farmId: FARM_ID,
       organizationId: 'org-1',
       orgSlug: 'ljs',
+      certifBio: false,
     })
     // Simuler un lastSyncedAt renseigné
     await offlineDb.context.update('current', { lastSyncedAt: new Date().toISOString() })
@@ -40,6 +41,7 @@ describe('isCacheValid', () => {
       farmId: FARM_ID,
       organizationId: 'org-1',
       orgSlug: 'ljs',
+      certifBio: false,
     })
     await offlineDb.context.update('current', { lastSyncedAt: new Date().toISOString() })
 
@@ -58,6 +60,7 @@ describe('isCacheValid', () => {
       farmId: FARM_ID,
       organizationId: 'org-1',
       orgSlug: 'ljs',
+      certifBio: false,
     })
     // lastSyncedAt reste null par défaut via saveOfflineContext
 
@@ -116,6 +119,7 @@ describe('clearReferenceCache', () => {
       farmId: FARM_ID,
       organizationId: 'org-1',
       orgSlug: 'ljs',
+      certifBio: false,
     })
 
     await clearReferenceCache()

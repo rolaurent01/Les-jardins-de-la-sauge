@@ -1,15 +1,17 @@
 import { fetchPurchases, createPurchase, updatePurchase, deletePurchase } from './actions'
 import { fetchVarietiesForAffinage, fetchStockLevelsForAffinage } from '../shared-actions'
+import { getContext } from '@/lib/context'
 import AchatsClient from '@/components/affinage-stock/AchatsClient'
 
 export const metadata = { title: 'Achats — LJS' }
 
 export default async function AchatsPage() {
   try {
-    const [purchases, varieties, stockLevels] = await Promise.all([
+    const [purchases, varieties, stockLevels, ctx] = await Promise.all([
       fetchPurchases(),
       fetchVarietiesForAffinage(),
       fetchStockLevelsForAffinage(),
+      getContext(),
     ])
 
     return (
@@ -18,6 +20,7 @@ export default async function AchatsPage() {
         varieties={varieties}
         stockLevels={stockLevels}
         actions={{ create: createPurchase, update: updatePurchase, delete: deletePurchase }}
+        certifBio={ctx.certifBio}
       />
     )
   } catch (err) {

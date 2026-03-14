@@ -11,6 +11,8 @@ export type AppContext = {
   farmId: string
   organizationId: string
   orgSlug: string
+  /** Vrai si la ferme active est certifiée Agriculture Biologique */
+  certifBio: boolean
   /** Vrai si le contexte est résolu via impersonation admin */
   isImpersonating?: boolean
 }
@@ -67,7 +69,7 @@ async function resolveImpersonatedFarmContext(
 ): Promise<AppContext | null> {
   const { data: farm } = await supabase
     .from('farms')
-    .select('id, organization_id, organizations(slug)')
+    .select('id, organization_id, certif_bio, organizations(slug)')
     .eq('id', farmId)
     .single()
 
@@ -80,6 +82,7 @@ async function resolveImpersonatedFarmContext(
     farmId: farm.id,
     organizationId: farm.organization_id,
     orgSlug,
+    certifBio: farm.certif_bio ?? false,
     isImpersonating: true,
   }
 }
@@ -93,7 +96,7 @@ async function resolveFarmContext(
 ): Promise<AppContext | null> {
   const { data: farm } = await supabase
     .from('farms')
-    .select('id, organization_id, organizations(slug)')
+    .select('id, organization_id, certif_bio, organizations(slug)')
     .eq('id', farmId)
     .single()
 
@@ -116,6 +119,7 @@ async function resolveFarmContext(
     farmId: farm.id,
     organizationId: farm.organization_id,
     orgSlug,
+    certifBio: farm.certif_bio ?? false,
   }
 }
 
@@ -127,23 +131,24 @@ async function resolveFirstFarmContext(
 ): Promise<AppContext> {
   const { data: membership } = await supabase
     .from('memberships')
-    .select('organization_id, organizations(slug, farms(id))')
+    .select('organization_id, organizations(slug, farms(id, certif_bio))')
     .eq('user_id', userId)
     .limit(1)
     .single()
 
   if (!membership) throw new Error('No organization access')
 
-  const org = membership.organizations as { slug: string; farms: { id: string }[] } | null
+  const org = membership.organizations as { slug: string; farms: { id: string; certif_bio: boolean }[] } | null
   if (!org || !org.farms || org.farms.length === 0) throw new Error('No farm access')
 
-  const farmId = org.farms[0].id
+  const farm = org.farms[0]
   const orgSlug = org.slug
 
   return {
     userId,
-    farmId,
+    farmId: farm.id,
     organizationId: membership.organization_id,
     orgSlug,
+    certifBio: farm.certif_bio ?? false,
   }
 }

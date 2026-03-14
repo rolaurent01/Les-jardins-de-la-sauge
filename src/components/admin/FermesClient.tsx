@@ -192,7 +192,17 @@ export default function FermesClient({
             )}
             {filtered.map(farm => (
               <tr key={farm.id} className="border-t" style={{ borderColor: '#F3F4F6' }}>
-                <td className="px-4 py-3 font-medium">{farm.nom}</td>
+                <td className="px-4 py-3 font-medium">
+                  {farm.nom}
+                  {farm.certif_bio && (
+                    <span
+                      className="ml-2 inline-block rounded-full text-[10px] font-semibold"
+                      style={{ padding: '1px 8px', backgroundColor: '#DCFCE7', color: '#166534' }}
+                    >
+                      Bio
+                    </span>
+                  )}
+                </td>
                 <td className="px-4 py-3" style={{ color: '#6B7280' }}>{farm.organization.nom}</td>
                 <td className="px-4 py-3" style={{ color: '#6B7280' }}>{farm.slug}</td>
                 <td className="px-4 py-3">

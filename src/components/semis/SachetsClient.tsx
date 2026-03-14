@@ -23,6 +23,7 @@ function formatDate(iso: string | null): string {
 type Props = {
   initialSeedLots: SeedLotWithVariety[]
   varieties: Pick<Variety, 'id' | 'nom_vernaculaire' | 'nom_latin'>[]
+  certifBio?: boolean
 }
 
 const SACHETS_EXPORT_COLUMNS: ExportColumn[] = [
@@ -36,7 +37,7 @@ const SACHETS_EXPORT_COLUMNS: ExportColumn[] = [
   { key: 'commentaire', label: 'Commentaire' },
 ]
 
-export default function SachetsClient({ initialSeedLots, varieties }: Props) {
+export default function SachetsClient({ initialSeedLots, varieties, certifBio = false }: Props) {
   const router = useRouter()
   const [, startTransition] = useTransition()
 
@@ -345,6 +346,7 @@ export default function SachetsClient({ initialSeedLots, varieties }: Props) {
         open={slideOverOpen}
         seedLot={editingLot}
         varieties={varieties}
+        certifBio={certifBio}
         onClose={() => setSlideOverOpen(false)}
         onSubmit={handleSave}
         onSuccess={handleSaveSuccess}

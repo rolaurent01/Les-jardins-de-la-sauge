@@ -2,6 +2,27 @@
 
 ---
 
+## [2026-03-14 10:45] — Fonctionnalité "Ferme Bio" — pré-cochage certif_ab
+
+**Type :** `feature`
+**Fichiers concernés :** `supabase/migrations/029_farm_certif_bio.sql`, `src/lib/types.ts`, `src/lib/supabase/types.ts`, `src/lib/context.ts`, `src/lib/offline/db.ts`, `src/lib/offline/context-offline.ts`, `src/hooks/useOfflineCache.ts`, `src/components/mobile/MobileSyncContext.tsx`, `src/components/mobile/MobileShell.tsx`, `src/app/[orgSlug]/(mobile)/layout.tsx`, `src/app/[orgSlug]/(dashboard)/layout.tsx`, `src/app/[orgSlug]/(dashboard)/admin/fermes/actions.ts`, `src/components/admin/FermeSlideOver.tsx`, `src/components/admin/FermesClient.tsx`, `src/components/layout/FarmSelector.tsx`, `src/components/Sidebar.tsx`, `src/components/MobileHeader.tsx`, `src/app/[orgSlug]/(dashboard)/semis/sachets/page.tsx`, `src/components/semis/SachetsClient.tsx`, `src/components/semis/SachetSlideOver.tsx`, `src/app/[orgSlug]/(dashboard)/parcelles/plantations/page.tsx`, `src/components/parcelles/PlantationsClient.tsx`, `src/components/parcelles/PlantationSlideOver.tsx`, `src/app/[orgSlug]/(dashboard)/stock/achats/page.tsx`, `src/components/affinage-stock/AchatsClient.tsx`, `src/components/affinage-stock/AchatSlideOver.tsx`, `src/app/[orgSlug]/(dashboard)/parcelles/occultation/page.tsx`, `src/components/parcelles/OccultationClient.tsx`, `src/components/parcelles/OccultationSlideOver.tsx`, `src/components/mobile/forms/SachetForm.tsx`, `src/components/mobile/forms/PlantationForm.tsx`, `src/components/mobile/forms/AchatForm.tsx`, `src/components/mobile/forms/OccultationForm.tsx`, `src/tests/offline/cache-loader.test.ts`
+
+### Description
+Ajout de la certification Agriculture Biologique sur les fermes avec pré-cochage automatique du champ `certif_ab` dans tous les formulaires (bureau + mobile) quand la ferme active est certifiée bio.
+
+### Détails techniques
+- **Migration SQL 029** : 3 colonnes ajoutées sur `farms` (certif_bio, organisme_certificateur, numero_certificat)
+- **Types** : `Farm`, `AppContext`, `OfflineContext`, types Supabase mis à jour
+- **getContext()** : requête `certif_bio` dans les 3 résolveurs (impersonation, standard, fallback), retourne `certifBio: boolean`
+- **Admin CRUD** : FermeSlideOver enrichi (checkbox bio + champs conditionnels organisme/numéro), createFarm/updateFarm sauvegardent les 3 champs
+- **Bureau** : les 4 page.tsx (sachets, plantations, achats, occultation) appellent `getContext()` et passent `certifBio` → Client → SlideOver. En création, `defaultChecked={item?.certif_ab ?? certifBio}`. En édition, la valeur existante est respectée. Message "Pré-coché (ferme bio)" affiché sous la checkbox en mode création
+- **Mobile** : `certifBio` transité via MobileShell → MobileSyncContext → useMobileSync(). Les 4 formulaires mobiles initialisent `certif_ab: certifBio` et réinitialisent avec cette valeur au reset
+- **Offline** : `OfflineContext` enrichi de `certifBio`, sauvé dans IndexedDB via `saveOfflineContext`, disponible offline
+- **Badge Bio** : affiché dans le FarmSelector (sidebar desktop), dans le header mobile, et dans la liste admin des fermes
+- **Tests** : 376 tests passants, build OK
+
+---
+
 ## [2026-03-12] — Alerte changement de ferme (bureau) + sélecteur de ferme (mobile)
 
 ### Logique partagée — useFarmSwitchGuard + FarmSwitchAlert

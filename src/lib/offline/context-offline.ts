@@ -10,6 +10,7 @@ export async function saveOfflineContext(ctx: {
   farmId: string
   organizationId: string
   orgSlug: string
+  certifBio: boolean
 }): Promise<void> {
   await offlineDb.context.put({
     key: 'current',
@@ -17,6 +18,7 @@ export async function saveOfflineContext(ctx: {
     farmId: ctx.farmId,
     organizationId: ctx.organizationId,
     orgSlug: ctx.orgSlug,
+    certifBio: ctx.certifBio,
     lastSyncedAt: null, // sera mis à jour par le cache-loader
   })
 }

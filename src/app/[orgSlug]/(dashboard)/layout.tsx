@@ -44,7 +44,7 @@ export default async function DashboardLayout({
   const { data: farms } = org
     ? await admin
         .from('farms')
-        .select('id, nom, slug')
+        .select('id, nom, slug, certif_bio')
         .eq('organization_id', org.id)
         .order('nom')
     : { data: [] }

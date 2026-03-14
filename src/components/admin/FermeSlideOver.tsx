@@ -21,16 +21,25 @@ export default function FermeSlideOver({ open, item, organizations, onClose, onS
   const [organizationId, setOrganizationId] = useState('')
   const [nom, setNom] = useState('')
   const [slug, setSlug] = useState('')
+  const [certifBio, setCertifBio] = useState(false)
+  const [organismeCertificateur, setOrganismeCertificateur] = useState('')
+  const [numeroCertificat, setNumeroCertificat] = useState('')
 
   useEffect(() => {
     if (item) {
       setOrganizationId(item.organization_id)
       setNom(item.nom)
       setSlug(item.slug)
+      setCertifBio(item.certif_bio ?? false)
+      setOrganismeCertificateur(item.organisme_certificateur ?? '')
+      setNumeroCertificat(item.numero_certificat ?? '')
     } else {
       setOrganizationId(organizations[0]?.id ?? '')
       setNom('')
       setSlug('')
+      setCertifBio(false)
+      setOrganismeCertificateur('')
+      setNumeroCertificat('')
     }
     setError(null)
   }, [item, open, organizations])
@@ -64,6 +73,9 @@ export default function FermeSlideOver({ open, item, organizations, onClose, onS
     fd.set('organization_id', organizationId)
     fd.set('nom', nom)
     fd.set('slug', slug)
+    fd.set('certif_bio', certifBio ? 'true' : 'false')
+    fd.set('organisme_certificateur', organismeCertificateur)
+    fd.set('numero_certificat', numeroCertificat)
 
     startTransition(async () => {
       const result = await onSubmit(fd)
@@ -181,6 +193,56 @@ export default function FermeSlideOver({ open, item, organizations, onClose, onS
               style={inputStyle}
             />
           </div>
+
+          {/* Séparateur Certification Bio */}
+          <div style={{ borderTop: '1px solid #E5E7EB', paddingTop: '16px', marginTop: '8px' }}>
+            <label
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: '8px',
+                cursor: isPending ? 'not-allowed' : 'pointer',
+                userSelect: 'none',
+              }}
+            >
+              <input
+                type="checkbox"
+                checked={certifBio}
+                onChange={e => setCertifBio(e.target.checked)}
+                disabled={isPending}
+                style={{ accentColor: '#166534', width: '16px', height: '16px' }}
+              />
+              <span style={{ fontSize: '13px', fontWeight: 500, color: '#2C3E2D' }}>
+                Cette ferme est certifiée Agriculture Biologique
+              </span>
+            </label>
+          </div>
+
+          {/* Champs conditionnels si certif_bio */}
+          {certifBio && (
+            <>
+              <div>
+                <label style={labelStyle}>Organisme certificateur</label>
+                <input
+                  type="text"
+                  value={organismeCertificateur}
+                  onChange={e => setOrganismeCertificateur(e.target.value)}
+                  style={inputStyle}
+                  placeholder="Ex : Ecocert, Bureau Veritas, Certipaq"
+                />
+              </div>
+              <div>
+                <label style={labelStyle}>N° certificat</label>
+                <input
+                  type="text"
+                  value={numeroCertificat}
+                  onChange={e => setNumeroCertificat(e.target.value)}
+                  style={inputStyle}
+                  placeholder="Numéro de certification"
+                />
+              </div>
+            </>
+          )}
         </div>
 
         {/* Footer */}

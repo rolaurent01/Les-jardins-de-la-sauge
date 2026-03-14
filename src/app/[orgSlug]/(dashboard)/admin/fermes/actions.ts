@@ -76,6 +76,9 @@ export async function createFarm(formData: FormData): Promise<ActionResult<Farm>
   const organization_id = (formData.get('organization_id') as string)?.trim()
   const nom = (formData.get('nom') as string)?.trim()
   const slug = (formData.get('slug') as string)?.trim()
+  const certif_bio = formData.get('certif_bio') === 'true'
+  const organisme_certificateur = (formData.get('organisme_certificateur') as string)?.trim() || null
+  const numero_certificat = (formData.get('numero_certificat') as string)?.trim() || null
 
   if (!organization_id) return { error: 'L\u2019organisation est obligatoire.' }
   if (!nom) return { error: 'Le nom est obligatoire.' }
@@ -111,7 +114,7 @@ export async function createFarm(formData: FormData): Promise<ActionResult<Farm>
 
   const { data, error } = await admin
     .from('farms')
-    .insert({ organization_id, nom, slug })
+    .insert({ organization_id, nom, slug, certif_bio, organisme_certificateur, numero_certificat })
     .select()
     .single()
 
@@ -128,6 +131,9 @@ export async function updateFarm(id: string, formData: FormData): Promise<Action
 
   const nom = (formData.get('nom') as string)?.trim()
   const slug = (formData.get('slug') as string)?.trim()
+  const certif_bio = formData.get('certif_bio') === 'true'
+  const organisme_certificateur = (formData.get('organisme_certificateur') as string)?.trim() || null
+  const numero_certificat = (formData.get('numero_certificat') as string)?.trim() || null
 
   if (!nom) return { error: 'Le nom est obligatoire.' }
   if (!slug) return { error: 'Le slug est obligatoire.' }
@@ -153,7 +159,7 @@ export async function updateFarm(id: string, formData: FormData): Promise<Action
 
   const { error } = await admin
     .from('farms')
-    .update({ nom, slug })
+    .update({ nom, slug, certif_bio, organisme_certificateur, numero_certificat })
     .eq('id', id)
 
   if (error) return { error: `Erreur : ${error.message}` }

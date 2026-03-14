@@ -29,6 +29,7 @@ export interface MobileSyncContextValue {
   // Contexte ferme
   farmId: string
   orgSlug: string
+  certifBio: boolean
 }
 
 export const MobileSyncContext = createContext<MobileSyncContextValue | null>(null)

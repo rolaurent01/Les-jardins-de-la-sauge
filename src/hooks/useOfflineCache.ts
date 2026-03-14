@@ -33,6 +33,7 @@ export function useOfflineCache(
     userId: string
     organizationId: string
     orgSlug: string
+    certifBio: boolean
   } | null
 ): UseOfflineCacheResult {
   const { isOnline } = useOnlineStatus()
@@ -59,6 +60,7 @@ export function useOfflineCache(
             farmId,
             organizationId: userContext.organizationId,
             orgSlug: userContext.orgSlug,
+            certifBio: userContext.certifBio,
           })
         }
 

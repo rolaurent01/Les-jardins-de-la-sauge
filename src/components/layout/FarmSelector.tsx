@@ -3,7 +3,7 @@
 import { useFarmSwitchGuard } from '@/hooks/useFarmSwitchGuard'
 import FarmSwitchAlert from './FarmSwitchAlert'
 
-type Farm = { id: string; nom: string }
+type Farm = { id: string; nom: string; certif_bio?: boolean }
 
 type Props = {
   farms: Farm[]
@@ -17,8 +17,24 @@ type Props = {
 export default function FarmSelector({ farms, activeFarmId }: Props) {
   const guard = useFarmSwitchGuard(false)
 
-  // Aucun sélecteur si une seule ferme ou aucune
-  if (farms.length <= 1) return null
+  const activeFarm = farms.find(f => f.id === activeFarmId)
+
+  // Aucun sélecteur si une seule ferme ou aucune (mais afficher le badge bio quand même)
+  if (farms.length <= 1) {
+    if (activeFarm?.certif_bio) {
+      return (
+        <div className="px-3 py-2">
+          <span
+            className="rounded-full text-[10px] font-semibold"
+            style={{ padding: '2px 8px', backgroundColor: 'rgba(255,255,255,0.15)', color: 'rgba(255,255,255,0.85)' }}
+          >
+            Bio
+          </span>
+        </div>
+      )
+    }
+    return null
+  }
 
   function handleChange(e: React.ChangeEvent<HTMLSelectElement>) {
     const newFarmId = e.target.value
@@ -34,6 +50,14 @@ export default function FarmSelector({ farms, activeFarmId }: Props) {
       </label>
       <div className="flex items-center gap-1.5">
         <span style={{ fontSize: '12px', opacity: 0.6 }}>🏡</span>
+        {activeFarm?.certif_bio && (
+          <span
+            className="rounded-full text-[10px] font-semibold shrink-0"
+            style={{ padding: '1px 6px', backgroundColor: 'rgba(255,255,255,0.15)', color: 'rgba(255,255,255,0.85)' }}
+          >
+            Bio
+          </span>
+        )}
         <select
           id="farm-selector"
           value={activeFarmId}

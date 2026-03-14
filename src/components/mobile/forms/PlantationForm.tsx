@@ -59,11 +59,11 @@ interface PlantationFormProps {
 
 /** Formulaire mobile — Plantation (plantings) */
 export default function PlantationForm({ orgSlug }: PlantationFormProps) {
-  const { addEntry, farmId } = useMobileSync()
+  const { addEntry, farmId, certifBio } = useMobileSync()
   const { varieties, isLoading: varietiesLoading } = useCachedVarieties()
   const { seedlings, isLoading: seedlingsLoading } = useCachedSeedlings()
 
-  const [form, setForm] = useState(initialState)
+  const [form, setForm] = useState(() => ({ ...initialState(), certif_ab: certifBio }))
   const [errors, setErrors] = useState<Record<string, string>>({})
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [success, setSuccess] = useState(false)
@@ -129,7 +129,7 @@ export default function PlantationForm({ orgSlug }: PlantationFormProps) {
   }
 
   const handleReset = () => {
-    setForm(initialState())
+    setForm({ ...initialState(), certif_ab: certifBio })
     setErrors({})
     setSuccess(false)
     setGlobalError(null)
@@ -269,6 +269,11 @@ export default function PlantationForm({ orgSlug }: PlantationFormProps) {
         checked={form.certif_ab}
         onChange={(v) => set('certif_ab', v)}
       />
+      {certifBio && (
+        <p className="text-xs" style={{ color: '#9CA89D', marginTop: -8 }}>
+          Pré-coché (ferme bio)
+        </p>
+      )}
 
       <MobileTimerInput
         label="Temps"

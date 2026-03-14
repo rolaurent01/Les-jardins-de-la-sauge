@@ -14,6 +14,7 @@ type Props = {
   rows: RowWithParcel[]
   varieties: Pick<Variety, 'id' | 'nom_vernaculaire'>[]
   seedlings: SeedlingForSelect[]
+  certifBio?: boolean
   onClose: () => void
   onSubmit: (fd: FormData) => Promise<ActionResult>
   onSuccess: () => void
@@ -61,6 +62,7 @@ export default function PlantationSlideOver({
   rows,
   varieties: initialVarieties,
   seedlings,
+  certifBio = false,
   onClose,
   onSubmit,
   onSuccess,
@@ -548,18 +550,25 @@ export default function PlantationSlideOver({
             </div>
 
             {/* Certif AB */}
-            <div className="flex items-center gap-2">
-              <input
-                name="certif_ab"
-                type="checkbox"
-                defaultChecked={planting?.certif_ab ?? false}
-                disabled={isPending}
-                id="certif_ab"
-                className="rounded"
-              />
-              <label htmlFor="certif_ab" className="text-sm" style={{ color: '#2C3E2D' }}>
-                Certifié Agriculture Biologique
-              </label>
+            <div>
+              <div className="flex items-center gap-2">
+                <input
+                  name="certif_ab"
+                  type="checkbox"
+                  defaultChecked={planting?.certif_ab ?? certifBio}
+                  disabled={isPending}
+                  id="certif_ab"
+                  className="rounded"
+                />
+                <label htmlFor="certif_ab" className="text-sm" style={{ color: '#2C3E2D' }}>
+                  Certifié Agriculture Biologique
+                </label>
+              </div>
+              {!planting && certifBio && (
+                <p className="text-xs mt-1" style={{ color: '#9CA89D' }}>
+                  Pré-coché (ferme bio)
+                </p>
+              )}
             </div>
 
             <div className="grid grid-cols-2 gap-4">

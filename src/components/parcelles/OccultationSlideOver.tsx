@@ -8,6 +8,7 @@ type Props = {
   occultation: OccultationWithRelations | null
   rows: RowWithParcel[]
   engraisVertNoms: string[]
+  certifBio?: boolean
   onClose: () => void
   onSubmit: (fd: FormData) => Promise<ActionResult>
   onSuccess: () => void
@@ -48,6 +49,7 @@ export default function OccultationSlideOver({
   occultation,
   rows,
   engraisVertNoms,
+  certifBio = false,
   onClose,
   onSubmit,
   onSuccess,
@@ -381,7 +383,7 @@ export default function OccultationSlideOver({
                       <input
                         name="engrais_vert_certif_ab"
                         type="checkbox"
-                        defaultChecked={occultation?.methode === 'engrais_vert' ? occultation.engrais_vert_certif_ab : false}
+                        defaultChecked={occultation?.methode === 'engrais_vert' ? occultation.engrais_vert_certif_ab : certifBio}
                         disabled={isPending}
                         className="w-4 h-4 rounded"
                         style={{ accentColor: 'var(--color-primary)' }}
@@ -390,6 +392,11 @@ export default function OccultationSlideOver({
                         Agriculture biologique
                       </span>
                     </div>
+                    {!occultation && certifBio && (
+                      <p className="text-xs mt-1" style={{ color: '#9CA89D' }}>
+                        Pré-coché (ferme bio)
+                      </p>
+                    )}
                   </Field>
                 </div>
               </>

@@ -9,6 +9,7 @@ export interface OfflineContext {
   farmId: string
   organizationId: string
   orgSlug: string
+  certifBio: boolean
   lastSyncedAt: string | null // ISO timestamp du dernier chargement réussi
 }
 

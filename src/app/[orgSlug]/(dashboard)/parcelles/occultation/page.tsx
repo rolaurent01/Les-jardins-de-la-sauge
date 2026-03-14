@@ -1,15 +1,17 @@
 import { fetchOccultations, fetchEngraisVertNoms } from './actions'
 import { fetchRowsForSelect } from '@/app/[orgSlug]/(dashboard)/parcelles/shared-actions'
+import { getContext } from '@/lib/context'
 import OccultationClient from '@/components/parcelles/OccultationClient'
 
 export const metadata = { title: 'Occultation — LJS' }
 
 export default async function OccultationPage() {
   try {
-    const [occultations, rows, engraisVertNoms] = await Promise.all([
+    const [occultations, rows, engraisVertNoms, ctx] = await Promise.all([
       fetchOccultations(),
       fetchRowsForSelect(),
       fetchEngraisVertNoms(),
+      getContext(),
     ])
 
     return (
@@ -17,6 +19,7 @@ export default async function OccultationPage() {
         initialOccultations={occultations}
         rows={rows}
         engraisVertNoms={engraisVertNoms}
+        certifBio={ctx.certifBio}
       />
     )
   } catch (err) {

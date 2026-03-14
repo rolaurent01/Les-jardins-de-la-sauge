@@ -64,6 +64,7 @@ type Props = {
   rows: RowWithParcel[]
   varieties: Pick<Variety, 'id' | 'nom_vernaculaire'>[]
   seedlings: SeedlingForSelect[]
+  certifBio?: boolean
 }
 
 const PLANTATIONS_EXPORT_COLUMNS: ExportColumn[] = [
@@ -79,7 +80,7 @@ const PLANTATIONS_EXPORT_COLUMNS: ExportColumn[] = [
   { key: 'commentaire', label: 'Commentaire' },
 ]
 
-export default function PlantationsClient({ initialPlantings, rows, varieties, seedlings }: Props) {
+export default function PlantationsClient({ initialPlantings, rows, varieties, seedlings, certifBio = false }: Props) {
   const router = useRouter()
   const [, startTransition] = useTransition()
 
@@ -435,6 +436,7 @@ export default function PlantationsClient({ initialPlantings, rows, varieties, s
         rows={rows}
         varieties={varieties}
         seedlings={seedlings}
+        certifBio={certifBio}
         onClose={() => setSlideOverOpen(false)}
         onSubmit={handleSave}
         onSuccess={handleSaveSuccess}

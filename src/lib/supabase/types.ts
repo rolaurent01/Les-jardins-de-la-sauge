@@ -94,6 +94,9 @@ export type Database = {
           organization_id: string
           nom: string
           slug: string
+          certif_bio: boolean
+          organisme_certificateur: string | null
+          numero_certificat: string | null
           created_at: string
           updated_at: string
         }
@@ -102,6 +105,9 @@ export type Database = {
           organization_id: string
           nom: string
           slug: string
+          certif_bio?: boolean
+          organisme_certificateur?: string | null
+          numero_certificat?: string | null
           created_at?: string
           updated_at?: string
         }
@@ -110,6 +116,9 @@ export type Database = {
           organization_id?: string
           nom?: string
           slug?: string
+          certif_bio?: boolean
+          organisme_certificateur?: string | null
+          numero_certificat?: string | null
           created_at?: string
           updated_at?: string
         }

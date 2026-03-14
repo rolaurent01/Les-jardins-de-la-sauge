@@ -8,12 +8,13 @@ type Props = {
   open:      boolean
   seedLot:   SeedLotWithVariety | null  // null = création
   varieties: Pick<Variety, 'id' | 'nom_vernaculaire' | 'nom_latin'>[]
+  certifBio?: boolean
   onClose:   () => void
   onSubmit:  (fd: FormData) => Promise<ActionResult>
   onSuccess: () => void
 }
 
-export default function SachetSlideOver({ open, seedLot, varieties: initialVarieties, onClose, onSubmit, onSuccess }: Props) {
+export default function SachetSlideOver({ open, seedLot, varieties: initialVarieties, certifBio = false, onClose, onSubmit, onSuccess }: Props) {
   const [isPending, startTransition] = useTransition()
   const [error, setError] = useState<string | null>(null)
   const firstFieldRef = useRef<HTMLSelectElement>(null)
@@ -286,7 +287,7 @@ export default function SachetSlideOver({ open, seedLot, varieties: initialVarie
                   <input
                     type="checkbox"
                     name="certif_ab"
-                    defaultChecked={seedLot?.certif_ab ?? false}
+                    defaultChecked={seedLot?.certif_ab ?? certifBio}
                     disabled={isPending}
                     style={{ accentColor: 'var(--color-primary)', width: '16px', height: '16px' }}
                   />
@@ -300,6 +301,11 @@ export default function SachetSlideOver({ open, seedLot, varieties: initialVarie
                     </span>
                   </span>
                 </label>
+                {!seedLot && certifBio && (
+                  <p className="text-xs mt-1" style={{ color: '#9CA89D' }}>
+                    Pre-coche (ferme bio)
+                  </p>
+                )}
               </Field>
             </div>
 

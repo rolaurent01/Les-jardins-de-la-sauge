@@ -35,7 +35,7 @@ export default async function MobileLayout({
   const { data: farms } = org
     ? await admin
         .from('farms')
-        .select('id, nom')
+        .select('id, nom, certif_bio')
         .eq('organization_id', org.id)
         .order('nom')
     : { data: [] }
@@ -45,6 +45,10 @@ export default async function MobileLayout({
   // Ferme active depuis le cookie, sinon la première
   const farmId = cookieStore.get('active_farm_id')?.value
     ?? (farmList.length > 0 ? farmList[0].id : '')
+
+  // Résoudre certif_bio de la ferme active
+  const activeFarm = farmList.find(f => f.id === farmId)
+  const certifBio = activeFarm?.certif_bio ?? false
 
   return (
     <div
@@ -65,6 +69,14 @@ export default async function MobileLayout({
             farms={farmList}
             activeFarmId={farmId}
           />
+          {certifBio && (
+            <span
+              className="shrink-0 rounded-full text-[10px] font-semibold"
+              style={{ padding: '1px 8px', backgroundColor: 'rgba(255,255,255,0.2)', color: '#fff' }}
+            >
+              Bio
+            </span>
+          )}
         </div>
         <a
           href={`/${orgSlug}/dashboard`}
@@ -81,6 +93,7 @@ export default async function MobileLayout({
           orgSlug={orgSlug}
           userId={user?.id ?? ''}
           organizationId={org?.id ?? ''}
+          certifBio={certifBio}
         >
           {children}
         </MobileShell>

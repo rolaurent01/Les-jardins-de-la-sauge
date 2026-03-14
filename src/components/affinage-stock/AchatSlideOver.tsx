@@ -17,6 +17,7 @@ type Props = {
   item: StockPurchaseWithVariety | null
   varieties: Pick<Variety, 'id' | 'nom_vernaculaire' | 'parties_utilisees'>[]
   stockLevels: StockLevel[]
+  certifBio?: boolean
   onSubmit: (fd: FormData) => Promise<ActionResult>
   onSuccess: () => void
 }
@@ -27,6 +28,7 @@ export default function AchatSlideOver({
   item,
   varieties: catalogVarieties,
   stockLevels,
+  certifBio = false,
   onSubmit,
   onSuccess,
 }: Props) {
@@ -321,18 +323,25 @@ export default function AchatSlideOver({
             </div>
 
             {/* Certif AB */}
-            <div className="flex items-center gap-2">
-              <input
-                name="certif_ab"
-                type="checkbox"
-                defaultChecked={item?.certif_ab ?? false}
-                disabled={isPending}
-                value="true"
-                className="w-4 h-4 rounded"
-              />
-              <label className="text-sm" style={{ color: '#2C3E2D' }}>
-                Certification Agriculture Biologique (AB)
-              </label>
+            <div>
+              <div className="flex items-center gap-2">
+                <input
+                  name="certif_ab"
+                  type="checkbox"
+                  defaultChecked={item?.certif_ab ?? certifBio}
+                  disabled={isPending}
+                  value="true"
+                  className="w-4 h-4 rounded"
+                />
+                <label className="text-sm" style={{ color: '#2C3E2D' }}>
+                  Certification Agriculture Biologique (AB)
+                </label>
+              </div>
+              {!item && certifBio && (
+                <p className="text-xs mt-1" style={{ color: '#9CA89D' }}>
+                  Pré-coché (ferme bio)
+                </p>
+              )}
             </div>
 
             {/* Commentaire */}

@@ -66,6 +66,7 @@ type Props = {
   initialOccultations: OccultationWithRelations[]
   rows: RowWithParcel[]
   engraisVertNoms: string[]
+  certifBio?: boolean
 }
 
 const OCCULTATION_EXPORT_COLUMNS: ExportColumn[] = [
@@ -78,7 +79,7 @@ const OCCULTATION_EXPORT_COLUMNS: ExportColumn[] = [
   { key: 'commentaire', label: 'Commentaire' },
 ]
 
-export default function OccultationClient({ initialOccultations, rows, engraisVertNoms }: Props) {
+export default function OccultationClient({ initialOccultations, rows, engraisVertNoms, certifBio = false }: Props) {
   const router = useRouter()
   const [, startTransition] = useTransition()
 
@@ -383,6 +384,7 @@ export default function OccultationClient({ initialOccultations, rows, engraisVe
         occultation={editingOccultation}
         rows={rows}
         engraisVertNoms={engraisVertNoms}
+        certifBio={certifBio}
         onClose={() => setSlideOverOpen(false)}
         onSubmit={handleSave}
         onSuccess={handleSaveSuccess}

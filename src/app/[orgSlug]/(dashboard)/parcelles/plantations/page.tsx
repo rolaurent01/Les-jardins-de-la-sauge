@@ -1,16 +1,18 @@
 import { fetchPlantings, fetchSeedlingsForSelect } from './actions'
 import { fetchRowsForSelect, fetchVarietiesForSelect } from '@/app/[orgSlug]/(dashboard)/parcelles/shared-actions'
+import { getContext } from '@/lib/context'
 import PlantationsClient from '@/components/parcelles/PlantationsClient'
 
 export const metadata = { title: 'Plantations — LJS' }
 
 export default async function PlantationsPage() {
   try {
-    const [plantings, rows, varieties, seedlings] = await Promise.all([
+    const [plantings, rows, varieties, seedlings, ctx] = await Promise.all([
       fetchPlantings(),
       fetchRowsForSelect(),
       fetchVarietiesForSelect(),
       fetchSeedlingsForSelect(),
+      getContext(),
     ])
 
     return (
@@ -19,6 +21,7 @@ export default async function PlantationsPage() {
         rows={rows}
         varieties={varieties}
         seedlings={seedlings}
+        certifBio={ctx.certifBio}
       />
     )
   } catch (err) {

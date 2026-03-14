@@ -13,6 +13,7 @@ interface MobileShellProps {
   orgSlug: string
   userId: string
   organizationId: string
+  certifBio: boolean
   children: React.ReactNode
 }
 
@@ -26,13 +27,14 @@ export default function MobileShell({
   orgSlug,
   userId,
   organizationId,
+  certifBio,
   children,
 }: MobileShellProps) {
   const { isOnline } = useOnlineStatus()
 
   const userContext = useMemo(
-    () => ({ userId, organizationId, orgSlug }),
-    [userId, organizationId, orgSlug],
+    () => ({ userId, organizationId, orgSlug, certifBio }),
+    [userId, organizationId, orgSlug, certifBio],
   )
 
   const cache = useOfflineCache(farmId, userContext)
@@ -59,8 +61,9 @@ export default function MobileShell({
       isOnline,
       farmId,
       orgSlug,
+      certifBio,
     }),
-    [sync, isOnline, farmId, orgSlug],
+    [sync, isOnline, farmId, orgSlug, certifBio],
   )
 
   // Cache en cours de chargement
