@@ -2,6 +2,29 @@
 
 ---
 
+## [2026-03-14 15:30] — Corrections mobile : suppression Miel, redirect auto, bandeau bureau
+
+**Type :** `fix`
+**Fichiers concernés :** `src/components/MobileHeader.tsx`, `src/proxy.ts`, `src/app/[orgSlug]/(mobile)/layout.tsx`, `src/app/[orgSlug]/(dashboard)/layout.tsx`, `src/components/layout/MobileDesktopBanner.tsx`
+
+### Description
+Trois corrections liées à l'expérience mobile :
+
+1. **Suppression des références au module Miel (Phase C)** — La section "🍯 Miel" restait visible dans le drawer mobile (MobileHeader.tsx). Entrée supprimée du tableau NAV. Le module Miel sera réactivé en Phase C via `farm_modules`.
+
+2. **Redirect mobile automatique vers le mode terrain** — Les utilisatrices arrivant sur une route bureau (`/{orgSlug}/dashboard/...`) avec un User-Agent mobile sont désormais redirigées vers `/{orgSlug}/m/saisie`. Exceptions : routes `/m/` (déjà terrain), `/admin/` (accès admin), et cookie `force_desktop` (mode bureau forcé).
+
+3. **Param `?desktop=1` + bandeau "Passer en mode terrain"** — Le lien "Mode bureau" du layout mobile pointe maintenant vers `?desktop=1`, qui pose un cookie `force_desktop` (1h) pour désactiver la redirection. Un bandeau est affiché en haut du layout bureau quand l'écran est < 768px, proposant de repasser en mode terrain (supprime le cookie au clic). Fermable avec ✕, revient au prochain chargement.
+
+### Détails techniques
+- Proxy : détection `force_desktop` cookie + query param avant redirect UA mobile
+- MobileDesktopBanner : détection largeur côté client (pas UA), supprime le cookie `force_desktop` au switch
+- Les références `apiculture` dans FermesClient.tsx (admin) sont du module métier côté données, pas de la navigation UI — conservées
+
+### Build : OK
+
+---
+
 ## [2026-03-14 11:40] — Polish / Corrections finales (erreurs, labels, N+1)
 
 **Type :** `refactor`

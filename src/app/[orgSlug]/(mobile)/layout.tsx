@@ -79,7 +79,7 @@ export default async function MobileLayout({
           )}
         </div>
         <a
-          href={`/${orgSlug}/dashboard`}
+          href={`/${orgSlug}/dashboard?desktop=1`}
           className="text-xs underline opacity-80 shrink-0 ml-2"
         >
           Mode bureau

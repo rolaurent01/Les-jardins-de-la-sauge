@@ -181,8 +181,35 @@ export async function proxy(request: NextRequest) {
       }
     }
 
+    // Gestion du param ?desktop=1 : force le mode bureau sur mobile
+    if (request.nextUrl.searchParams.get('desktop') === '1') {
+      response.cookies.set('force_desktop', '1', {
+        path: '/',
+        sameSite: 'lax',
+        maxAge: 60 * 60, // 1 heure
+      })
+    }
+
+    // Redirect mobile → mode terrain sur les routes bureau
+    // Sauf : déjà en /m/, en /admin/, ou cookie force_desktop
+    const ua = request.headers.get('user-agent')
+    const isOnMobileRoute = pathname.includes('/m/')
+    const isOnAdminRoute = pathname.includes('/admin/') || pathname.endsWith('/admin')
+    const hasForceDesktop = request.cookies.get('force_desktop')?.value === '1'
+      || request.nextUrl.searchParams.get('desktop') === '1'
+
+    if (
+      isMobileUserAgent(ua) &&
+      !isOnMobileRoute &&
+      !isOnAdminRoute &&
+      !hasForceDesktop &&
+      segments.length >= 2 // /{orgSlug}/dashboard ou /{orgSlug}/...
+    ) {
+      return redirectTo(new URL(`/${potentialSlug}/m/saisie`, request.url))
+    }
+
     // Protection des routes admin — uniquement platform_admins
-    if (pathname.includes('/admin/') || pathname.endsWith('/admin')) {
+    if (isOnAdminRoute) {
       const { data: platformAdmin } = await admin
         .from('platform_admins')
         .select('user_id')

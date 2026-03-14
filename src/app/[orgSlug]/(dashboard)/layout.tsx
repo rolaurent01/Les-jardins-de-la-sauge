@@ -4,6 +4,7 @@ import { isPlatformAdmin } from '@/lib/admin/is-platform-admin'
 import Sidebar from '@/components/Sidebar'
 import MobileHeader from '@/components/MobileHeader'
 import ImpersonationBanner from '@/components/admin/ImpersonationBanner'
+import MobileDesktopBanner from '@/components/layout/MobileDesktopBanner'
 
 /**
  * Layout bureau — wraps toutes les pages authentifiées.
@@ -110,6 +111,9 @@ export default async function DashboardLayout({
             orgSlug={orgSlug}
           />
         )}
+
+        {/* Bandeau "passer en mode terrain" — visible sur petit écran */}
+        <MobileDesktopBanner orgSlug={orgSlug} />
 
         {/* Barre top mobile — visible uniquement sur mobile */}
         <div className="md:hidden flex-shrink-0">

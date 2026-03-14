@@ -84,14 +84,6 @@ const NAV: NavSection[] = [
       { label: 'Ajustements', href: '/stock/ajustements' },
     ],
   },
-  {
-    id: 'miel',
-    label: 'Miel',
-    emoji: '🍯',
-    disabled: true,
-    phaseLabel: 'Phase C',
-    children: [],
-  },
 ]
 
 type MobileHeaderProps = {
