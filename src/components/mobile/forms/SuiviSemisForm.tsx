@@ -83,7 +83,9 @@ export default function SuiviSemisForm({ orgSlug }: SuiviSemisFormProps) {
 
   const seedLotOptions = filteredSeedLots.map((sl) => ({
     value: sl.id,
-    label: sl.lot_interne,
+    label: sl.fournisseur
+      ? `${sl.lot_interne} — ${sl.fournisseur}${sl.numero_lot_fournisseur ? ` #${sl.numero_lot_fournisseur}` : ''}`
+      : sl.lot_interne,
   }))
 
   const varietyOptions = varieties.map((v) => ({

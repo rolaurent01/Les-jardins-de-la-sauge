@@ -326,7 +326,7 @@ export default function SemisSlideOver({
                     name="variety_id"
                     required
                     value={selectedVarietyId}
-                    onChange={e => setVarietyId(e.target.value)}
+                    onChange={e => { setVarietyId(e.target.value); setSeedLotId('') }}
                     disabled={isPending}
                     style={inputStyle}
                     onFocus={focusStyle}
@@ -342,7 +342,7 @@ export default function SemisSlideOver({
                   </select>
                 </div>
 
-                {/* Sachet source */}
+                {/* Sachet source — filtré par variété sélectionnée */}
                 <Field label="Sachet source">
                   <select
                     name="seed_lot_id"
@@ -354,12 +354,16 @@ export default function SemisSlideOver({
                     onBlur={blurStyle}
                   >
                     <option value="">Aucun</option>
-                    {seedLots.map(sl => (
-                      <option key={sl.id} value={sl.id}>
-                        {sl.lot_interne}
-                        {sl.varieties?.nom_vernaculaire ? ` — ${sl.varieties.nom_vernaculaire}` : ''}
-                      </option>
-                    ))}
+                    {seedLots
+                      .filter(sl => !selectedVarietyId || sl.variety_id === selectedVarietyId)
+                      .map(sl => (
+                        <option key={sl.id} value={sl.id}>
+                          {sl.lot_interne}
+                          {sl.fournisseur ? ` — ${sl.fournisseur}` : ''}
+                          {sl.numero_lot_fournisseur ? ` #${sl.numero_lot_fournisseur}` : ''}
+                        </option>
+                      ))
+                    }
                   </select>
                 </Field>
 

@@ -61,6 +61,11 @@ export interface CachedSeedLot {
   id: string
   lot_interne: string
   variety_id: string
+  fournisseur: string | null
+  numero_lot_fournisseur: string | null
+  date_achat: string
+  poids_sachet_g: number | null
+  certif_ab: boolean
 }
 
 /** Cache matériaux externes */
@@ -80,6 +85,7 @@ export interface CachedSeedling {
   date_semis: string
   variety_id: string | null
   variety_name: string | null
+  seed_lot_id: string | null
   seed_lot_interne: string | null
   plants_plantes: number
   plants_restants: number | null

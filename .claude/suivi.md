@@ -2,6 +2,41 @@
 
 ---
 
+## [2026-03-14 18:30] — Traçabilité complète sachet → semis → plantation (mobile + bureau)
+
+**Type :** `feature` + `fix`
+**Fichiers concernés :**
+- `src/lib/offline/db.ts` — CachedSeedLot enrichi (fournisseur, n° lot, date_achat, poids, certif_ab) + seed_lot_id ajouté à CachedSeedling
+- `src/app/api/offline/reference-data/route.ts` — requêtes seedLots et seedlings enrichies
+- `src/hooks/useCachedData.ts` — tri seedlings par date_semis DESC
+- `src/components/mobile/forms/SuiviSemisForm.tsx` — label sachet enrichi (lot + fournisseur + n° lot)
+- `src/components/mobile/forms/PlantationForm.tsx` — filtrage semis par variété, label enrichi (processus + date + caisse + nb plants), chaîne de traçabilité (semis ← sachet), reset seedling quand variété change
+- `src/components/semis/SemisSlideOver.tsx` — sachets filtrés par variété, label enrichi, reset sachet quand variété change
+- `src/components/parcelles/PlantationSlideOver.tsx` — semis filtrés par variété, label enrichi (MM/CG + date + stock), reset seedling quand variété change
+- `src/components/semis/SemisClient.tsx` — SeedLotForSelect enrichi (variety_id, numero_lot_fournisseur)
+- `src/app/[orgSlug]/(dashboard)/semis/suivi/actions.ts` — fetchSeedLotsForSelect enrichi
+- `src/components/varieties/QuickAddVariety.tsx` — fix formulaires imbriqués via createPortal
+
+### Description
+1. **Cache IndexedDB enrichi** — Les sachets portent désormais fournisseur, n° lot fournisseur, date d'achat, poids et certif AB. Les semis portent seed_lot_id pour la chaîne de traçabilité.
+
+2. **Mobile Semis** — Le sélecteur "Sachet source" affiche un label enrichi : "SL-2026-001 — Agrosemens #LOT123". Sachets déjà filtrés par variété + reset automatique.
+
+3. **Mobile Plantation** — Nouveau sélecteur "Semis source" filtré par variété avec label informatif : "MM — 12/03/2026 — Caisse A — 75 plants". Bloc traçabilité sous le select affichant la chaîne complète (semis ← sachet avec fournisseur et certif AB).
+
+4. **Bureau Semis** — Sachets filtrés par variété sélectionnée, label enrichi (lot + fournisseur + n° lot), reset quand variété change.
+
+5. **Bureau Plantation** — Semis filtrés par variété, label enrichi (processus + date + stock), reset quand variété change.
+
+6. **Fix QuickAddVariety** — Le composant rendait un `<form>` imbriqué dans le `<form>` parent (HTML invalide). Le navigateur ignorait le form interne et le submit déclenchait le formulaire parent. Corrigé via `createPortal(…, document.body)` — la mini-modal est rendue hors du DOM parent, à z-index 60-61 pour passer au-dessus des slide-overs.
+
+### Vérifications
+- dispatch.ts : seedling_id déjà géré dans dispatchPlanting (INSERT + recalcul statut seedling)
+- Pas de console.log
+- Build : OK
+
+---
+
 ## [2026-03-14 17:00] — MobileSearchSelect : plein écran + recherche par pertinence
 
 **Type :** `fix`

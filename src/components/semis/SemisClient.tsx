@@ -31,7 +31,9 @@ type StatutFilter = 'all' | SeedlingStatut
 export type SeedLotForSelect = {
   id: string
   lot_interne: string
+  variety_id: string
   fournisseur: string | null
+  numero_lot_fournisseur: string | null
   varieties: { nom_vernaculaire: string } | null
 }
 

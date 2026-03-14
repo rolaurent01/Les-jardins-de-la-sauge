@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useCallback } from 'react'
+import { useState, useCallback, useMemo } from 'react'
 import { useMobileSync } from '@/components/mobile/MobileSyncContext'
 import MobileFormLayout from '@/components/mobile/MobileFormLayout'
 import MobileRowSelect from '@/components/mobile/fields/MobileRowSelect'
@@ -10,11 +10,17 @@ import MobileInput from '@/components/mobile/fields/MobileInput'
 import MobileTimerInput from '@/components/mobile/fields/MobileTimerInput'
 import MobileTextarea from '@/components/mobile/fields/MobileTextarea'
 import MobileCheckbox from '@/components/mobile/fields/MobileCheckbox'
-import { useCachedVarieties, useCachedSeedlings } from '@/hooks/useCachedData'
+import { useCachedVarieties, useCachedSeedlings, useCachedSeedLots } from '@/hooks/useCachedData'
 import { mobilePlantingSchema } from '@/lib/validation/parcelles'
 
 function todayISO(): string {
   return new Date().toISOString().slice(0, 10)
+}
+
+/** Formate une date ISO en JJ/MM/AAAA */
+function fmtDate(iso: string): string {
+  const [y, m, d] = iso.split('-')
+  return `${d}/${m}/${y}`
 }
 
 const TYPE_PLANT_OPTIONS = [
@@ -63,6 +69,7 @@ export default function PlantationForm({ orgSlug }: PlantationFormProps) {
   const { addEntry, farmId, certifBio } = useMobileSync()
   const { varieties, isLoading: varietiesLoading } = useCachedVarieties()
   const { seedlings, isLoading: seedlingsLoading } = useCachedSeedlings()
+  const { seedLots } = useCachedSeedLots()
 
   const [form, setForm] = useState(() => ({ ...initialState(), certif_ab: certifBio }))
   const [errors, setErrors] = useState<Record<string, string>>({})
@@ -144,17 +151,23 @@ export default function PlantationForm({ orgSlug }: PlantationFormProps) {
     sublabel: v.nom_latin ?? undefined,
   }))
 
-  const seedlingOptions = seedlings
-    .filter(s => s.plants_restants === null || s.plants_restants > 0)
-    .map((s) => {
-      const stockLabel = s.plants_restants != null
-        ? `${s.plants_restants} dispo`
-        : `${s.nb_plants_obtenus ?? '?'} obtenus`
-      return {
-        value: s.id,
-        label: `${s.variety_name ?? '?'}${s.numero_caisse ? ` [${s.numero_caisse}]` : ''} — ${stockLabel}`,
-      }
-    })
+  // Filtrer les semis par variété sélectionnée
+  const filteredSeedlings = useMemo(() => {
+    const available = seedlings.filter(s => s.plants_restants === null || s.plants_restants > 0)
+    if (!form.variety_id) return available
+    return available.filter(s => s.variety_id === form.variety_id)
+  }, [seedlings, form.variety_id])
+
+  const seedlingOptions = filteredSeedlings.map((s) => ({
+    value: s.id,
+    label: `${s.processus === 'mini_motte' ? 'MM' : 'CG'} — ${fmtDate(s.date_semis)}${s.numero_caisse ? ` — Caisse ${s.numero_caisse}` : ''}${s.nb_plants_obtenus ? ` — ${s.nb_plants_obtenus} plants` : ''}`,
+  }))
+
+  // Semis sélectionné + sachet lié pour la chaîne de traçabilité
+  const selectedSeedling = seedlings.find(s => s.id === form.seedling_id) ?? null
+  const linkedSeedLot = selectedSeedling?.seed_lot_id
+    ? seedLots.find(sl => sl.id === selectedSeedling.seed_lot_id) ?? null
+    : null
 
   return (
     <MobileFormLayout
@@ -176,7 +189,10 @@ export default function PlantationForm({ orgSlug }: PlantationFormProps) {
         label="Variété"
         required
         value={form.variety_id}
-        onChange={(v) => set('variety_id', v)}
+        onChange={(v) => {
+          set('variety_id', v)
+          set('seedling_id', '')
+        }}
         options={varietyOptions}
         placeholder={varietiesLoading ? 'Chargement…' : 'Sélectionner une variété'}
         searchPlaceholder="Rechercher une variété..."
@@ -184,13 +200,37 @@ export default function PlantationForm({ orgSlug }: PlantationFormProps) {
       />
 
       <MobileSelect
-        label="Semis d'origine"
+        label="Semis source (optionnel)"
         value={form.seedling_id}
         onChange={(v) => set('seedling_id', v)}
-        options={seedlingOptions}
-        placeholder={seedlingsLoading ? 'Chargement…' : '(optionnel)'}
+        options={[{ value: '', label: 'Aucun (plant acheté ou autre)' }, ...seedlingOptions]}
+        placeholder={seedlingsLoading ? 'Chargement…' : 'Aucun (plant acheté ou autre)'}
         error={errors.seedling_id}
       />
+
+      {/* Chaîne de traçabilité */}
+      {selectedSeedling && (
+        <div
+          className="rounded-xl px-3 py-2.5 text-xs"
+          style={{ backgroundColor: '#F5F2ED', border: '1px solid #E8E3DB', color: '#6B7B6C' }}
+        >
+          <p>
+            Semis du {fmtDate(selectedSeedling.date_semis)}
+            {' ('}
+            {selectedSeedling.processus === 'mini_motte' ? 'mini-mottes' : 'caissette/godet'}
+            {selectedSeedling.numero_caisse ? `, Caisse ${selectedSeedling.numero_caisse}` : ''}
+            {')'}
+          </p>
+          {linkedSeedLot && (
+            <p style={{ marginTop: 2 }}>
+              {'← Sachet '}
+              {linkedSeedLot.lot_interne}
+              {linkedSeedLot.fournisseur ? ` — ${linkedSeedLot.fournisseur}` : ''}
+              {linkedSeedLot.certif_ab ? ' — AB' : ''}
+            </p>
+          )}
+        </div>
+      )}
 
       <MobileInput
         label="Année"

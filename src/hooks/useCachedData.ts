@@ -73,9 +73,13 @@ export function useCachedSeedLots() {
   }
 }
 
-/** Cache des semis enrichis pour le sélecteur plantation */
+/** Cache des semis enrichis pour le sélecteur plantation — triés par date_semis DESC */
 export function useCachedSeedlings() {
-  const seedlings = useLiveQuery(() => offlineDb.seedlings.toArray())
+  const seedlings = useLiveQuery(() =>
+    offlineDb.seedlings.toArray().then(arr =>
+      arr.sort((a, b) => (b.date_semis ?? '').localeCompare(a.date_semis ?? ''))
+    )
+  )
   return {
     seedlings: (seedlings ?? []) as CachedSeedling[],
     isLoading: seedlings === undefined,

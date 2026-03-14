@@ -172,10 +172,10 @@ async function loadRecipes(admin: any, farmId: string) {
 async function loadSeedLots(admin: any, farmId: string) {
   const { data, error } = await admin
     .from('seed_lots')
-    .select('id, lot_interne, variety_id')
+    .select('id, lot_interne, variety_id, fournisseur, numero_lot_fournisseur, date_achat, poids_sachet_g, certif_ab')
     .eq('farm_id', farmId)
     .is('deleted_at', null)
-    .order('lot_interne')
+    .order('date_achat', { ascending: false })
 
   if (error) throw new Error(`Erreur chargement sachets de graines : ${error.message}`)
   return data ?? []
@@ -189,7 +189,7 @@ async function loadSeedLots(admin: any, farmId: string) {
 async function loadSeedlings(admin: any, farmId: string) {
   const { data: seedlings, error } = await admin
     .from('seedlings')
-    .select('id, processus, statut, numero_caisse, nb_plants_obtenus, date_semis, variety_id, varieties(nom_vernaculaire), seed_lots(lot_interne)')
+    .select('id, processus, statut, numero_caisse, nb_plants_obtenus, date_semis, variety_id, seed_lot_id, varieties(nom_vernaculaire), seed_lots(lot_interne)')
     .eq('farm_id', farmId)
     .is('deleted_at', null)
     .order('date_semis', { ascending: false })
@@ -199,6 +199,7 @@ async function loadSeedlings(admin: any, farmId: string) {
   const seedlingRows = (seedlings ?? []) as Array<{
     id: string; processus: string; statut: string; numero_caisse: string | null
     nb_plants_obtenus: number | null; date_semis: string; variety_id: string | null
+    seed_lot_id: string | null
     varieties: { nom_vernaculaire: string } | null
     seed_lots: { lot_interne: string } | null
   }>
@@ -236,6 +237,7 @@ async function loadSeedlings(admin: any, farmId: string) {
       date_semis: s.date_semis,
       variety_id: s.variety_id,
       variety_name: s.varieties?.nom_vernaculaire ?? null,
+      seed_lot_id: s.seed_lot_id,
       seed_lot_interne: s.seed_lots?.lot_interne ?? null,
       plants_plantes: plantsPlantes,
       plants_restants: plantsRestants,

@@ -316,7 +316,7 @@ export default function PlantationSlideOver({
                   name="variety_id"
                   required
                   value={selectedVarietyId}
-                  onChange={e => setSelectedVarietyId(e.target.value)}
+                  onChange={e => { setSelectedVarietyId(e.target.value); setSelectedSeedlingId('') }}
                   disabled={isPending}
                   style={{ ...inputStyle, flex: 1 }}
                   onFocus={focusStyle}
@@ -370,25 +370,30 @@ export default function PlantationSlideOver({
                     onBlur={blurStyle}
                   >
                     <option value="">— Semis d&apos;origine (optionnel)</option>
-                    {seedlings.map(s => {
-                      const isExhausted = s.plants_restants === 0
-                      const stockLabel = s.plants_restants != null
-                        ? `${s.plants_restants} dispo / ${s.nb_plants_obtenus ?? 0}`
-                        : `${s.nb_plants_obtenus ?? '?'} obtenus`
-                      return (
-                        <option
-                          key={s.id}
-                          value={s.id}
-                          disabled={isExhausted && s.id !== planting?.seedling_id}
-                        >
-                          {s.varieties?.nom_vernaculaire ?? '?'}
-                          {s.numero_caisse ? ` [${s.numero_caisse}]` : ''}
-                          {' — '}
-                          {stockLabel}
-                          {isExhausted ? ' (épuisé)' : ''}
-                        </option>
-                      )
-                    })}
+                    {seedlings
+                      .filter(s => !selectedVarietyId || s.variety_id === selectedVarietyId)
+                      .map(s => {
+                        const isExhausted = s.plants_restants === 0
+                        const stockLabel = s.plants_restants != null
+                          ? `${s.plants_restants} dispo / ${s.nb_plants_obtenus ?? 0}`
+                          : `${s.nb_plants_obtenus ?? '?'} obtenus`
+                        const processLabel = s.processus === 'mini_motte' ? 'MM' : 'CG'
+                        const dateLabel = s.date_semis ? formatDate(s.date_semis) : '?'
+                        return (
+                          <option
+                            key={s.id}
+                            value={s.id}
+                            disabled={isExhausted && s.id !== planting?.seedling_id}
+                          >
+                            {processLabel} — {dateLabel}
+                            {s.numero_caisse ? ` [${s.numero_caisse}]` : ''}
+                            {' — '}
+                            {stockLabel}
+                            {isExhausted ? ' (épuisé)' : ''}
+                          </option>
+                        )
+                      })
+                    }
                   </select>
 
                   {/* Fiche récap du semis sélectionné */}

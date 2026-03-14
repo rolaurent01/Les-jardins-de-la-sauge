@@ -17,7 +17,8 @@
  * - Si la variété existe déjà, propose de la sélectionner directement
  */
 
-import { useState, useTransition, useRef, useEffect } from 'react'
+import { useState, useTransition, useRef, useEffect, useCallback } from 'react'
+import { createPortal } from 'react-dom'
 import type { Variety, PartiePlante } from '@/lib/types'
 import { PARTIES_PLANTE, PARTIE_PLANTE_LABELS } from '@/lib/types'
 import { createVariety } from '@/app/[orgSlug]/(dashboard)/referentiel/varietes/actions'
@@ -44,6 +45,8 @@ export default function QuickAddVariety({ existingVarieties, onCreated }: Props)
   const [duplicate, setDuplicate] = useState<Variety | null>(null)
   const [selectedParties, setSelectedParties] = useState<PartiePlante[]>(['plante_entiere'])
   const inputRef = useRef<HTMLInputElement>(null)
+  const triggerRef = useRef<HTMLButtonElement>(null)
+  const [portalPos, setPortalPos] = useState<{ top: number; left: number } | null>(null)
 
   function togglePartie(partie: PartiePlante) {
     setSelectedParties(prev =>
@@ -53,9 +56,19 @@ export default function QuickAddVariety({ existingVarieties, onCreated }: Props)
     )
   }
 
+  const updatePosition = useCallback(() => {
+    if (triggerRef.current) {
+      const rect = triggerRef.current.getBoundingClientRect()
+      setPortalPos({ top: rect.bottom + 6, left: Math.max(8, rect.left) })
+    }
+  }, [])
+
   useEffect(() => {
-    if (open) setTimeout(() => inputRef.current?.focus(), 60)
-  }, [open])
+    if (open) {
+      updatePosition()
+      setTimeout(() => inputRef.current?.focus(), 60)
+    }
+  }, [open, updatePosition])
 
   useEffect(() => {
     function onKey(e: KeyboardEvent) {
@@ -128,6 +141,7 @@ export default function QuickAddVariety({ existingVarieties, onCreated }: Props)
     <div className="relative inline-block">
       {/* Bouton déclencheur */}
       <button
+        ref={triggerRef}
         type="button"
         onClick={() => { setOpen(o => !o); setError(null); setDuplicate(null); setSelectedParties(['plante_entiere']) }}
         className="flex items-center gap-1 text-sm transition-colors"
@@ -139,23 +153,24 @@ export default function QuickAddVariety({ existingVarieties, onCreated }: Props)
         <span>Nouvelle variété</span>
       </button>
 
-      {/* ---- Mini-modal ---- */}
-      {open && (
+      {/* ---- Mini-modal via portal (évite les <form> imbriqués) ---- */}
+      {open && portalPos && createPortal(
         <>
           {/* Overlay transparent pour fermer en cliquant ailleurs */}
           <div
-            style={{ position: 'fixed', inset: 0, zIndex: 40 }}
+            style={{ position: 'fixed', inset: 0, zIndex: 60 }}
             onClick={() => { setOpen(false); setError(null); setDuplicate(null); setSelectedParties(['plante_entiere']) }}
           />
 
           <div
             style={{
-              position: 'absolute',
-              top: '100%',
-              left: 0,
-              marginTop: '6px',
-              zIndex: 50,
+              position: 'fixed',
+              top: portalPos.top,
+              left: portalPos.left,
+              zIndex: 61,
               width: '320px',
+              maxHeight: 'calc(100vh - 40px)',
+              overflowY: 'auto',
               backgroundColor: '#FAF5E9',
               border: '1px solid #D8E0D9',
               borderRadius: '12px',
@@ -315,7 +330,8 @@ export default function QuickAddVariety({ existingVarieties, onCreated }: Props)
               </div>
             </form>
           </div>
-        </>
+        </>,
+        document.body,
       )}
     </div>
   )

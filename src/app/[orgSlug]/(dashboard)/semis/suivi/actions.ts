@@ -141,21 +141,21 @@ export async function fetchSeedlings(): Promise<SeedlingWithPlantsInfo[]> {
 
 /** Récupère les sachets actifs de la ferme courante pour le sélecteur du formulaire */
 export async function fetchSeedLotsForSelect(): Promise<
-  { id: string; lot_interne: string; fournisseur: string | null; varieties: { nom_vernaculaire: string } | null }[]
+  { id: string; lot_interne: string; variety_id: string; fournisseur: string | null; numero_lot_fournisseur: string | null; varieties: { nom_vernaculaire: string } | null }[]
 > {
   const supabase = await createClient()
   const { farmId } = await getContext()
 
   const { data, error } = await supabase
     .from('seed_lots')
-    .select('id, lot_interne, fournisseur, varieties(nom_vernaculaire)')
+    .select('id, lot_interne, variety_id, fournisseur, numero_lot_fournisseur, varieties(nom_vernaculaire)')
     .eq('farm_id', farmId)
     .is('deleted_at', null)
     .order('lot_interne', { ascending: false })
 
   if (error) throw new Error(`Erreur lors du chargement des sachets : ${error.message}`)
 
-  return (data ?? []) as { id: string; lot_interne: string; fournisseur: string | null; varieties: { nom_vernaculaire: string } | null }[]
+  return (data ?? []) as { id: string; lot_interne: string; variety_id: string; fournisseur: string | null; numero_lot_fournisseur: string | null; varieties: { nom_vernaculaire: string } | null }[]
 }
 
 // ---- Actions ----
