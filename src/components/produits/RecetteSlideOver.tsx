@@ -1,8 +1,10 @@
 'use client'
 
 import { useState, useTransition, useEffect, useRef, forwardRef } from 'react'
+import { Field } from '@/components/ui/Field'
 import type { RecipeWithRelations, ProductCategory, Variety, ExternalMaterial, ActionResult, PartiePlante } from '@/lib/types'
 import { PARTIES_PLANTE, PARTIE_PLANTE_LABELS } from '@/lib/types'
+import { inputStyle, focusStyle, blurStyle } from '@/lib/ui/form-styles'
 
 /** Etats plante utilisables en production (exclure tronconnee seule) */
 const ETATS_PRODUCTION: string[] = [
@@ -607,19 +609,6 @@ function IngredientRowEditor({
   )
 }
 
-/* ---- Helpers de style ---- */
-
-const inputStyle: React.CSSProperties = {
-  width: '100%',
-  padding: '8px 12px',
-  fontSize: '14px',
-  borderRadius: '8px',
-  border: '1px solid #D8E0D9',
-  backgroundColor: '#F9F8F6',
-  color: '#2C3E2D',
-  outline: 'none',
-}
-
 const inputStyleSm: React.CSSProperties = {
   width: '100%',
   padding: '5px 8px',
@@ -629,33 +618,6 @@ const inputStyleSm: React.CSSProperties = {
   backgroundColor: '#FAF5E9',
   color: '#2C3E2D',
   outline: 'none',
-}
-
-function focusStyle(e: React.FocusEvent<HTMLElement>) {
-  ;(e.target as HTMLElement).style.borderColor = 'var(--color-primary)'
-}
-function blurStyle(e: React.FocusEvent<HTMLElement>) {
-  ;(e.target as HTMLElement).style.borderColor = '#D8E0D9'
-}
-
-function Field({
-  label,
-  required,
-  children,
-}: {
-  label: string
-  required?: boolean
-  children: React.ReactNode
-}) {
-  return (
-    <div>
-      <label className="block text-sm font-medium mb-1.5" style={{ color: '#2C3E2D' }}>
-        {label}
-        {required && <span style={{ color: '#BC6C25' }}> *</span>}
-      </label>
-      {children}
-    </div>
-  )
 }
 
 /** Bouton toggle pour le choix de type d'ingredient */

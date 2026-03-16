@@ -14,10 +14,7 @@ import {
 import type { MembershipRole } from '@/lib/types'
 import UserCreateSlideOver from './UserCreateSlideOver'
 import UserEditSlideOver from './UserEditSlideOver'
-
-function normalize(str: string): string {
-  return str.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase()
-}
+import { normalize } from '@/lib/utils/normalize'
 
 const ROLE_BADGES: Record<MembershipRole, { bg: string; text: string }> = {
   owner:  { bg: '#F3E8FF', text: '#7E22CE' },

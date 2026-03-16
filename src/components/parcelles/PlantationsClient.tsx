@@ -14,11 +14,8 @@ import PlantationSlideOver from './PlantationSlideOver'
 import ExportButton from '@/components/shared/ExportButton'
 import type { ExportColumn } from '@/components/shared/ExportButton'
 import { formatDate } from '@/lib/utils/format'
-
-/* Normalise une chaîne pour la recherche insensible casse + accents */
-function normalize(str: string): string {
-  return str.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase()
-}
+import { normalize } from '@/lib/utils/normalize'
+import { Th } from '@/components/ui/Th'
 
 /** Construit le label "Site — Parcelle — Rang N" */
 function rowLabel(p: PlantingWithRelations): string {
@@ -446,17 +443,6 @@ export default function PlantationsClient({ initialPlantings, rows, varieties, s
 }
 
 /* ---- Sous-composants utilitaires ---- */
-function Th({ children, align = 'left' }: { children: React.ReactNode; align?: 'left' | 'right' }) {
-  return (
-    <th
-      className="px-4 py-2.5 text-xs font-semibold uppercase tracking-wide"
-      style={{ color: '#9CA89D', textAlign: align }}
-    >
-      {children}
-    </th>
-  )
-}
-
 function Dash() {
   return <span style={{ color: '#D8E0D9' }}>—</span>
 }

@@ -2,6 +2,96 @@
 
 ---
 
+## [2026-03-16 23:40] — Tests proxy + sync dispatch (audit 8.1 + 8.2)
+
+**Type :** `test`
+**Fichiers concernés :** `src/tests/proxy.test.ts`, `src/tests/sync/dispatch.test.ts`
+
+### Description
+Ajout de 19 tests couvrant les deux zones critiques non testées identifiées dans l'audit :
+- **8.2 — Proxy** (11 tests) : route publique /login, redirect non-authentifié, redirect racine desktop/mobile, slug invalide, non-membre, route admin sans/avec platform_admin, auto-switch farm cross-org, redirect mobile desktop, ?desktop=1
+- **8.1 — Sync dispatch** (8 tests) : dispatch harvest (params + erreur RPC), dispatch cutting, dispatch production_lot (génération lot + idempotence + recette introuvable), dispatch simple insert, dispatch seed_lot
+
+### Détails techniques
+- Proxy testé via mocks complets de NextRequest/NextResponse, @supabase/ssr et @supabase/supabase-js
+- Dispatch testé via mock de createAdminClient avec chaîne fluide Supabase (from/select/eq/single)
+- Pattern mockChain réutilisable pour simuler les réponses Supabase
+- Total : 395/395 tests passent (376 existants + 19 nouveaux)
+
+---
+
+## [2026-03-16 23:15] — Corrections audit 4.8-4.11, 4.3-4.5, 4.13-4.14
+
+**Type :** `fix`
+**Fichiers concernés :** `src/app/[orgSlug]/(dashboard)/admin/outils/actions.ts`, `src/components/previsionnel/PrevisionnelClient.tsx`, `src/components/production/VueProductionClient.tsx`, `src/components/admin/OutilsClient.tsx`, `.claude/AUDIT-REPORT.md`
+
+### Description
+Correction de 7 problèmes identifiés dans l'audit de robustesse et qualité React.
+
+### Détails techniques
+- **4.8-4.11** : Ajout de vérification `.error` sur les 4 requêtes Supabase dans `fetchSuperData()` (v_stock, organizations, plantings, production_summary) — les erreurs sont maintenant propagées au lieu de fonctionner silencieusement avec des données vides
+- **4.3** : `saveComment()` vérifie maintenant le retour de `upsertForecast` et affiche une erreur visuelle si échec
+- **4.4** : `handleDelete()` vérifie maintenant le retour de `deleteForecast` et n'exécute `onDelete()` que si succès
+- **4.5** : `loadData()` dans `VueProductionClient` enveloppé dans un try/catch avec affichage d'un bandeau d'erreur
+- **4.13-4.14** : Appels async dans le corps du rendu (SuperDataSection, PurgeArchivesSection) déplacés dans des `useEffect` pour éviter les boucles infinies
+
+---
+
+## [2026-03-16 22:30] — Corrections audit : bugs, erreurs silencieuses, duplication, sécurité npm
+
+**Type :** `fix`
+**Fichiers concernés :** `src/app/[orgSlug]/(dashboard)/admin/outils/actions.ts`, `src/components/previsionnel/PrevisionnelClient.tsx`, `src/components/mobile/SyncPanel.tsx`, `src/lib/constants/partie-plante.ts`, `src/lib/utils/download.ts`, `src/components/mobile/forms/CueilletteForm.tsx`, `src/components/mobile/forms/VenteForm.tsx`, `src/components/mobile/forms/AchatForm.tsx`, `src/components/mobile/forms/TransformationMobileForm.tsx`, `src/components/stock/VueStockClient.tsx`, `src/components/production/VueProductionClient.tsx`, `src/components/shared/ExportButton.tsx`, `package-lock.json`
+
+### Description
+Correction de 9 problèmes identifiés dans l'audit :
+- **4.12** (critique) : Bug `.gte('date_cueillette', ...)` → `.gte('date', ...)` — le compteur cueillettes super-admin retournait toujours 0
+- **4.1 / 4.2** (critiques) : `catch {}` vides dans `reloadYear()` et `reloadAfterCopy()` → état `loadError` + bandeau d'erreur visible
+- **4.6** (important) : `catch {}` vide dans `SyncPanel.loadErrors()` → `console.warn` avec contexte
+- **3.8** (mineur) : `PARTIE_PLANTE_OPTIONS` dupliqué 4 fois → constante partagée `src/lib/constants/partie-plante.ts`
+- **3.9** (mineur) : `downloadBlob()` dupliqué 3 fois → utilitaire partagé `src/lib/utils/download.ts`
+- **3.12** (mineur) : `any` explicite sans justification → type `PlantingWithCycle` structuré
+- **5.5-5.6** (importants) : `npm audit fix` pour `undici` et `flatted` (7 vulnérabilités high corrigées)
+
+### Détails techniques
+- Le bug 4.12 venait d'une colonne inexistante `date_cueillette` dans la table `harvests` (la colonne s'appelle `date`)
+- Pour 4.1/4.2, ajout d'un état `loadError` avec bannière rouge sous les filtres
+- Pour 3.12, remplacement du `as any[]` par un type local `PlantingWithCycle` avec `as unknown as` (nécessaire car les types Supabase générés ne reconnaissent pas la relation plantings→varieties)
+- TypeScript compile sans erreur après toutes les modifications
+
+---
+
+## [2026-03-16 21:40] — Déduplication massive du codebase (audit → refactor DRY)
+
+**Type :** `refactor`
+**Fichiers concernés :**
+- `src/lib/utils/normalize.ts` — nouveau, fonction partagée `normalize()`
+- `src/lib/utils/date.ts` — nouveau, fonction partagée `todayISO()`
+- `src/lib/utils/parcels.ts` — nouveau, fonction partagée `groupRowsByParcel()`
+- `src/components/ui/Field.tsx` — nouveau, composant partagé `Field` (avec prop `hint` optionnelle)
+- `src/components/ui/Th.tsx` — nouveau, composant partagé `Th`
+- `src/lib/ui/form-styles.ts` — nouveau, `inputStyle`, `focusStyle`, `blurStyle` partagés
+- 27 fichiers *Client.tsx + MobileSearchSelect — suppression de `normalize()` locale → import
+- 12 fichiers mobile/forms/* — suppression de `todayISO()` locale → import
+- 6 fichiers parcelles/*SlideOver.tsx — suppression de `groupRowsByParcel()` locale → import
+- 18 fichiers *SlideOver.tsx — suppression du composant `Field` local → import
+- 19 fichiers *Client.tsx — suppression du composant `Th` local → import
+- 19 fichiers *SlideOver.tsx — suppression de `inputStyle/focusStyle/blurStyle` locaux → import
+
+### Description
+Suite à l'audit complet du codebase, extraction de 6 patterns dupliqués massivement dans des modules partagés. **101 copies de code éliminées** sans changement de comportement. `formatWeight()` (11 copies) non touché car les variantes diffèrent entre fichiers (toFixed(1) vs toFixed(2), gestion null/zéro).
+
+### Détails techniques
+- `normalize()` : 27 copies identiques (1 variante dans PrevisionnelClient avec ordre inversé, résultat identique pour du texte français) → `src/lib/utils/normalize.ts`
+- `todayISO()` : 12 copies identiques → `src/lib/utils/date.ts`
+- `groupRowsByParcel()` : 6 copies identiques, type `RowWithParcel` déjà importé dans chaque fichier → `src/lib/utils/parcels.ts`
+- `Field` : 13 copies standard + 5 avec prop `hint` → composant unique avec `hint` optionnel. `ProductStockSlideOver` non touché (style différent)
+- `Th` : 19 copies identiques → `src/components/ui/Th.tsx`
+- `inputStyle/focusStyle/blurStyle` : 19 copies identiques → `src/lib/ui/form-styles.ts`. `MergeVarietesClient` non touché (inputStyle custom)
+- Build : 0 erreur, compilé en 5.4s
+- Tests : 376/376 passent
+
+---
+
 ## [2026-03-14 18:30] — Traçabilité complète sachet → semis → plantation (mobile + bureau)
 
 **Type :** `feature` + `fix`

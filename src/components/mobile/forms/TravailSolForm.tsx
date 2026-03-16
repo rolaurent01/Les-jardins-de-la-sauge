@@ -9,11 +9,7 @@ import MobileInput from '@/components/mobile/fields/MobileInput'
 import MobileTimerInput from '@/components/mobile/fields/MobileTimerInput'
 import MobileTextarea from '@/components/mobile/fields/MobileTextarea'
 import { soilWorkSchema } from '@/lib/validation/parcelles'
-
-/** Date du jour au format YYYY-MM-DD */
-function todayISO(): string {
-  return new Date().toISOString().slice(0, 10)
-}
+import { todayISO } from '@/lib/utils/date'
 
 const TYPE_TRAVAIL_OPTIONS = [
   { value: 'depaillage', label: 'Dépaillage' },

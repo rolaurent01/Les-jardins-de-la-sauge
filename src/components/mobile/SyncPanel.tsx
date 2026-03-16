@@ -61,8 +61,11 @@ export default function SyncPanel({ open, onClose }: SyncPanelProps) {
         .equals('error')
         .toArray()
       setErrorEntries(entries)
-    } catch {
-      // IndexedDB indisponible
+    } catch (err) {
+      // IndexedDB indisponible — on garde la liste d'erreurs vide
+      if (typeof window !== 'undefined' && window.navigator.onLine) {
+        console.warn('[SyncPanel] Impossible de lire la file d\'erreurs IndexedDB :', err)
+      }
     }
   }, [])
 

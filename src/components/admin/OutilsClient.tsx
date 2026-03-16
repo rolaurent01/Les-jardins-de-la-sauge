@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useTransition } from 'react'
+import { useState, useTransition, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import {
   recalculateProductionSummary,
@@ -679,9 +679,10 @@ function SuperDataSection() {
   }
 
   // Chargement au premier affichage
-  if (!loaded && !loading) {
+  useEffect(() => {
     handleLoad()
-  }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
 
   const totalStock = data?.stockParEtat.reduce((s, e) => s + e.total_kg, 0) ?? 0
 
@@ -825,9 +826,10 @@ function PurgeArchivesSection() {
   }
 
   // Chargement initial
-  if (!counts && !loading && !error) {
+  useEffect(() => {
     loadCounts()
-  }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
 
   async function handlePurgeTable(table: string) {
     if (confirmTable !== table) {

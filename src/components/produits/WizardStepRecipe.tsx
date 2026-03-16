@@ -4,6 +4,7 @@ import type { ProductionMode, ProductCategory } from '@/lib/types'
 import type { RecipeForSelect } from '@/app/[orgSlug]/(dashboard)/produits/production/actions'
 import type { WizardState } from './ProductionWizard'
 import { MODE_LABELS, MODE_DESCRIPTIONS } from './types'
+import { inputStyle, focusStyle, blurStyle } from '@/lib/ui/form-styles'
 
 type Props = {
   state: WizardState
@@ -258,22 +259,4 @@ export default function WizardStepRecipe({ state, recipes, categories, onChange,
   )
 }
 
-/* ---- Helpers de style ---- */
 
-const inputStyle: React.CSSProperties = {
-  width: '100%',
-  padding: '8px 12px',
-  fontSize: '14px',
-  borderRadius: '8px',
-  border: '1px solid #D8E0D9',
-  backgroundColor: '#F9F8F6',
-  color: '#2C3E2D',
-  outline: 'none',
-}
-
-function focusStyle(e: React.FocusEvent<HTMLElement>) {
-  ;(e.target as HTMLElement).style.borderColor = 'var(--color-primary)'
-}
-function blurStyle(e: React.FocusEvent<HTMLElement>) {
-  ;(e.target as HTMLElement).style.borderColor = '#D8E0D9'
-}

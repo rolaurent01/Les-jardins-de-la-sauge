@@ -9,11 +9,7 @@ import {
   updateSeuilAlerte,
   resetFarmSettings,
 } from '@/app/[orgSlug]/(dashboard)/referentiel/mes-varietes/actions'
-
-/* Normalise une chaîne pour la recherche insensible casse + accents */
-function normalize(str: string): string {
-  return str.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase()
-}
+import { normalize } from '@/lib/utils/normalize'
 
 const SANS_FAMILLE = 'Sans famille'
 

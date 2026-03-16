@@ -15,11 +15,8 @@ import { ETAT_PLANTE_LABELS } from './types'
 import TransformationSlideOver from './TransformationSlideOver'
 import ExportButton from '@/components/shared/ExportButton'
 import type { ExportColumn } from '@/components/shared/ExportButton'
-
-/** Normalise une chaine pour la recherche insensible casse + accents */
-function normalize(str: string): string {
-  return str.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase()
-}
+import { normalize } from '@/lib/utils/normalize'
+import { Th } from '@/components/ui/Th'
 
 /** Formate un poids en g ou kg */
 function formatWeight(g: number): string {
@@ -392,17 +389,6 @@ function TypeBadge({ type }: { type: TransformationType }) {
     >
       {s.label}
     </span>
-  )
-}
-
-function Th({ children, align = 'left' }: { children: React.ReactNode; align?: 'left' | 'right' }) {
-  return (
-    <th
-      className="px-4 py-2.5 text-xs font-semibold uppercase tracking-wide"
-      style={{ color: '#9CA89D', textAlign: align }}
-    >
-      {children}
-    </th>
   )
 }
 

@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useRef, useMemo } from 'react'
 import MobileField from './MobileField'
+import { normalize } from '@/lib/utils/normalize'
 
 interface Option {
   value: string
@@ -20,10 +21,7 @@ interface MobileSearchSelectProps {
   searchPlaceholder?: string
 }
 
-/** Normalise une chaîne pour la recherche (supprime accents, lowercase) */
-function normalize(str: string): string {
-  return str.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase()
-}
+
 
 /** Recherche et tri par pertinence */
 function searchAndSort(options: Option[], term: string): Option[] {

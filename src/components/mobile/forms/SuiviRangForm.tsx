@@ -11,10 +11,7 @@ import MobileTimerInput from '@/components/mobile/fields/MobileTimerInput'
 import MobileTextarea from '@/components/mobile/fields/MobileTextarea'
 import { useCachedVarieties } from '@/hooks/useCachedData'
 import { rowCareSchema } from '@/lib/validation/parcelles'
-
-function todayISO(): string {
-  return new Date().toISOString().slice(0, 10)
-}
+import { todayISO } from '@/lib/utils/date'
 
 const TYPE_SOIN_OPTIONS = [
   { value: 'desherbage', label: 'Désherbage' },

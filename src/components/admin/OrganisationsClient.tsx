@@ -10,10 +10,7 @@ import {
   uploadOrganizationLogo,
 } from '@/app/[orgSlug]/(dashboard)/admin/organisations/actions'
 import OrganisationSlideOver from './OrganisationSlideOver'
-
-function normalize(str: string): string {
-  return str.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase()
-}
+import { normalize } from '@/lib/utils/normalize'
 
 const PLAN_BADGES: Record<string, { bg: string; text: string }> = {
   starter:    { bg: '#DCFCE7', text: '#166534' },

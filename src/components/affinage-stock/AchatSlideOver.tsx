@@ -1,12 +1,14 @@
 'use client'
 
 import { useState, useTransition, useEffect, useRef } from 'react'
+import { Field } from '@/components/ui/Field'
 import type { Variety, PartiePlante, ActionResult, StockLevel } from '@/lib/types'
 import { PARTIES_PLANTE, PARTIE_PLANTE_LABELS } from '@/lib/types'
 import { useVarietyParts } from '@/hooks/useVarietyParts'
 import QuickAddVariety from '@/components/varieties/QuickAddVariety'
 import { ETAT_PLANTE_LABELS } from '@/components/transformation/types'
 import type { StockPurchaseWithVariety } from '@/lib/types'
+import { inputStyle, focusStyle, blurStyle } from '@/lib/ui/form-styles'
 
 const ETATS = ['frais', 'tronconnee', 'sechee', 'tronconnee_sechee', 'sechee_triee', 'tronconnee_sechee_triee'] as const
 
@@ -403,41 +405,5 @@ export default function AchatSlideOver({
   )
 }
 
-/* ---- Helpers de style ---- */
-const inputStyle: React.CSSProperties = {
-  width: '100%',
-  padding: '8px 12px',
-  fontSize: '14px',
-  borderRadius: '8px',
-  border: '1px solid #D8E0D9',
-  backgroundColor: '#F9F8F6',
-  color: '#2C3E2D',
-  outline: 'none',
-}
 
-function focusStyle(e: React.FocusEvent<HTMLElement>) {
-  ;(e.target as HTMLElement).style.borderColor = 'var(--color-primary)'
-}
-function blurStyle(e: React.FocusEvent<HTMLElement>) {
-  ;(e.target as HTMLElement).style.borderColor = '#D8E0D9'
-}
 
-function Field({
-  label,
-  required,
-  children,
-}: {
-  label: string
-  required?: boolean
-  children: React.ReactNode
-}) {
-  return (
-    <div>
-      <label className="block text-sm font-medium mb-1.5" style={{ color: '#2C3E2D' }}>
-        {label}
-        {required && <span style={{ color: '#BC6C25' }}> *</span>}
-      </label>
-      {children}
-    </div>
-  )
-}

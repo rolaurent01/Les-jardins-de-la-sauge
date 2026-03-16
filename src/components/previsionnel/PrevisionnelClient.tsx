@@ -19,6 +19,7 @@ import {
 } from '@/app/[orgSlug]/(dashboard)/previsionnel/actions'
 import ExportButton from '@/components/shared/ExportButton'
 import type { ExportColumn } from '@/components/shared/ExportButton'
+import { normalize } from '@/lib/utils/normalize'
 
 const PREVISIONNEL_EXPORT_COLUMNS: ExportColumn[] = [
   { key: 'varieties', label: 'Variété', format: (v) => (v as { nom_vernaculaire?: string } | null)?.nom_vernaculaire ?? '' },
@@ -33,13 +34,6 @@ const PREVISIONNEL_EXPORT_COLUMNS: ExportColumn[] = [
    Helpers
 --------------------------------------------------------------- */
 
-/** Normalise une chaîne (minuscule, sans accents) pour la recherche */
-function normalize(str: string): string {
-  return str
-    .toLowerCase()
-    .normalize('NFD')
-    .replace(/[\u0300-\u036f]/g, '')
-}
 
 /** Formate un poids en grammes vers un affichage lisible */
 function formatWeight(grams: number): string {
@@ -113,6 +107,7 @@ export default function PrevisionnelClient({
   const [search, setSearch] = useState('')
   const [familyFilter, setFamilyFilter] = useState<string>('all')
   const [isPending, startTransition] = useTransition()
+  const [loadError, setLoadError] = useState<string | null>(null)
 
   // Copie
   const [copySource, setCopySource] = useState<number | null>(null)
@@ -146,6 +141,7 @@ export default function PrevisionnelClient({
 
   /** Recharge les données après un changement d'année */
   const reloadYear = useCallback((year: number) => {
+    setLoadError(null)
     startTransition(async () => {
       try {
         const [newForecasts, newRealised] = await Promise.all([
@@ -155,13 +151,14 @@ export default function PrevisionnelClient({
         setForecasts(newForecasts)
         setRealisedData(newRealised)
       } catch {
-        // Silencieux
+        setLoadError('Impossible de charger les données. Vérifiez votre connexion.')
       }
     })
   }, [])
 
   /** Recharge après copie (inclut les années) */
   const reloadAfterCopy = useCallback(() => {
+    setLoadError(null)
     startTransition(async () => {
       try {
         const [newForecasts, newRealised, newYears] = await Promise.all([
@@ -173,7 +170,7 @@ export default function PrevisionnelClient({
         setRealisedData(newRealised)
         setYears(newYears)
       } catch {
-        // Silencieux
+        setLoadError('Impossible de recharger après la copie. Vérifiez votre connexion.')
       }
     })
   }, [selectedYear])
@@ -282,6 +279,13 @@ export default function PrevisionnelClient({
           ))}
         </select>
       </div>
+
+      {/* ── Erreur de chargement ── */}
+      {loadError && (
+        <div className="mb-4 px-4 py-3 bg-red-50 border border-red-200 rounded-lg text-sm text-red-700">
+          {loadError}
+        </div>
+      )}
 
       {/* ── Tableau ── */}
       <div className="border border-gray-200 rounded-lg overflow-hidden">
@@ -548,7 +552,7 @@ function ForecastRow({
 
   const saveComment = useCallback(async (value: string) => {
     const comment = value.trim() || null
-    await upsertForecast({
+    const result = await upsertForecast({
       variety_id: forecast.variety_id,
       annee: year,
       quantite_prevue_g: forecast.quantite_prevue_g ?? 0,
@@ -556,11 +560,21 @@ function ForecastRow({
       partie_plante: forecast.partie_plante,
       commentaire: comment,
     })
+    if ('error' in result) {
+      setSaveError(true)
+      setTimeout(() => setSaveError(false), 2000)
+      return
+    }
     onUpdateComment(comment)
   }, [forecast, year, onUpdateComment])
 
   const handleDelete = useCallback(async () => {
-    await deleteForecast(forecast.id)
+    const result = await deleteForecast(forecast.id)
+    if ('error' in result) {
+      setSaveError(true)
+      setTimeout(() => setSaveError(false), 2000)
+      return
+    }
     onDelete()
   }, [forecast.id, onDelete])
 

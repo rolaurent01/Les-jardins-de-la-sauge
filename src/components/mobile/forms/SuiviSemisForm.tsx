@@ -10,13 +10,9 @@ import MobileTimerInput from '@/components/mobile/fields/MobileTimerInput'
 import MobileTextarea from '@/components/mobile/fields/MobileTextarea'
 import { useCachedVarieties, useCachedSeedLots } from '@/hooks/useCachedData'
 import { seedlingSchema } from '@/lib/validation/semis'
+import { todayISO } from '@/lib/utils/date'
 
 type Processus = 'mini_motte' | 'caissette_godet'
-
-/** Date du jour au format YYYY-MM-DD */
-function todayISO(): string {
-  return new Date().toISOString().slice(0, 10)
-}
 
 /** État initial du formulaire */
 function initialState(): Record<string, string | null> {

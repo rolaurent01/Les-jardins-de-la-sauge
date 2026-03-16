@@ -11,6 +11,8 @@ import type { StockDirectSaleWithVariety } from '@/lib/types'
 import VenteSlideOver from './VenteSlideOver'
 import ExportButton from '@/components/shared/ExportButton'
 import type { ExportColumn } from '@/components/shared/ExportButton'
+import { normalize } from '@/lib/utils/normalize'
+import { Th } from '@/components/ui/Th'
 
 const VENTES_EXPORT_COLUMNS: ExportColumn[] = [
   { key: 'varieties', label: 'Variété', format: (v) => (v as { nom_vernaculaire?: string } | null)?.nom_vernaculaire ?? '' },
@@ -22,9 +24,6 @@ const VENTES_EXPORT_COLUMNS: ExportColumn[] = [
   { key: 'commentaire', label: 'Commentaire' },
 ]
 
-function normalize(str: string): string {
-  return str.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase()
-}
 
 function formatWeight(g: number): string {
   if (g >= 1000) return `${(g / 1000).toFixed(2)} kg`
@@ -315,17 +314,6 @@ export default function VentesClient({ sales: initialSales, varieties, stockLeve
 }
 
 /* ---- Sous-composants utilitaires ---- */
-
-function Th({ children, align = 'left' }: { children: React.ReactNode; align?: 'left' | 'right' }) {
-  return (
-    <th
-      className="px-4 py-2.5 text-xs font-semibold uppercase tracking-wide"
-      style={{ color: '#9CA89D', textAlign: align }}
-    >
-      {children}
-    </th>
-  )
-}
 
 function Dash() {
   return <span style={{ color: '#D8E0D9' }}>—</span>

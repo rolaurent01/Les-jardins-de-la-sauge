@@ -12,10 +12,7 @@ import MobileTextarea from '@/components/mobile/fields/MobileTextarea'
 import MobileCheckbox from '@/components/mobile/fields/MobileCheckbox'
 import { useCachedVarieties, useCachedSeedlings, useCachedSeedLots } from '@/hooks/useCachedData'
 import { mobilePlantingSchema } from '@/lib/validation/parcelles'
-
-function todayISO(): string {
-  return new Date().toISOString().slice(0, 10)
-}
+import { todayISO } from '@/lib/utils/date'
 
 /** Formate une date ISO en JJ/MM/AAAA */
 function fmtDate(iso: string): string {

@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useTransition, useEffect, useRef } from 'react'
+import { Field } from '@/components/ui/Field'
 import type { Variety, ActionResult, Processus, Seedling, SeedlingStatut } from '@/lib/types'
 import { SEEDLING_STATUT_LABELS } from '@/lib/types'
 import type { SeedlingWithPlantsInfo } from '@/app/[orgSlug]/(dashboard)/semis/suivi/actions'
@@ -11,6 +12,7 @@ import {
 } from '@/lib/utils/seedling-stats'
 import QuickAddVariety from '@/components/varieties/QuickAddVariety'
 import type { SeedLotForSelect } from './SemisClient'
+import { inputStyle, focusStyle, blurStyle } from '@/lib/ui/form-styles'
 
 /** Sections du formulaire progressif */
 type Section = 'identite' | 'levee' | 'repiquage' | 'resultats'
@@ -911,42 +913,5 @@ function ProcessBtn({
   )
 }
 
-/* ---- Helpers de style ---- */
 
-const inputStyle: React.CSSProperties = {
-  width:           '100%',
-  padding:         '8px 12px',
-  fontSize:        '14px',
-  borderRadius:    '8px',
-  border:          '1px solid #D8E0D9',
-  backgroundColor: '#F9F8F6',
-  color:           '#2C3E2D',
-  outline:         'none',
-}
 
-function focusStyle(e: React.FocusEvent<HTMLElement>) {
-  ;(e.target as HTMLElement).style.borderColor = 'var(--color-primary)'
-}
-function blurStyle(e: React.FocusEvent<HTMLElement>) {
-  ;(e.target as HTMLElement).style.borderColor = '#D8E0D9'
-}
-
-function Field({
-  label,
-  required,
-  children,
-}: {
-  label:     string
-  required?: boolean
-  children:  React.ReactNode
-}) {
-  return (
-    <div>
-      <label className="block text-sm font-medium mb-1.5" style={{ color: '#2C3E2D' }}>
-        {label}
-        {required && <span style={{ color: '#BC6C25' }}> *</span>}
-      </label>
-      {children}
-    </div>
-  )
-}

@@ -1,7 +1,9 @@
 'use client'
 
 import { useState, useTransition, useEffect, useRef } from 'react'
+import { Field } from '@/components/ui/Field'
 import type { ParcelWithSite, RowWithParcel, ActionResult } from '@/lib/types'
+import { inputStyle, focusStyle, blurStyle } from '@/lib/ui/form-styles'
 
 type Props = {
   open: boolean
@@ -266,48 +268,5 @@ export default function RangSlideOver({ open, row, parcels, onClose, onSubmit, o
   )
 }
 
-/* ---- Helpers de style ---- */
-const inputStyle: React.CSSProperties = {
-  width: '100%',
-  padding: '8px 12px',
-  fontSize: '14px',
-  borderRadius: '8px',
-  border: '1px solid #D8E0D9',
-  backgroundColor: '#F9F8F6',
-  color: '#2C3E2D',
-  outline: 'none',
-}
 
-function focusStyle(e: React.FocusEvent<HTMLElement>) {
-  ;(e.target as HTMLElement).style.borderColor = 'var(--color-primary)'
-}
-function blurStyle(e: React.FocusEvent<HTMLElement>) {
-  ;(e.target as HTMLElement).style.borderColor = '#D8E0D9'
-}
 
-function Field({
-  label,
-  required,
-  hint,
-  children,
-}: {
-  label: string
-  required?: boolean
-  hint?: string
-  children: React.ReactNode
-}) {
-  return (
-    <div>
-      <label className="block text-sm font-medium mb-1.5" style={{ color: '#2C3E2D' }}>
-        {label}
-        {required && <span style={{ color: '#BC6C25' }}> *</span>}
-        {hint && (
-          <span className="ml-1 font-normal text-xs" style={{ color: '#9CA89D' }}>
-            ({hint})
-          </span>
-        )}
-      </label>
-      {children}
-    </div>
-  )
-}

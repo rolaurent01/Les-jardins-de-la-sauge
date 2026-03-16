@@ -10,10 +10,7 @@ import MobileTimerInput from '@/components/mobile/fields/MobileTimerInput'
 import MobileTextarea from '@/components/mobile/fields/MobileTextarea'
 import MobileCheckbox from '@/components/mobile/fields/MobileCheckbox'
 import { occultationSchema } from '@/lib/validation/parcelles'
-
-function todayISO(): string {
-  return new Date().toISOString().slice(0, 10)
-}
+import { todayISO } from '@/lib/utils/date'
 
 const METHODE_OPTIONS = [
   { value: 'paille', label: 'Paille' },

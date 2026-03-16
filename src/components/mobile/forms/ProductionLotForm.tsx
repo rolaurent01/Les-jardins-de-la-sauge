@@ -9,10 +9,7 @@ import MobileTimerInput from '@/components/mobile/fields/MobileTimerInput'
 import MobileTextarea from '@/components/mobile/fields/MobileTextarea'
 import { useCachedRecipes } from '@/hooks/useCachedData'
 import { mobileProductionLotSchema } from '@/lib/validation/produits'
-
-function todayISO(): string {
-  return new Date().toISOString().slice(0, 10)
-}
+import { todayISO } from '@/lib/utils/date'
 
 function initialState() {
   return {

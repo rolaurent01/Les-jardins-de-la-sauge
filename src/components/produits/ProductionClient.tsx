@@ -15,11 +15,8 @@ import ConditionnerModal from './ConditionnerModal'
 import ProductionLotDetail from './ProductionLotDetail'
 import ExportButton from '@/components/shared/ExportButton'
 import type { ExportColumn } from '@/components/shared/ExportButton'
-
-/** Normalise une chaine pour la recherche insensible casse + accents */
-function normalize(str: string): string {
-  return str.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase()
-}
+import { normalize } from '@/lib/utils/normalize'
+import { Th } from '@/components/ui/Th'
 
 /** Formate un poids en grammes de facon lisible */
 function formatWeight(g: number | null): string {
@@ -438,17 +435,6 @@ export default function ProductionClient({ initialLots, recipes, categories, sto
 }
 
 /* ---- Sous-composants utilitaires ---- */
-
-function Th({ children, align = 'left' }: { children: React.ReactNode; align?: 'left' | 'right' }) {
-  return (
-    <th
-      className="px-4 py-2.5 text-xs font-semibold uppercase tracking-wide"
-      style={{ color: '#9CA89D', textAlign: align }}
-    >
-      {children}
-    </th>
-  )
-}
 
 function Dash() {
   return <span style={{ color: '#D8E0D9' }}>—</span>

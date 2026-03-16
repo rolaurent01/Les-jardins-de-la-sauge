@@ -7,11 +7,8 @@ import { deleteProductStockMovement } from '@/app/[orgSlug]/(dashboard)/produits
 import ProductStockSlideOver from './ProductStockSlideOver'
 import ExportButton from '@/components/shared/ExportButton'
 import type { ExportColumn } from '@/components/shared/ExportButton'
-
-/** Normalise une chaine pour la recherche insensible casse + accents */
-function normalize(str: string): string {
-  return str.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase()
-}
+import { normalize } from '@/lib/utils/normalize'
+import { Th } from '@/components/ui/Th'
 
 const PRODUCT_STOCK_EXPORT_COLUMNS: ExportColumn[] = [
   { key: 'production_lots', label: 'N° Lot', format: (v) => (v as { numero_lot?: string } | null)?.numero_lot ?? '' },
@@ -369,17 +366,6 @@ export default function ProductStockClient({ initialMovements, initialSummary, l
 }
 
 /* ---- Sous-composants utilitaires ---- */
-
-function Th({ children, align = 'left' }: { children: React.ReactNode; align?: 'left' | 'right' }) {
-  return (
-    <th
-      className="px-4 py-2.5 text-xs font-semibold uppercase tracking-wide"
-      style={{ color: '#9CA89D', textAlign: align }}
-    >
-      {children}
-    </th>
-  )
-}
 
 function Dash() {
   return <span style={{ color: '#D8E0D9' }}>—</span>

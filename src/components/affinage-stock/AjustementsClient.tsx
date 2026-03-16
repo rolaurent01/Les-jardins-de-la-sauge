@@ -11,6 +11,8 @@ import type { StockAdjustmentWithVariety } from '@/lib/types'
 import AjustementSlideOver from './AjustementSlideOver'
 import ExportButton from '@/components/shared/ExportButton'
 import type { ExportColumn } from '@/components/shared/ExportButton'
+import { normalize } from '@/lib/utils/normalize'
+import { Th } from '@/components/ui/Th'
 
 const AJUSTEMENTS_EXPORT_COLUMNS: ExportColumn[] = [
   { key: 'varieties', label: 'Variété', format: (v) => (v as { nom_vernaculaire?: string } | null)?.nom_vernaculaire ?? '' },
@@ -23,9 +25,6 @@ const AJUSTEMENTS_EXPORT_COLUMNS: ExportColumn[] = [
   { key: 'commentaire', label: 'Commentaire' },
 ]
 
-function normalize(str: string): string {
-  return str.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase()
-}
 
 function formatWeight(g: number): string {
   if (g >= 1000) return `${(g / 1000).toFixed(2)} kg`
@@ -370,17 +369,6 @@ function TypeBadge({ type }: { type: 'entree' | 'sortie' }) {
     >
       {s.label}
     </span>
-  )
-}
-
-function Th({ children, align = 'left' }: { children: React.ReactNode; align?: 'left' | 'right' }) {
-  return (
-    <th
-      className="px-4 py-2.5 text-xs font-semibold uppercase tracking-wide"
-      style={{ color: '#9CA89D', textAlign: align }}
-    >
-      {children}
-    </th>
   )
 }
 

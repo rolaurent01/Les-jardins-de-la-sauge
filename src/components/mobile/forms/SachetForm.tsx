@@ -9,11 +9,7 @@ import MobileTextarea from '@/components/mobile/fields/MobileTextarea'
 import MobileCheckbox from '@/components/mobile/fields/MobileCheckbox'
 import { useCachedVarieties } from '@/hooks/useCachedData'
 import { seedLotSchema } from '@/lib/validation/semis'
-
-/** Date du jour au format YYYY-MM-DD */
-function todayISO(): string {
-  return new Date().toISOString().slice(0, 10)
-}
+import { todayISO } from '@/lib/utils/date'
 
 /** État initial du formulaire */
 function initialState() {

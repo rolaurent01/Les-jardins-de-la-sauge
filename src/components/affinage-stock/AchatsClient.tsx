@@ -11,6 +11,8 @@ import type { StockPurchaseWithVariety } from '@/lib/types'
 import AchatSlideOver from './AchatSlideOver'
 import ExportButton from '@/components/shared/ExportButton'
 import type { ExportColumn } from '@/components/shared/ExportButton'
+import { normalize } from '@/lib/utils/normalize'
+import { Th } from '@/components/ui/Th'
 
 const ACHATS_EXPORT_COLUMNS: ExportColumn[] = [
   { key: 'varieties', label: 'Variété', format: (v) => (v as { nom_vernaculaire?: string } | null)?.nom_vernaculaire ?? '' },
@@ -24,10 +26,6 @@ const ACHATS_EXPORT_COLUMNS: ExportColumn[] = [
   { key: 'commentaire', label: 'Commentaire' },
 ]
 
-/** Normalise une chaine pour la recherche insensible casse + accents */
-function normalize(str: string): string {
-  return str.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase()
-}
 
 /** Formate un poids en g ou kg */
 function formatWeight(g: number): string {
@@ -336,17 +334,6 @@ export default function AchatsClient({ purchases: initialPurchases, varieties, s
 }
 
 /* ---- Sous-composants utilitaires ---- */
-
-function Th({ children, align = 'left' }: { children: React.ReactNode; align?: 'left' | 'right' }) {
-  return (
-    <th
-      className="px-4 py-2.5 text-xs font-semibold uppercase tracking-wide"
-      style={{ color: '#9CA89D', textAlign: align }}
-    >
-      {children}
-    </th>
-  )
-}
 
 function Dash() {
   return <span style={{ color: '#D8E0D9' }}>—</span>

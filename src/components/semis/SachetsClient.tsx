@@ -7,11 +7,8 @@ import { archiveSeedLot, restoreSeedLot, createSeedLot, updateSeedLot } from '@/
 import SachetSlideOver from './SachetSlideOver'
 import ExportButton from '@/components/shared/ExportButton'
 import type { ExportColumn } from '@/components/shared/ExportButton'
-
-/* Normalise une chaîne pour la recherche insensible casse + accents */
-function normalize(str: string): string {
-  return str.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase()
-}
+import { normalize } from '@/lib/utils/normalize'
+import { Th } from '@/components/ui/Th'
 
 /** Formate une date ISO (YYYY-MM-DD) en JJ/MM/AAAA */
 function formatDate(iso: string | null): string {
@@ -356,17 +353,6 @@ export default function SachetsClient({ initialSeedLots, varieties, certifBio = 
 }
 
 /* ---- Sous-composants utilitaires ---- */
-function Th({ children, align = 'left' }: { children: React.ReactNode; align?: 'left' | 'right' }) {
-  return (
-    <th
-      className="px-4 py-2.5 text-xs font-semibold uppercase tracking-wide"
-      style={{ color: '#9CA89D', textAlign: align }}
-    >
-      {children}
-    </th>
-  )
-}
-
 function Dash() {
   return <span style={{ color: '#D8E0D9' }}>—</span>
 }

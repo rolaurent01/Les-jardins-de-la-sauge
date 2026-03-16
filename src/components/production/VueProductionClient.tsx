@@ -8,6 +8,9 @@ import {
   PieChart, Pie, Cell,
 } from 'recharts'
 import * as XLSX from 'xlsx'
+import { normalize } from '@/lib/utils/normalize'
+import { downloadBlob } from '@/lib/utils/download'
+import { Th } from '@/components/ui/Th'
 
 /* ─── Constantes ─── */
 
@@ -33,10 +36,6 @@ const TIME_COLORS = {
 }
 
 /* ─── Helpers ─── */
-
-function normalize(str: string): string {
-  return str.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase()
-}
 
 function formatWeight(g: number): string {
   if (g === 0) return '—'
@@ -86,16 +85,22 @@ export default function VueProductionClient({
   const [expandedVariety, setExpandedVariety] = useState<string | null>(null)
   const [activeTab, setActiveTab] = useState<'table' | 'chart' | 'temps'>('table')
   const [isPending, startTransition] = useTransition()
+  const [loadError, setLoadError] = useState<string | null>(null)
 
   // Charger les données pour une année/mois
   function loadData(newYear: number, newMois: number | null) {
     startTransition(async () => {
-      const [newData, newForecasts] = await Promise.all([
-        fetchProductionSummary(newYear, newMois),
-        fetchForecastsForProduction(newYear),
-      ])
-      setData(newData)
-      setForecasts(newForecasts)
+      try {
+        const [newData, newForecasts] = await Promise.all([
+          fetchProductionSummary(newYear, newMois),
+          fetchForecastsForProduction(newYear),
+        ])
+        setData(newData)
+        setForecasts(newForecasts)
+        setLoadError(null)
+      } catch (err) {
+        setLoadError(err instanceof Error ? err.message : 'Erreur de chargement')
+      }
     })
   }
 
@@ -264,6 +269,11 @@ export default function VueProductionClient({
 
   return (
     <div className="p-8">
+      {loadError && (
+        <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded text-red-700 text-sm">
+          {loadError}
+        </div>
+      )}
       {/* En-tête */}
       <div className="flex items-start justify-between mb-6">
         <div>
@@ -757,17 +767,6 @@ function ProgressBar({ pct }: { pct: number }) {
   )
 }
 
-function Th({ children, align = 'left' }: { children: React.ReactNode; align?: 'left' | 'right' }) {
-  return (
-    <th
-      className="px-4 py-2.5 text-xs font-semibold uppercase tracking-wide"
-      style={{ color: '#9CA89D', textAlign: align }}
-    >
-      {children}
-    </th>
-  )
-}
-
 function TdWeight({ g, bold }: { g: number; bold?: boolean }) {
   return (
     <td
@@ -846,13 +845,3 @@ function ExportMenu({ onCsv, onXlsx }: { onCsv: () => void; onXlsx: () => void }
   )
 }
 
-/* ─── Utilitaires ─── */
-
-function downloadBlob(blob: Blob, filename: string) {
-  const url = URL.createObjectURL(blob)
-  const a = document.createElement('a')
-  a.href = url
-  a.download = filename
-  a.click()
-  URL.revokeObjectURL(url)
-}

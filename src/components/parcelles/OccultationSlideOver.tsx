@@ -1,7 +1,10 @@
 'use client'
 
 import { useState, useTransition, useEffect, useRef } from 'react'
+import { Field } from '@/components/ui/Field'
 import type { OccultationWithRelations, RowWithParcel, MethodeOccultation, ActionResult } from '@/lib/types'
+import { groupRowsByParcel } from '@/lib/utils/parcels'
+import { inputStyle, focusStyle, blurStyle } from '@/lib/ui/form-styles'
 
 type Props = {
   open: boolean
@@ -12,29 +15,6 @@ type Props = {
   onClose: () => void
   onSubmit: (fd: FormData) => Promise<ActionResult>
   onSuccess: () => void
-}
-
-/** Groupe les rangs par "Site — Parcelle" pour les optgroups */
-function groupRowsByParcel(rows: RowWithParcel[]): Map<string, { label: string; rows: RowWithParcel[] }> {
-  const groups = new Map<string, { label: string; rows: RowWithParcel[] }>()
-
-  for (const row of rows) {
-    const parcel = row.parcels as { id?: string; nom?: string; code?: string; sites?: { nom?: string } | null } | null
-    const siteName = parcel?.sites?.nom ?? ''
-    const parcelName = parcel?.nom ?? ''
-    const parcelCode = parcel?.code ?? ''
-    const groupKey = `${siteName}__${parcelName}`
-    const groupLabel = siteName
-      ? `${siteName} — ${parcelName} (${parcelCode})`
-      : `${parcelName} (${parcelCode})`
-
-    if (!groups.has(groupKey)) {
-      groups.set(groupKey, { label: groupLabel, rows: [] })
-    }
-    groups.get(groupKey)!.rows.push(row)
-  }
-
-  return groups
 }
 
 const METHODES: { value: MethodeOccultation; label: string }[] = [
@@ -523,42 +503,5 @@ function Separator({ label }: { label: string }) {
   )
 }
 
-/* ---- Helpers de style ---- */
 
-const inputStyle: React.CSSProperties = {
-  width: '100%',
-  padding: '8px 12px',
-  fontSize: '14px',
-  borderRadius: '8px',
-  border: '1px solid #D8E0D9',
-  backgroundColor: '#F9F8F6',
-  color: '#2C3E2D',
-  outline: 'none',
-}
 
-function focusStyle(e: React.FocusEvent<HTMLElement>) {
-  ;(e.target as HTMLElement).style.borderColor = 'var(--color-primary)'
-}
-function blurStyle(e: React.FocusEvent<HTMLElement>) {
-  ;(e.target as HTMLElement).style.borderColor = '#D8E0D9'
-}
-
-function Field({
-  label,
-  required,
-  children,
-}: {
-  label: string
-  required?: boolean
-  children: React.ReactNode
-}) {
-  return (
-    <div>
-      <label className="block text-sm font-medium mb-1.5" style={{ color: '#2C3E2D' }}>
-        {label}
-        {required && <span style={{ color: '#BC6C25' }}> *</span>}
-      </label>
-      {children}
-    </div>
-  )
-}

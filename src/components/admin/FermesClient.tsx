@@ -11,10 +11,7 @@ import {
 } from '@/app/[orgSlug]/(dashboard)/admin/fermes/actions'
 import type { Organization } from '@/lib/types'
 import FermeSlideOver from './FermeSlideOver'
-
-function normalize(str: string): string {
-  return str.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase()
-}
+import { normalize } from '@/lib/utils/normalize'
 
 const MODULE_BADGES: Record<FarmModule, { bg: string; text: string; label: string }> = {
   pam:        { bg: '#DCFCE7', text: '#166534', label: 'PAM' },

@@ -11,19 +11,8 @@ import MobileTimerInput from '@/components/mobile/fields/MobileTimerInput'
 import MobileTextarea from '@/components/mobile/fields/MobileTextarea'
 import { useCachedVarieties } from '@/hooks/useCachedData'
 import { harvestSchema } from '@/lib/validation/parcelles'
-
-function todayISO(): string {
-  return new Date().toISOString().slice(0, 10)
-}
-
-const PARTIE_PLANTE_OPTIONS = [
-  { value: 'feuille', label: 'Feuille' },
-  { value: 'fleur', label: 'Fleur' },
-  { value: 'graine', label: 'Graine' },
-  { value: 'racine', label: 'Racine' },
-  { value: 'fruit', label: 'Fruit' },
-  { value: 'plante_entiere', label: 'Plante entière' },
-]
+import { todayISO } from '@/lib/utils/date'
+import { PARTIE_PLANTE_OPTIONS } from '@/lib/constants/partie-plante'
 
 type TypeCueillette = 'parcelle' | 'sauvage'
 

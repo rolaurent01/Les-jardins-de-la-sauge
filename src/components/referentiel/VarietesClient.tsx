@@ -6,11 +6,8 @@ import type { Variety, PartiePlante } from '@/lib/types'
 import { PARTIE_PLANTE_LABELS } from '@/lib/types'
 import { archiveVariety, restoreVariety, createVariety, updateVariety } from '@/app/[orgSlug]/(dashboard)/referentiel/varietes/actions'
 import VarieteSlideOver from './VarieteSlideOver'
-
-/* Normalise une chaîne pour la recherche insensible casse + accents */
-function normalize(str: string): string {
-  return str.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase()
-}
+import { normalize } from '@/lib/utils/normalize'
+import { Th } from '@/components/ui/Th'
 
 const TYPE_CYCLE_LABELS: Record<string, string> = {
   annuelle: 'Annuelle',
@@ -376,20 +373,6 @@ export default function VarietesClient({ initialVarieties }: { initialVarieties:
 }
 
 /* ---- Sous-composants utilitaires ---- */
-function Th({ children, align = 'left' }: { children: React.ReactNode; align?: 'left' | 'right' }) {
-  return (
-    <th
-      className="px-4 py-2.5 text-xs font-semibold uppercase tracking-wide"
-      style={{
-        color: '#9CA89D',
-        textAlign: align,
-      }}
-    >
-      {children}
-    </th>
-  )
-}
-
 function Dash() {
   return <span style={{ color: '#D8E0D9' }}>—</span>
 }

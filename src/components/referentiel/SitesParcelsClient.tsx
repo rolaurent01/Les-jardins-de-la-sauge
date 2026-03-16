@@ -11,11 +11,8 @@ import {
 import SiteSlideOver from './SiteSlideOver'
 import ParcelleSlideOver from './ParcelleSlideOver'
 import RangSlideOver from './RangSlideOver'
-
-/* Normalise pour la recherche insensible casse + accents */
-function normalize(str: string): string {
-  return str.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase()
-}
+import { normalize } from '@/lib/utils/normalize'
+import { Th } from '@/components/ui/Th'
 
 type Tab = 'sites' | 'parcelles' | 'rangs'
 
@@ -639,17 +636,6 @@ function EntityTable({ children }: { children: React.ReactNode }) {
     <div className="rounded-xl border overflow-hidden" style={{ borderColor: '#D8E0D9' }}>
       <table className="w-full text-sm">{children}</table>
     </div>
-  )
-}
-
-function Th({ children, align = 'left' }: { children: React.ReactNode; align?: 'left' | 'right' }) {
-  return (
-    <th
-      className="px-4 py-2.5 text-xs font-semibold uppercase tracking-wide"
-      style={{ color: '#9CA89D', textAlign: align }}
-    >
-      {children}
-    </th>
   )
 }
 

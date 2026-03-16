@@ -11,6 +11,9 @@ import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer,
 } from 'recharts'
 import * as XLSX from 'xlsx'
+import { normalize } from '@/lib/utils/normalize'
+import { downloadBlob } from '@/lib/utils/download'
+import { Th } from '@/components/ui/Th'
 
 /* ─── Types internes ─── */
 
@@ -30,11 +33,6 @@ interface StockRow {
 }
 
 /* ─── Helpers ─── */
-
-/** Normalise pour recherche insensible casse + accents */
-function normalize(str: string): string {
-  return str.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase()
-}
 
 /** Formate un poids en g ou kg pour affichage */
 function formatWeight(g: number): string {
@@ -566,17 +564,6 @@ export default function VueStockClient({ entries, alerts }: Props) {
 
 /* ─── Sous-composants ─── */
 
-function Th({ children, align = 'left' }: { children: React.ReactNode; align?: 'left' | 'right' }) {
-  return (
-    <th
-      className="px-4 py-2.5 text-xs font-semibold uppercase tracking-wide"
-      style={{ color: '#9CA89D', textAlign: align }}
-    >
-      {children}
-    </th>
-  )
-}
-
 /** Cellule de poids avec formatage et couleur conditionnelle */
 function WeightCell({ g }: { g: number }) {
   if (g === 0) return <span style={{ color: '#D8E0D9' }}>—</span>
@@ -650,11 +637,3 @@ function todayStr(): string {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
 }
 
-function downloadBlob(blob: Blob, filename: string) {
-  const url = URL.createObjectURL(blob)
-  const a = document.createElement('a')
-  a.href = url
-  a.download = filename
-  a.click()
-  URL.revokeObjectURL(url)
-}

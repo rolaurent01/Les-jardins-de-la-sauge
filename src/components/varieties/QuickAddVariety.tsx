@@ -22,10 +22,7 @@ import { createPortal } from 'react-dom'
 import type { Variety, PartiePlante } from '@/lib/types'
 import { PARTIES_PLANTE, PARTIE_PLANTE_LABELS } from '@/lib/types'
 import { createVariety } from '@/app/[orgSlug]/(dashboard)/referentiel/varietes/actions'
-
-function normalize(str: string): string {
-  return str.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase()
-}
+import { normalize } from '@/lib/utils/normalize'
 
 const FAMILLES = [
   'Lamiacées', 'Astéracées', 'Malvacées', 'Verbénacées',

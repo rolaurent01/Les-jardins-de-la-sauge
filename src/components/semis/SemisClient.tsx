@@ -14,10 +14,7 @@ import {
 import SemisSlideOver from './SemisSlideOver'
 import ExportButton from '@/components/shared/ExportButton'
 import type { ExportColumn } from '@/components/shared/ExportButton'
-
-function normalize(str: string): string {
-  return str.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase()
-}
+import { normalize } from '@/lib/utils/normalize'
 
 function formatDate(iso: string | null): string {
   if (!iso) return '—'

@@ -287,16 +287,17 @@ export async function autoCloseAnnuals(
   if (fetchErr) return { error: mapSupabaseError(fetchErr) }
   if (!plantings) return { success: true, data: { count: 0 } }
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const annuals = (plantings as any[]).filter(
-    (p: any) => p.varieties?.type_cycle === 'annuelle'
+  type PlantingWithCycle = { id: string; row_id: string | null; variety_id: string; farm_id: string; varieties: { type_cycle: string | null } | null }
+  // Cast nécessaire : les types Supabase générés ne reconnaissent pas la relation plantings→varieties
+  const annuals = (plantings as unknown as PlantingWithCycle[]).filter(
+    p => p.varieties?.type_cycle === 'annuelle'
   )
 
   if (annuals.length === 0) return { success: true, data: { count: 0 } }
 
   // Filtrer ceux qui ont un row_id valide
-  const toUproot = annuals.filter((p: { row_id: string | null }) => p.row_id)
-  const ids = toUproot.map((p: { id: string }) => p.id)
+  const toUproot = annuals.filter(p => p.row_id != null)
+  const ids = toUproot.map(p => p.id)
 
   // Batch update : passer actif = false
   const { error: updateErr } = await admin
@@ -307,9 +308,9 @@ export async function autoCloseAnnuals(
   if (updateErr) return { error: mapSupabaseError(updateErr) }
 
   // Batch insert : créer les arrachages au 31/12
-  const uprootingRows = toUproot.map((p: { farm_id: string; row_id: string; variety_id: string }) => ({
+  const uprootingRows = toUproot.map(p => ({
     farm_id: p.farm_id,
-    row_id: p.row_id,
+    row_id: p.row_id!,
     variety_id: p.variety_id,
     date: `${year}-12-31`,
     commentaire: `Clôture de saison ${year} (admin)`,
@@ -339,9 +340,11 @@ export async function fetchSuperData(): Promise<SuperDataResult> {
   const admin = createAdminClient()
 
   // 1. Stock total par état
-  const { data: stockData } = await admin
+  const { data: stockData, error: stockErr } = await admin
     .from('v_stock')
     .select('etat_plante, stock_g')
+
+  if (stockErr) throw new Error(`Erreur chargement stock : ${stockErr.message}`)
 
   const stockByEtat = new Map<string, number>()
   for (const row of stockData ?? []) {
@@ -360,9 +363,11 @@ export async function fetchSuperData(): Promise<SuperDataResult> {
     ? `${now.getFullYear() + 1}-01-01`
     : `${now.getFullYear()}-${String(now.getMonth() + 2).padStart(2, '0')}-01`
 
-  const { data: orgs } = await admin
+  const { data: orgs, error: orgsErr } = await admin
     .from('organizations')
     .select('id, nom, farms(id)')
+
+  if (orgsErr) throw new Error(`Erreur chargement organisations : ${orgsErr.message}`)
 
   // Paralléliser les requêtes par organisation
   const activiteParOrg = await Promise.all(
@@ -377,8 +382,8 @@ export async function fetchSuperData(): Promise<SuperDataResult> {
           .from('harvests')
           .select('id', { count: 'exact', head: true })
           .in('farm_id', farmIds)
-          .gte('date_cueillette', startOfMonth)
-          .lt('date_cueillette', endOfMonth)
+          .gte('date', startOfMonth)
+          .lt('date', endOfMonth)
           .is('deleted_at', null),
         admin
           .from('production_lots')
@@ -403,11 +408,13 @@ export async function fetchSuperData(): Promise<SuperDataResult> {
   )
 
   // 3. Top 10 variétés les plus cultivées (plantings actifs)
-  const { data: plantingsData } = await admin
+  const { data: plantingsData, error: plantingsErr } = await admin
     .from('plantings')
     .select('variety_id, farm_id')
     .eq('actif', true)
     .is('deleted_at', null)
+
+  if (plantingsErr) throw new Error(`Erreur chargement plantations : ${plantingsErr.message}`)
 
   const varietyFarms = new Map<string, Set<string>>()
   for (const p of plantingsData ?? []) {
@@ -434,10 +441,12 @@ export async function fetchSuperData(): Promise<SuperDataResult> {
 
   // 4. Volume total par mois (année en cours)
   const currentYear = now.getFullYear()
-  const { data: summaryData } = await admin
+  const { data: summaryData, error: summaryErr } = await admin
     .from('production_summary')
     .select('mois, total_cueilli_g')
     .eq('annee', currentYear)
+
+  if (summaryErr) throw new Error(`Erreur chargement production : ${summaryErr.message}`)
 
   const volumeByMois = new Map<number, number>()
   for (const row of summaryData ?? []) {
