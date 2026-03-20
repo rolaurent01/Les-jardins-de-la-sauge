@@ -2,6 +2,22 @@
 
 ---
 
+## [2026-03-20] — Fix update_harvest_with_stock RPC (bug modification poids cueillette)
+
+**Type :** `fix`
+**Fichiers concernés :** `supabase/migrations/030_fix_update_harvest_rpc.sql`
+
+### Description
+Correction du bug empêchant la modification d'une cueillette (poids, variété, etc.) depuis le bureau.
+Le RPC `update_harvest_with_stock` tentait d'écrire `updated_by` sur `stock_movements`, colonne inexistante (volontairement exclue en migration 011 — mouvements immutables).
+PostgreSQL renvoyait une erreur non mappée → message générique "Une erreur est survenue".
+
+### Correction
+Migration 030 : recrée la fonction sans `updated_by` dans l'UPDATE sur `stock_movements`.
+À exécuter dans le SQL Editor Supabase.
+
+---
+
 ## [2026-03-16 23:40] — Tests proxy + sync dispatch (audit 8.1 + 8.2)
 
 **Type :** `test`
