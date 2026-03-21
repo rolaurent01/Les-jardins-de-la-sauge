@@ -4,7 +4,7 @@ import { createClient } from '@/lib/supabase/server'
 import { revalidatePath } from 'next/cache'
 import { getContext } from '@/lib/context'
 import { buildPath } from '@/lib/utils/path'
-import { parseCuttingForm } from '@/lib/utils/transformation-parsers'
+import { parseCuttingForm, parseCuttingCombinedForm } from '@/lib/utils/transformation-parsers'
 import type { ActionResult, Cutting, CuttingWithVariety } from '@/lib/types'
 import { mapSupabaseError } from '@/lib/utils/error-messages'
 
@@ -90,6 +90,47 @@ export async function deleteCutting(id: string): Promise<ActionResult> {
   const { orgSlug } = await getContext()
 
   const { error } = await supabase.rpc('delete_cutting_with_stock', {
+    p_cutting_id: id,
+  })
+
+  if (error) return { error: mapSupabaseError(error) }
+
+  revalidatePath(buildPath(orgSlug, '/transformation/tronconnage'))
+  return { success: true }
+}
+
+/** Cree un tronconnage combine (entree + sortie) via RPC transactionnelle */
+export async function createCuttingCombined(formData: FormData): Promise<ActionResult> {
+  const parsed = parseCuttingCombinedForm(formData)
+  if ('error' in parsed) return parsed
+
+  const supabase = await createClient()
+  const { userId, farmId, orgSlug } = await getContext()
+
+  const { error } = await (supabase as any).rpc('create_cutting_combined', {
+    p_farm_id: farmId,
+    p_variety_id: parsed.data.variety_id,
+    p_partie_plante: parsed.data.partie_plante,
+    p_date: parsed.data.date,
+    p_poids_entree_g: parsed.data.poids_entree_g,
+    p_poids_sortie_g: parsed.data.poids_sortie_g,
+    p_temps_min: parsed.data.temps_min ?? null,
+    p_commentaire: parsed.data.commentaire ?? null,
+    p_created_by: userId,
+  })
+
+  if (error) return { error: mapSupabaseError(error) }
+
+  revalidatePath(buildPath(orgSlug, '/transformation/tronconnage'))
+  return { success: true }
+}
+
+/** Supprime un tronconnage + son paired via RPC transactionnelle */
+export async function deleteCuttingPaired(id: string): Promise<ActionResult> {
+  const supabase = await createClient()
+  const { orgSlug } = await getContext()
+
+  const { error } = await (supabase as any).rpc('delete_cutting_paired', {
     p_cutting_id: id,
   })
 

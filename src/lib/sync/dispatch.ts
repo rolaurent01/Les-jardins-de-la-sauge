@@ -30,10 +30,14 @@ export async function dispatchSyncEntry(params: DispatchParams): Promise<Dispatc
       return dispatchHarvest(params)
     case 'cuttings':
       return dispatchCutting(params)
+    case 'cuttings_combined':
+      return dispatchCuttingCombined(params)
     case 'dryings':
       return dispatchDrying(params)
     case 'sortings':
       return dispatchSorting(params)
+    case 'sortings_combined':
+      return dispatchSortingCombined(params)
     case 'stock_purchases':
       return dispatchPurchase(params)
     case 'stock_direct_sales':
@@ -136,6 +140,45 @@ async function dispatchSorting({ farm_id, user_id, uuid_client, payload }: Dispa
     p_temps_min: (payload.temps_min as number) ?? null,
     p_commentaire: (payload.commentaire as string) ?? null,
     p_created_by: user_id,
+  })
+  if (error) throw new Error(error.message)
+  return { server_id: String(data) }
+}
+
+async function dispatchCuttingCombined({ farm_id, user_id, uuid_client, payload }: DispatchParams): Promise<DispatchResult> {
+  const admin = createAdminClient()
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const { data, error } = await (admin as any).rpc('create_cutting_combined', {
+    p_farm_id: farm_id,
+    p_variety_id: payload.variety_id as string,
+    p_partie_plante: payload.partie_plante as string,
+    p_date: payload.date as string,
+    p_poids_entree_g: payload.poids_entree_g as number,
+    p_poids_sortie_g: payload.poids_sortie_g as number,
+    p_temps_min: (payload.temps_min as number) ?? null,
+    p_commentaire: (payload.commentaire as string) ?? null,
+    p_created_by: user_id,
+    p_uuid_client_entree: uuid_client,
+  })
+  if (error) throw new Error(error.message)
+  return { server_id: String(data) }
+}
+
+async function dispatchSortingCombined({ farm_id, user_id, uuid_client, payload }: DispatchParams): Promise<DispatchResult> {
+  const admin = createAdminClient()
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const { data, error } = await (admin as any).rpc('create_sorting_combined', {
+    p_farm_id: farm_id,
+    p_variety_id: payload.variety_id as string,
+    p_partie_plante: payload.partie_plante as string,
+    p_etat_plante_entree: payload.etat_plante as string,
+    p_date: payload.date as string,
+    p_poids_entree_g: payload.poids_entree_g as number,
+    p_poids_sortie_g: payload.poids_sortie_g as number,
+    p_temps_min: (payload.temps_min as number) ?? null,
+    p_commentaire: (payload.commentaire as string) ?? null,
+    p_created_by: user_id,
+    p_uuid_client_entree: uuid_client,
   })
   if (error) throw new Error(error.message)
   return { server_id: String(data) }

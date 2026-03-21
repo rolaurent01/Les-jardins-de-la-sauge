@@ -460,6 +460,7 @@ export type Cutting = {
   poids_g: number
   temps_min: number | null
   commentaire: string | null
+  paired_id: string | null
   created_by: string | null
   updated_by: string | null
   created_at: string
@@ -506,6 +507,7 @@ export type Sorting = {
   poids_g: number
   temps_min: number | null
   commentaire: string | null
+  paired_id: string | null
   created_by: string | null
   updated_by: string | null
   created_at: string

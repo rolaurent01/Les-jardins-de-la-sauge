@@ -1,32 +1,29 @@
 'use client'
 
-import TransformationMobileForm from './TransformationMobileForm'
-import { sortingSchema } from '@/lib/validation/transformation'
+import CombinedTransformationMobileForm from './CombinedTransformationMobileForm'
+import { sortingCombinedSchema } from '@/lib/validation/transformation'
 
 interface TriageFormProps {
   orgSlug: string
 }
 
 /**
- * Formulaire mobile — Triage (sortings).
- * État plante conditionnel : entrée = sechee|tronconnee_sechee, sortie = sechee_triee|tronconnee_sechee_triee.
+ * Formulaire mobile — Triage combiné (entrée + sortie en 1 formulaire).
+ * L'utilisateur choisit l'état plante d'entrée, la sortie est déduite.
+ * Affiche la ligne déchet (entrée - sortie).
  */
 export default function TriageForm({ orgSlug }: TriageFormProps) {
   return (
-    <TransformationMobileForm
+    <CombinedTransformationMobileForm
       orgSlug={orgSlug}
       title="Triage"
-      tableCible="sortings"
-      schema={sortingSchema}
+      tableCible="sortings_combined"
+      schema={sortingCombinedSchema}
       backCategory="transfo"
       etatPlanteConfig={{
         entree: [
           { value: 'sechee', label: 'Séchée' },
           { value: 'tronconnee_sechee', label: 'Tronçonnée séchée' },
-        ],
-        sortie: [
-          { value: 'sechee_triee', label: 'Séchée triée' },
-          { value: 'tronconnee_sechee_triee', label: 'Tronçonnée séchée triée' },
         ],
       }}
     />

@@ -4,7 +4,7 @@ import { createClient } from '@/lib/supabase/server'
 import { revalidatePath } from 'next/cache'
 import { getContext } from '@/lib/context'
 import { buildPath } from '@/lib/utils/path'
-import { parseSortingForm } from '@/lib/utils/transformation-parsers'
+import { parseSortingForm, parseSortingCombinedForm } from '@/lib/utils/transformation-parsers'
 import type { ActionResult, Sorting, SortingWithVariety } from '@/lib/types'
 import { mapSupabaseError } from '@/lib/utils/error-messages'
 
@@ -92,6 +92,48 @@ export async function deleteSorting(id: string): Promise<ActionResult> {
   const { orgSlug } = await getContext()
 
   const { error } = await supabase.rpc('delete_sorting_with_stock', {
+    p_sorting_id: id,
+  })
+
+  if (error) return { error: mapSupabaseError(error) }
+
+  revalidatePath(buildPath(orgSlug, '/transformation/triage'))
+  return { success: true }
+}
+
+/** Cree un triage combine (entree + sortie) via RPC transactionnelle */
+export async function createSortingCombined(formData: FormData): Promise<ActionResult> {
+  const parsed = parseSortingCombinedForm(formData)
+  if ('error' in parsed) return parsed
+
+  const supabase = await createClient()
+  const { userId, farmId, orgSlug } = await getContext()
+
+  const { error } = await (supabase as any).rpc('create_sorting_combined', {
+    p_farm_id: farmId,
+    p_variety_id: parsed.data.variety_id,
+    p_partie_plante: parsed.data.partie_plante,
+    p_etat_plante_entree: parsed.data.etat_plante,
+    p_date: parsed.data.date,
+    p_poids_entree_g: parsed.data.poids_entree_g,
+    p_poids_sortie_g: parsed.data.poids_sortie_g,
+    p_temps_min: parsed.data.temps_min ?? null,
+    p_commentaire: parsed.data.commentaire ?? null,
+    p_created_by: userId,
+  })
+
+  if (error) return { error: mapSupabaseError(error) }
+
+  revalidatePath(buildPath(orgSlug, '/transformation/triage'))
+  return { success: true }
+}
+
+/** Supprime un triage + son paired via RPC transactionnelle */
+export async function deleteSortingPaired(id: string): Promise<ActionResult> {
+  const supabase = await createClient()
+  const { orgSlug } = await getContext()
+
+  const { error } = await (supabase as any).rpc('delete_sorting_paired', {
     p_sorting_id: id,
   })
 

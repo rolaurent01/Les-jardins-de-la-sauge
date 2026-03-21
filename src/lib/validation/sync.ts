@@ -1,6 +1,6 @@
 import { z } from 'zod'
 
-/** Tables autorisées pour la synchronisation mobile */
+/** Tables reelles autorisees pour la synchronisation mobile */
 export const SYNC_TABLES = [
   'seed_lots',
   'seedlings',
@@ -19,7 +19,16 @@ export const SYNC_TABLES = [
   'production_lots',
 ] as const
 
-export type SyncTable = (typeof SYNC_TABLES)[number]
+/** Cibles virtuelles (pas de table reelle — dispatch via RPC combinee) */
+export const SYNC_VIRTUAL_TABLES = [
+  'cuttings_combined',
+  'sortings_combined',
+] as const
+
+/** Toutes les cibles autorisees pour POST /api/sync */
+export const ALL_SYNC_TARGETS = [...SYNC_TABLES, ...SYNC_VIRTUAL_TABLES] as const
+
+export type SyncTable = (typeof ALL_SYNC_TARGETS)[number]
 
 /**
  * Format UUID souple (8-4-4-4-12 hex) sans vérification de version/variant.
@@ -34,8 +43,8 @@ const uuidFormat = z.string().regex(
 /** Schéma de validation pour POST /api/sync */
 export const syncRequestSchema = z.object({
   uuid_client: uuidFormat,
-  table_cible: z.enum(SYNC_TABLES, {
-    message: `table_cible invalide. Tables autorisées : ${SYNC_TABLES.join(', ')}`,
+  table_cible: z.enum(ALL_SYNC_TARGETS, {
+    message: `table_cible invalide. Tables autorisées : ${ALL_SYNC_TARGETS.join(', ')}`,
   }),
   farm_id: uuidFormat,
   payload: z

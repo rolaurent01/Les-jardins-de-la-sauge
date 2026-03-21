@@ -12,6 +12,8 @@ export type TransformationModuleConfig = {
   etatsSortie: string[] | null
   etatEntreeImplicite?: string
   etatSortieImplicite?: string
+  /** Mode combine : entree + sortie en un seul formulaire (tronconnage, triage) */
+  combined?: boolean
 }
 
 export const TRONCONNAGE_CONFIG: TransformationModuleConfig = {
@@ -22,6 +24,7 @@ export const TRONCONNAGE_CONFIG: TransformationModuleConfig = {
   etatsSortie: null,
   etatEntreeImplicite: 'frais',
   etatSortieImplicite: 'tronconnee',
+  combined: true,
 }
 
 export const SECHAGE_CONFIG: TransformationModuleConfig = {
@@ -38,6 +41,7 @@ export const TRIAGE_CONFIG: TransformationModuleConfig = {
   titreSingulier: 'triage',
   etatsEntree: ['sechee', 'tronconnee_sechee'],
   etatsSortie: ['sechee_triee', 'tronconnee_sechee_triee'],
+  combined: true,
 }
 
 /** Type unifie pour un item de transformation (couvre cutting, drying, sorting) */
@@ -51,6 +55,7 @@ export type TransformationItem = {
   poids_g: number
   temps_min: number | null
   commentaire: string | null
+  paired_id?: string | null
   varieties: { id: string; nom_vernaculaire: string; nom_latin: string | null }
 }
 
@@ -59,4 +64,8 @@ export type TransformationActions = {
   create: (fd: FormData) => Promise<import('@/lib/types').ActionResult>
   update: (id: string, fd: FormData) => Promise<import('@/lib/types').ActionResult>
   delete: (id: string) => Promise<import('@/lib/types').ActionResult>
+  /** Creation combinee entree + sortie (tronconnage, triage) */
+  createCombined?: (fd: FormData) => Promise<import('@/lib/types').ActionResult>
+  /** Suppression groupee (record + son paired) */
+  deletePaired?: (id: string) => Promise<import('@/lib/types').ActionResult>
 }

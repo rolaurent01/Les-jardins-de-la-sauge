@@ -13,6 +13,7 @@ import type {
 } from './types'
 import { ETAT_PLANTE_LABELS } from './types'
 import TransformationSlideOver from './TransformationSlideOver'
+import CombinedTransformationSlideOver from './CombinedTransformationSlideOver'
 import ExportButton from '@/components/shared/ExportButton'
 import type { ExportColumn } from '@/components/shared/ExportButton'
 import { normalize } from '@/lib/utils/normalize'
@@ -60,6 +61,7 @@ export default function TransformationClient({ config, items: initialItems, vari
   const [slideOverOpen, setSlideOverOpen] = useState(false)
   const [slideOverType, setSlideOverType] = useState<TransformationType>('entree')
   const [editingItem, setEditingItem] = useState<TransformationItem | null>(null)
+  const [combinedSlideOverOpen, setCombinedSlideOverOpen] = useState(false)
   const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null)
   const [pendingId, setPendingId] = useState<string | null>(null)
 
@@ -116,12 +118,17 @@ export default function TransformationClient({ config, items: initialItems, vari
     router.refresh()
   }
 
-  function handleDeleteClick(id: string) {
+  function handleDeleteClick(id: string, pairedId?: string | null) {
     if (confirmDeleteId === id) {
       setConfirmDeleteId(null)
       setPendingId(id)
       startTransition(async () => {
-        await actions.delete(id)
+        // Mode combine avec paired : suppression groupee
+        if (config.combined && actions.deletePaired) {
+          await actions.deletePaired(id)
+        } else {
+          await actions.delete(id)
+        }
         setPendingId(null)
         router.refresh()
       })
@@ -150,22 +157,34 @@ export default function TransformationClient({ config, items: initialItems, vari
             filename={config.module}
             variant="compact"
           />
-          <button
-            onClick={() => openCreate('entree')}
-            className="flex items-center gap-1.5 px-4 py-2 rounded-lg text-sm font-medium transition-opacity"
-            style={{ backgroundColor: 'var(--color-primary)', color: '#F9F8F6' }}
-          >
-            <span className="text-base leading-none">↓</span>
-            + Entree
-          </button>
-          <button
-            onClick={() => openCreate('sortie')}
-            className="flex items-center gap-1.5 px-4 py-2 rounded-lg text-sm font-medium transition-opacity"
-            style={{ backgroundColor: '#DDA15E', color: '#F9F8F6' }}
-          >
-            <span className="text-base leading-none">↑</span>
-            + Sortie
-          </button>
+          {config.combined ? (
+            <button
+              onClick={() => setCombinedSlideOverOpen(true)}
+              className="flex items-center gap-1.5 px-4 py-2 rounded-lg text-sm font-medium transition-opacity"
+              style={{ backgroundColor: 'var(--color-primary)', color: '#F9F8F6' }}
+            >
+              + {config.titre}
+            </button>
+          ) : (
+            <>
+              <button
+                onClick={() => openCreate('entree')}
+                className="flex items-center gap-1.5 px-4 py-2 rounded-lg text-sm font-medium transition-opacity"
+                style={{ backgroundColor: 'var(--color-primary)', color: '#F9F8F6' }}
+              >
+                <span className="text-base leading-none">↓</span>
+                + Entree
+              </button>
+              <button
+                onClick={() => openCreate('sortie')}
+                className="flex items-center gap-1.5 px-4 py-2 rounded-lg text-sm font-medium transition-opacity"
+                style={{ backgroundColor: '#DDA15E', color: '#F9F8F6' }}
+              >
+                <span className="text-base leading-none">↑</span>
+                + Sortie
+              </button>
+            </>
+          )}
         </div>
       </div>
 
@@ -245,7 +264,7 @@ export default function TransformationClient({ config, items: initialItems, vari
             </thead>
             <tbody>
               {displayed.map((item, i) => {
-                const isDeleting = pendingId === item.id
+                const isDeleting = pendingId === item.id || (item.paired_id != null && pendingId === item.paired_id)
                 const isConfirming = confirmDeleteId === item.id
                 const partie = item.partie_plante as PartiePlante
                 const partieStyle = PARTIE_COLORS[partie] ?? PARTIE_COLORS.plante_entiere
@@ -358,7 +377,7 @@ export default function TransformationClient({ config, items: initialItems, vari
         </div>
       )}
 
-      {/* Slide-over */}
+      {/* Slide-over edition individuelle */}
       <TransformationSlideOver
         key={editingItem?.id ?? `new-${slideOverType}`}
         config={config}
@@ -370,6 +389,21 @@ export default function TransformationClient({ config, items: initialItems, vari
         onSubmit={handleSave}
         onSuccess={handleSaveSuccess}
       />
+
+      {/* Slide-over creation combinee (tronconnage / triage) */}
+      {config.combined && actions.createCombined && (
+        <CombinedTransformationSlideOver
+          config={config}
+          open={combinedSlideOverOpen}
+          onClose={() => setCombinedSlideOverOpen(false)}
+          varieties={varieties}
+          onSubmit={actions.createCombined}
+          onSuccess={() => {
+            setCombinedSlideOverOpen(false)
+            router.refresh()
+          }}
+        />
+      )}
     </div>
   )
 }

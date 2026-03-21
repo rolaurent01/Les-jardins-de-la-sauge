@@ -4,7 +4,10 @@
  */
 
 import { z } from 'zod'
-import { cuttingSchema, dryingSchema, sortingSchema } from '@/lib/validation/transformation'
+import {
+  cuttingSchema, dryingSchema, sortingSchema,
+  cuttingCombinedSchema, sortingCombinedSchema,
+} from '@/lib/validation/transformation'
 
 // ---- Helpers ----
 
@@ -88,6 +91,49 @@ export function parseSortingForm(
   }
 
   const result = sortingSchema.safeParse(raw)
+  if (!result.success) return { error: formatError(result.error) }
+
+  return { data: result.data }
+}
+
+// ---- Tronçonnage combiné ----
+
+export function parseCuttingCombinedForm(
+  formData: FormData,
+): { data: ReturnType<typeof cuttingCombinedSchema.parse> } | { error: string } {
+  const raw = {
+    variety_id:     (formData.get('variety_id') as string) || '',
+    partie_plante:  (formData.get('partie_plante') as string) || '',
+    date:           (formData.get('date') as string) || '',
+    poids_entree_g: parseOptionalDecimal(formData, 'poids_entree_g') ?? 0,
+    poids_sortie_g: parseOptionalDecimal(formData, 'poids_sortie_g') ?? 0,
+    temps_min:      parseOptionalInt(formData, 'temps_min'),
+    commentaire:    (formData.get('commentaire') as string)?.trim() || null,
+  }
+
+  const result = cuttingCombinedSchema.safeParse(raw)
+  if (!result.success) return { error: formatError(result.error) }
+
+  return { data: result.data }
+}
+
+// ---- Triage combiné ----
+
+export function parseSortingCombinedForm(
+  formData: FormData,
+): { data: ReturnType<typeof sortingCombinedSchema.parse> } | { error: string } {
+  const raw = {
+    variety_id:     (formData.get('variety_id') as string) || '',
+    partie_plante:  (formData.get('partie_plante') as string) || '',
+    etat_plante:    (formData.get('etat_plante') as string) || '',
+    date:           (formData.get('date') as string) || '',
+    poids_entree_g: parseOptionalDecimal(formData, 'poids_entree_g') ?? 0,
+    poids_sortie_g: parseOptionalDecimal(formData, 'poids_sortie_g') ?? 0,
+    temps_min:      parseOptionalInt(formData, 'temps_min'),
+    commentaire:    (formData.get('commentaire') as string)?.trim() || null,
+  }
+
+  const result = sortingCombinedSchema.safeParse(raw)
   if (!result.success) return { error: formatError(result.error) }
 
   return { data: result.data }

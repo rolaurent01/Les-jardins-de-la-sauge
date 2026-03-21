@@ -73,6 +73,18 @@ export const dryingSchema = z
     }
   })
 
+// ---- Tronçonnage combiné (entree + sortie en 1 formulaire) ----
+
+export const cuttingCombinedSchema = z.object({
+  variety_id: z.string().uuid('Variété invalide'),
+  partie_plante: z.enum(PARTIES_PLANTE as [string, ...string[]]),
+  date: dateNotInFuture,
+  poids_entree_g: positiveDecimal,
+  poids_sortie_g: positiveDecimal,
+  temps_min: positiveInt.optional().nullable(),
+  commentaire: z.string().max(1000).optional().nullable(),
+})
+
 // ---- Triage ----
 
 export const sortingSchema = z
@@ -99,6 +111,36 @@ export const sortingSchema = z
         code: z.ZodIssueCode.custom,
         path: ['etat_plante'],
         message: 'État plante invalide pour triage sortie (sechee_triee ou tronconnee_sechee_triee)',
+      })
+    }
+  })
+
+// ---- Triage combiné (entree + sortie en 1 formulaire) ----
+
+export const sortingCombinedSchema = z
+  .object({
+    variety_id: z.string().uuid('Variété invalide'),
+    partie_plante: z.enum(PARTIES_PLANTE as [string, ...string[]]),
+    etat_plante: z.string().min(1, 'État plante requis'),
+    date: dateNotInFuture,
+    poids_entree_g: positiveDecimal,
+    poids_sortie_g: positiveDecimal,
+    temps_min: positiveInt.optional().nullable(),
+    commentaire: z.string().max(1000).optional().nullable(),
+  })
+  .superRefine((data, ctx) => {
+    if (!['sechee', 'tronconnee_sechee'].includes(data.etat_plante)) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ['etat_plante'],
+        message: 'État plante invalide pour triage (sechee ou tronconnee_sechee)',
+      })
+    }
+    if (data.poids_sortie_g > data.poids_entree_g) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ['poids_sortie_g'],
+        message: 'Le poids de sortie ne peut pas dépasser le poids d\'entrée',
       })
     }
   })

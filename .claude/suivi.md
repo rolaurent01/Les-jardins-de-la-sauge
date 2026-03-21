@@ -2,6 +2,63 @@
 
 ---
 
+## [2026-03-21] — Tronconnage et triage : creation combinee (entree + sortie en 1 formulaire)
+
+**Type :** `feat`
+**Fichiers concernes :**
+- `supabase/migrations/032_combined_transformation.sql` (nouveau)
+- `src/lib/types.ts` (ajout paired_id sur Cutting et Sorting)
+- `src/components/transformation/types.ts` (ajout combined flag + actions)
+- `src/lib/validation/transformation.ts` (schemas combines)
+- `src/lib/utils/transformation-parsers.ts` (parsers combines)
+- `src/app/[orgSlug]/(dashboard)/transformation/tronconnage/actions.ts` (createCuttingCombined, deleteCuttingPaired)
+- `src/app/[orgSlug]/(dashboard)/transformation/triage/actions.ts` (createSortingCombined, deleteSortingPaired)
+- `src/components/transformation/CombinedTransformationSlideOver.tsx` (nouveau)
+- `src/components/transformation/TransformationClient.tsx` (bouton unique + suppression paired)
+- `src/app/[orgSlug]/(dashboard)/transformation/tronconnage/page.tsx` (passage actions combinees)
+- `src/app/[orgSlug]/(dashboard)/transformation/triage/page.tsx` (passage actions combinees)
+- `src/components/mobile/forms/CombinedTransformationMobileForm.tsx` (nouveau)
+- `src/components/mobile/forms/TronconnageForm.tsx` (utilise formulaire combine)
+- `src/components/mobile/forms/TriageForm.tsx` (utilise formulaire combine)
+- `src/lib/validation/sync.ts` (ajout cibles virtuelles cuttings_combined, sortings_combined)
+- `src/lib/sync/dispatch.ts` (dispatch combines)
+
+### Description
+
+Le tronconnage et le triage sont des operations instantanees (contrairement au sechage qui prend du temps). L'utilisateur saisit poids entree + poids sortie dans un seul formulaire. La RPC cree 2 records lies via paired_id + 2 stock_movements atomiquement.
+
+### Details techniques
+
+- Migration 032 : colonne `paired_id` sur cuttings et sortings, 4 RPCs (create_cutting_combined, create_sorting_combined, delete_cutting_paired, delete_sorting_paired)
+- Tronconnage : poids sortie pre-rempli = poids entree (modifiable)
+- Triage : poids entree + sortie libres, ligne dechet calculee, etat plante d'entree choisi par l'utilisateur (sortie deduite automatiquement)
+- Temps stocke sur le record entree uniquement (sortie = NULL)
+- Suppression groupee : supprime le record + son paired + tous les stock_movements
+- Edition individuelle inchangee (SlideOver existant)
+- Sechage inchange
+
+### A faire
+- Executer migration 032 dans Supabase SQL Editor
+
+---
+
+## [2026-03-21] — Fix perte de donnees sections fermees formulaire semis
+
+**Type :** `fix`
+**Fichiers concernes :** `src/components/semis/SemisSlideOver.tsx`
+
+### Description
+
+Bug : en mode edition, seule la section correspondant au statut du semis est ouverte. Les champs des sections fermees ne sont pas rendus dans le DOM, donc absents du FormData a la soumission. Resultat : les valeurs existantes (nb_plants_obtenus, date_levee, date_repiquage, etc.) sont ecrasees a null en base.
+
+### Correctif
+
+Dans `handleSubmit()`, injection systematique dans le FormData :
+- Des champs controles (React state) : nb_mottes, nb_mortes_mottes, nb_plants_caissette, nb_mortes_caissette, nb_godets, nb_mortes_godet, nb_donnees, nb_plants_obtenus
+- Des champs defaultValue (non controles) : date_levee, date_repiquage, temps_semis_min, temps_repiquage_min, numero_caisse, poids_graines_utilise_g, commentaire, nb_caissettes — preserves depuis le seedling existant si absent du DOM
+
+---
+
 ## [2026-03-21] — Fix selection variete dans previsionnel
 
 **Type :** `fix`
