@@ -2,6 +2,21 @@
 
 ---
 
+## [2026-03-21] — Fix selection variete dans previsionnel
+
+**Type :** `fix`
+**Fichiers concernes :** `src/components/previsionnel/PrevisionnelClient.tsx`
+
+### Description
+Correction de 3 bugs dans le formulaire d'ajout d'objectif du previsionnel.
+
+### Modifications
+- **Bug 1** : Ajout d'une `<option value="" disabled>` par defaut dans le select — corrige l'impossibilite de selectionner la premiere variete sur certains navigateurs (Safari/mobile)
+- **Bug 2** : Ajout d'un `useEffect` qui reinitialise `selectedVariety` quand la variete selectionnee n'est plus dans la liste filtree — evite la soumission d'une variete invisible
+- **Bug 3** : `size` du select passe de 5 a 8 pour plus de visibilite + ajout d'un feedback visuel (texte vert) confirmant la variete selectionnee
+
+---
+
 ## [2026-03-21] — Stock et tracabilite des materiaux externes
 
 **Type :** `feat`

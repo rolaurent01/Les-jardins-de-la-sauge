@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useCallback, useTransition, useRef } from 'react'
+import { useState, useCallback, useTransition, useRef, useEffect } from 'react'
 import type { ForecastWithVariety } from '@/lib/types'
 import type { RealisedData } from '@/app/[orgSlug]/(dashboard)/previsionnel/actions'
 import {
@@ -742,6 +742,13 @@ function AddForecastForm({
     normalize(v.nom_vernaculaire).includes(normalizedSearch),
   )
 
+  // Bug fix #2 : réinitialiser la sélection si la variété choisie n'est plus dans la liste filtrée
+  useEffect(() => {
+    if (selectedVariety && !filteredVarieties.some(v => v.id === selectedVariety)) {
+      setSelectedVariety('')
+    }
+  }, [filteredVarieties, selectedVariety])
+
   // Grouper par famille
   const grouped = new Map<string, VarietyOption[]>()
   for (const v of filteredVarieties) {
@@ -814,8 +821,11 @@ function AddForecastForm({
           className="w-full text-sm border border-gray-300 rounded-md px-2.5 py-1.5"
           value={selectedVariety}
           onChange={e => { setSelectedVariety(e.target.value); setError(null) }}
-          size={5}
+          size={8}
         >
+          <option value="" disabled>
+            — Choisir une variété —
+          </option>
           {Array.from(grouped.entries())
             .sort(([a], [b]) => a.localeCompare(b, 'fr'))
             .map(([famille, vars]) => (
@@ -829,6 +839,12 @@ function AddForecastForm({
               </optgroup>
             ))}
         </select>
+        {/* Feedback visuel : variété sélectionnée */}
+        {selectedVariety && (
+          <p className="text-xs text-green-600 mt-1">
+            ✓ {varieties.find(v => v.id === selectedVariety)?.nom_vernaculaire}
+          </p>
+        )}
       </div>
 
       {/* État plante */}
