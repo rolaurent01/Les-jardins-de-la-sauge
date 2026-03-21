@@ -2,6 +2,46 @@
 
 ---
 
+## [2026-03-21] — Stock et tracabilite des materiaux externes
+
+**Type :** `feat`
+**Fichiers concernes :** `supabase/migrations/031_stock_external_materials.sql`
+
+### Description
+Ajout du stock par ferme pour les materiaux externes (sucre, vinaigre, sel, etc.) avec tracabilite achat → lot de production.
+
+### Modifications
+- **stock_movements** : `variety_id` nullable + ajout `external_material_id` (CHECK exclusif)
+- **stock_purchases** : `variety_id` nullable + ajout `external_material_id` + `numero_facture`
+- **Nouvelle table `production_ingredient_sources`** : liaison N:N entre `production_lot_ingredients` et `stock_purchases` avec poids_g (permet de sourcer un ingredient depuis plusieurs achats)
+- **Nouvelle vue `v_stock_external`** : stock temps reel par (farm_id, external_material_id)
+- **RPC `create_purchase_with_stock`** : 2 nouveaux params optionnels (`p_external_material_id`, `p_numero_facture`)
+- **RPC `update_purchase_with_stock`** : idem
+- **RPC `create_production_lot_with_stock`** : gere les ingredients externes avec tableau `sources` dans le JSONB (verification stock, creation mouvements sortie, creation liens ingredient→achat)
+- **RPC `delete_production_lot_with_stock`** : soft-delete etendu aux mouvements materiaux externes
+- **RPC `restore_production_lot_with_stock`** : verification stock etendue aux materiaux externes
+
+### Multi-tenant
+- `production_ingredient_sources` a `farm_id` + RLS `tenant_isolation`
+- `v_stock_external` filtre par `farm_id` via `security_invoker`
+- Toutes les RPCs verifient l'appartenance a la ferme
+
+### Format JSONB ingredient externe (pour le front)
+```json
+{
+  "external_material_id": "uuid",
+  "pourcentage": 0.88,
+  "poids_g": 300,
+  "fournisseur": "Bio Coop",
+  "sources": [
+    {"stock_purchase_id": "uuid-achat-1", "poids_g": 150},
+    {"stock_purchase_id": "uuid-achat-2", "poids_g": 150}
+  ]
+}
+```
+
+---
+
 ## [2026-03-20] — Fix update_harvest_with_stock RPC (bug modification poids cueillette)
 
 **Type :** `fix`
