@@ -169,6 +169,39 @@ export default function SemisSlideOver({
     fd.set('processus', processus)
     fd.set('seed_lot_id', selectedSeedLotId)
 
+    // Injecter les valeurs React state pour les champs qui peuvent être
+    // dans des sections fermées (non rendues dans le DOM).
+    // fd.set écrase toute valeur existante du DOM, donc pas de doublon.
+    fd.set('nb_mottes',            nbMottes != null ? String(nbMottes) : '')
+    fd.set('nb_mortes_mottes',     String(nbMortesMottes))
+    fd.set('nb_plants_caissette',  nbPlantsC != null ? String(nbPlantsC) : '')
+    fd.set('nb_mortes_caissette',  String(nbMortesC))
+    fd.set('nb_godets',            nbGodets != null ? String(nbGodets) : '')
+    fd.set('nb_mortes_godet',      String(nbMortesG))
+    fd.set('nb_donnees',           String(nbDonnees))
+    fd.set('nb_plants_obtenus',    nbObtenus != null ? String(nbObtenus) : '')
+
+    // Champs defaultValue (non contrôlés) — préserver les valeurs du seedling
+    // si la section est fermée et l'input absent du DOM
+    if (isEdit && seedling) {
+      if (!fd.get('date_levee') && seedling.date_levee)
+        fd.set('date_levee', seedling.date_levee)
+      if (!fd.get('date_repiquage') && seedling.date_repiquage)
+        fd.set('date_repiquage', seedling.date_repiquage)
+      if (!fd.get('temps_semis_min') && seedling.temps_semis_min != null)
+        fd.set('temps_semis_min', String(seedling.temps_semis_min))
+      if (!fd.get('temps_repiquage_min') && seedling.temps_repiquage_min != null)
+        fd.set('temps_repiquage_min', String(seedling.temps_repiquage_min))
+      if (!fd.get('numero_caisse') && seedling.numero_caisse)
+        fd.set('numero_caisse', seedling.numero_caisse)
+      if (!fd.get('poids_graines_utilise_g') && seedling.poids_graines_utilise_g != null)
+        fd.set('poids_graines_utilise_g', String(seedling.poids_graines_utilise_g))
+      if (!fd.get('commentaire') && seedling.commentaire)
+        fd.set('commentaire', seedling.commentaire)
+      if (!fd.get('nb_caissettes') && seedling.nb_caissettes != null)
+        fd.set('nb_caissettes', String(seedling.nb_caissettes))
+    }
+
     startTransition(async () => {
       const result = await onSubmit(fd)
       if ('error' in result) {

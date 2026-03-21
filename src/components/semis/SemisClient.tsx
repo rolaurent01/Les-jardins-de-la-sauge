@@ -449,12 +449,6 @@ function SeedlingCard({
         )}
       </div>
 
-      {/* Message contextuel */}
-      {s.statut !== 'epuise' && s.statut !== 'en_plantation' && s.nb_plants_obtenus == null && s.date_levee != null && (
-        <div className="mt-2 text-xs px-2 py-1 rounded" style={{ backgroundColor: '#FEF3C7', color: '#92400E' }}>
-          En attente de nb_plants_obtenus
-        </div>
-      )}
 
       {/* Actions */}
       <div className="flex items-center justify-end gap-1 mt-3 pt-2" style={{ borderTop: '1px solid #EDE8E0' }}>
