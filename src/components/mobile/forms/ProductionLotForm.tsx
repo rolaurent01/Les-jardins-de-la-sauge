@@ -10,9 +10,12 @@ import MobileTextarea from '@/components/mobile/fields/MobileTextarea'
 import { useCachedRecipes } from '@/hooks/useCachedData'
 import { mobileProductionLotSchema } from '@/lib/validation/produits'
 import { todayISO } from '@/lib/utils/date'
+import type { ProductionMode } from '@/lib/types'
+import { MODE_LABELS, MODE_DESCRIPTIONS } from '@/components/produits/types'
 
 function initialState() {
   return {
+    mode: 'produit' as ProductionMode,
     recipe_id: '',
     nb_unites: '',
     date_production: todayISO(),
@@ -57,8 +60,9 @@ export default function ProductionLotForm({ orgSlug }: ProductionLotFormProps) {
     setGlobalError(null)
 
     const payload = {
+      mode: form.mode,
       recipe_id: form.recipe_id,
-      nb_unites: form.nb_unites ? parseInt(form.nb_unites, 10) : undefined,
+      nb_unites: form.nb_unites ? parseInt(form.nb_unites, 10) : null,
       date_production: form.date_production,
       temps_min: form.temps_min ? parseInt(form.temps_min, 10) : null,
       commentaire: form.commentaire || null,
@@ -80,10 +84,7 @@ export default function ProductionLotForm({ orgSlug }: ProductionLotFormProps) {
       await addEntry({
         table_cible: 'production_lots',
         farm_id: farmId,
-        payload: {
-          ...(result.data as unknown as Record<string, unknown>),
-          mode: 'produit',
-        },
+        payload: result.data as unknown as Record<string, unknown>,
       })
       setSuccess(true)
     } catch {
@@ -120,6 +121,32 @@ export default function ProductionLotForm({ orgSlug }: ProductionLotFormProps) {
       error={globalError}
       onReset={handleReset}
     >
+      {/* Sélecteur de mode : Produit / Mélange */}
+      <div className="space-y-1.5">
+        <label className="block text-sm font-medium text-gray-700">Mode</label>
+        <div className="grid grid-cols-2 gap-2">
+          {(['produit', 'melange'] as const).map((m) => (
+            <button
+              key={m}
+              type="button"
+              onClick={() => {
+                set('mode', m)
+                if (m === 'melange') set('nb_unites', '')
+              }}
+              className={`rounded-lg border-2 px-3 py-2.5 text-left transition-colors ${
+                form.mode === m
+                  ? 'border-green-600 bg-green-50 text-green-900'
+                  : 'border-gray-200 bg-white text-gray-600'
+              }`}
+            >
+              <span className="block text-sm font-semibold">{MODE_LABELS[m]}</span>
+              <span className="block text-xs leading-tight opacity-70">{MODE_DESCRIPTIONS[m]}</span>
+            </button>
+          ))}
+        </div>
+        {errors.mode && <p className="text-sm text-red-600">{errors.mode}</p>}
+      </div>
+
       <MobileSelect
         label="Recette"
         required
@@ -130,15 +157,17 @@ export default function ProductionLotForm({ orgSlug }: ProductionLotFormProps) {
         error={errors.recipe_id}
       />
 
-      <MobileInput
-        label="Nombre d'unités (sachets/pots)"
-        required
-        type="number"
-        value={form.nb_unites}
-        onChange={(v) => set('nb_unites', v)}
-        placeholder="0"
-        error={errors.nb_unites}
-      />
+      {form.mode === 'produit' && (
+        <MobileInput
+          label="Nombre d'unités (sachets/pots)"
+          required
+          type="number"
+          value={form.nb_unites}
+          onChange={(v) => set('nb_unites', v)}
+          placeholder="0"
+          error={errors.nb_unites}
+        />
+      )}
 
       <MobileInput
         label="Date de production"

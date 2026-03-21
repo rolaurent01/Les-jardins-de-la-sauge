@@ -178,11 +178,20 @@ export const productionLotSchema = z
 // ---- Lot de production mobile (simplifié — pas d'ingrédients) ----
 
 export const mobileProductionLotSchema = z.object({
+  mode: z.enum(['produit', 'melange']),
   recipe_id: z.string().uuid('Recette invalide'),
-  nb_unites: positiveInt,
+  nb_unites: positiveInt.optional().nullable(),
   date_production: dateNotInFuture,
   temps_min: positiveInt.optional().nullable(),
   commentaire: z.string().max(1000).optional().nullable(),
+}).superRefine((data, ctx) => {
+  if (data.mode === 'produit' && (!data.nb_unites || data.nb_unites <= 0)) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      path: ['nb_unites'],
+      message: 'Nombre d\'unités requis en mode produit',
+    })
+  }
 })
 
 // ---- Conditionnement ----

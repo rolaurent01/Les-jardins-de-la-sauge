@@ -2,6 +2,16 @@
 
 ---
 
+## [2026-03-21] — Ajout mode Produit/Mélange sur formulaire mobile production de lot
+
+- **Fichiers modifiés** :
+  - `src/components/mobile/forms/ProductionLotForm.tsx` — ajout sélecteur de mode (Produit/Mélange), champ nb_unités conditionnel (masqué en mode mélange), mode inclus dans le payload
+  - `src/lib/validation/produits.ts` — `mobileProductionLotSchema` : ajout champ `mode`, `nb_unites` optionnel avec validation conditionnelle via `superRefine`
+- **Aucun changement backend** : la server action `createProductionLot` gérait déjà les 2 modes
+- **TypeScript** : compilation OK sans erreur
+
+---
+
 ## [2026-03-21] — Avancement semis sur mobile (offline)
 
 **Type :** `feat`
