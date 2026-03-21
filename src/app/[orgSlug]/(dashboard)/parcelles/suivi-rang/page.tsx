@@ -1,15 +1,16 @@
 import { fetchRowCare } from './actions'
-import { fetchRowsForSelect, fetchVarietiesForSelect } from '@/app/[orgSlug]/(dashboard)/parcelles/shared-actions'
+import { fetchRowsForSelect, fetchVarietiesForSelect, fetchRowPlantings } from '@/app/[orgSlug]/(dashboard)/parcelles/shared-actions'
 import SuiviRangClient from '@/components/parcelles/SuiviRangClient'
 
 export const metadata = { title: 'Suivi de rang — Carnet Culture' }
 
 export default async function SuiviRangPage() {
   try {
-    const [rowCareList, rows, varieties] = await Promise.all([
+    const [rowCareList, rows, varieties, rowPlantings] = await Promise.all([
       fetchRowCare(),
       fetchRowsForSelect(),
       fetchVarietiesForSelect(),
+      fetchRowPlantings(),
     ])
 
     return (
@@ -17,6 +18,7 @@ export default async function SuiviRangPage() {
         initialRowCare={rowCareList}
         rows={rows}
         varieties={varieties}
+        rowPlantings={rowPlantings}
       />
     )
   } catch (err) {

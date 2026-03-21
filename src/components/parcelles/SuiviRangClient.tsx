@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useTransition } from 'react'
 import { useRouter } from 'next/navigation'
-import type { RowCareWithRelations, RowWithParcel, Variety } from '@/lib/types'
+import type { RowCareWithRelations, RowWithParcel, RowPlantingInfo, Variety } from '@/lib/types'
 import { createRowCare, updateRowCare, deleteRowCare } from '@/app/[orgSlug]/(dashboard)/parcelles/suivi-rang/actions'
 import SuiviRangSlideOver from './SuiviRangSlideOver'
 import ExportButton from '@/components/shared/ExportButton'
@@ -45,6 +45,7 @@ type Props = {
   initialRowCare: RowCareWithRelations[]
   rows: RowWithParcel[]
   varieties: Pick<Variety, 'id' | 'nom_vernaculaire'>[]
+  rowPlantings: RowPlantingInfo[]
 }
 
 const SUIVI_RANG_EXPORT_COLUMNS: ExportColumn[] = [
@@ -56,7 +57,7 @@ const SUIVI_RANG_EXPORT_COLUMNS: ExportColumn[] = [
   { key: 'commentaire', label: 'Commentaire' },
 ]
 
-export default function SuiviRangClient({ initialRowCare, rows, varieties }: Props) {
+export default function SuiviRangClient({ initialRowCare, rows, varieties, rowPlantings }: Props) {
   const router = useRouter()
   const [, startTransition] = useTransition()
 
@@ -311,6 +312,7 @@ export default function SuiviRangClient({ initialRowCare, rows, varieties }: Pro
         rowCare={editingCare}
         rows={rows}
         varieties={varieties}
+        rowPlantings={rowPlantings}
         onClose={() => setSlideOverOpen(false)}
         onSubmit={handleSave}
         onSuccess={handleSaveSuccess}

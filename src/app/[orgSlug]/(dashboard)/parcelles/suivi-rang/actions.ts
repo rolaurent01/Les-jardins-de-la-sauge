@@ -38,7 +38,8 @@ export async function createRowCare(formData: FormData): Promise<ActionResult<Ro
 
   const { data, error } = await supabase
     .from('row_care')
-    .insert({ ...parsed.data, farm_id: farmId, created_by: userId })
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    .insert({ ...parsed.data, farm_id: farmId, created_by: userId } as any)
     .select()
     .single()
 
@@ -61,7 +62,8 @@ export async function updateRowCare(
 
   const { data, error } = await supabase
     .from('row_care')
-    .update({ ...parsed.data, updated_by: userId })
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    .update({ ...parsed.data, updated_by: userId } as any)
     .eq('id', id)
     .eq('farm_id', farmId)
     .select()

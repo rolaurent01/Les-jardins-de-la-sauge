@@ -2,7 +2,7 @@
 
 import { createClient } from '@/lib/supabase/server'
 import { getContext } from '@/lib/context'
-import type { RowWithParcel, Variety } from '@/lib/types'
+import type { RowWithParcel, RowPlantingInfo, Variety } from '@/lib/types'
 
 /**
  * Récupère tous les rangs actifs de la ferme courante pour les selects de formulaires.
@@ -39,6 +39,33 @@ export async function fetchRowsForSelect(): Promise<RowWithParcel[]> {
     if (posA !== posB) return posA - posB
 
     return a.numero.localeCompare(b.numero, 'fr', { numeric: true })
+  })
+}
+
+/**
+ * Récupère les plantations actives de la ferme courante.
+ * Retourne pour chaque rang les variétés plantées (pour enrichir les labels et auto-remplir).
+ */
+export async function fetchRowPlantings(): Promise<RowPlantingInfo[]> {
+  const supabase = await createClient()
+  const { farmId } = await getContext()
+
+  const { data, error } = await supabase
+    .from('plantings')
+    .select('row_id, variety_id, varieties(nom_vernaculaire)')
+    .eq('farm_id', farmId)
+    .eq('actif', true)
+    .is('deleted_at', null)
+
+  if (error) throw new Error(`Erreur lors du chargement des plantations : ${error.message}`)
+
+  return (data ?? []).map((p) => {
+    const raw = p as unknown as { row_id: string; variety_id: string; varieties: { nom_vernaculaire: string } | null }
+    return {
+      row_id: raw.row_id,
+      variety_id: raw.variety_id,
+      variety_name: raw.varieties?.nom_vernaculaire ?? '',
+    }
   })
 }
 

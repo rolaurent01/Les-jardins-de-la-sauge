@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useTransition } from 'react'
 import { useRouter } from 'next/navigation'
-import type { UprootingWithRelations, RowWithParcel, Variety } from '@/lib/types'
+import type { UprootingWithRelations, RowWithParcel, RowPlantingInfo, Variety } from '@/lib/types'
 import {
   createUprooting,
   updateUprooting,
@@ -31,6 +31,7 @@ type Props = {
   initialUprootings: UprootingWithRelations[]
   rows: RowWithParcel[]
   varieties: Pick<Variety, 'id' | 'nom_vernaculaire'>[]
+  rowPlantings: RowPlantingInfo[]
 }
 
 const ARRACHAGE_EXPORT_COLUMNS: ExportColumn[] = [
@@ -41,7 +42,7 @@ const ARRACHAGE_EXPORT_COLUMNS: ExportColumn[] = [
   { key: 'commentaire', label: 'Commentaire' },
 ]
 
-export default function ArrachageClient({ initialUprootings, rows, varieties }: Props) {
+export default function ArrachageClient({ initialUprootings, rows, varieties, rowPlantings }: Props) {
   const router = useRouter()
   const [, startTransition] = useTransition()
 
@@ -295,6 +296,7 @@ export default function ArrachageClient({ initialUprootings, rows, varieties }: 
         uprooting={editingUprooting}
         rows={rows}
         varieties={varieties}
+        rowPlantings={rowPlantings}
         onClose={() => setSlideOverOpen(false)}
         onSubmit={handleSave}
         onSuccess={handleSaveSuccess}

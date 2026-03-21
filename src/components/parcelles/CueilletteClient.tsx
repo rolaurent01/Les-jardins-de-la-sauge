@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useTransition } from 'react'
 import { useRouter } from 'next/navigation'
-import type { HarvestWithRelations, RowWithParcel, Variety, PartiePlante } from '@/lib/types'
+import type { HarvestWithRelations, RowWithParcel, RowPlantingInfo, Variety, PartiePlante } from '@/lib/types'
 import { PARTIE_PLANTE_LABELS } from '@/lib/types'
 import { PARTIE_COLORS } from '@/lib/utils/colors'
 import {
@@ -42,6 +42,7 @@ type Props = {
   rows: RowWithParcel[]
   varieties: Pick<Variety, 'id' | 'nom_vernaculaire'>[]
   lieuxSauvages: string[]
+  rowPlantings: RowPlantingInfo[]
 }
 
 const CUEILLETTE_EXPORT_COLUMNS: ExportColumn[] = [
@@ -55,7 +56,7 @@ const CUEILLETTE_EXPORT_COLUMNS: ExportColumn[] = [
   { key: 'commentaire', label: 'Commentaire' },
 ]
 
-export default function CueilletteClient({ initialHarvests, rows, varieties, lieuxSauvages }: Props) {
+export default function CueilletteClient({ initialHarvests, rows, varieties, lieuxSauvages, rowPlantings }: Props) {
   const router = useRouter()
   const [, startTransition] = useTransition()
 
@@ -378,6 +379,7 @@ export default function CueilletteClient({ initialHarvests, rows, varieties, lie
         harvest={editingHarvest}
         rows={rows}
         varieties={varieties}
+        rowPlantings={rowPlantings}
         lieuxSauvages={lieuxSauvages}
         onClose={() => setSlideOverOpen(false)}
         onSubmit={handleSave}

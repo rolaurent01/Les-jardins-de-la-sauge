@@ -16,8 +16,10 @@ export async function resetDatabase(): Promise<void> {
   await offlineDb.sites.clear()
   await offlineDb.parcels.clear()
   await offlineDb.rows.clear()
+  await offlineDb.plantings.clear()
   await offlineDb.recipes.clear()
   await offlineDb.seedLots.clear()
+  await offlineDb.seedlings.clear()
   await offlineDb.externalMaterials.clear()
 }
 

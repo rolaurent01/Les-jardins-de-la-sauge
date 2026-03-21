@@ -2,7 +2,7 @@
 
 import { useMemo } from 'react'
 import MobileSelect, { type OptionGroup } from './MobileSelect'
-import { useCachedRows } from '@/hooks/useCachedData'
+import { useCachedRows, useCachedPlantings } from '@/hooks/useCachedData'
 
 interface MobileRowSelectProps {
   value: string
@@ -12,16 +12,28 @@ interface MobileRowSelectProps {
 
 /**
  * Select de rangs groupé par site / parcelle.
- * Utilise les données du cache IndexedDB (sites, parcelles, rangs).
- * Structure : "Site — Parcelle-Code → Rang N"
+ * Affiche les variétés actives entre parenthèses : "Rang 3 (Lavande vraie)"
+ * Utilise les données du cache IndexedDB (sites, parcelles, rangs, plantings).
  */
 export default function MobileRowSelect({ value, onChange, error }: MobileRowSelectProps) {
   const { rows, parcels, sites, isLoading } = useCachedRows()
+  const { plantings } = useCachedPlantings()
 
   const groupedOptions: OptionGroup[] = useMemo(() => {
     // Index sites et parcelles par id
     const siteMap = new Map(sites.map((s) => [s.id, s]))
     const parcelMap = new Map(parcels.map((p) => [p.id, p]))
+
+    // Index des variétés actives par rang
+    const varietiesByRow = new Map<string, string[]>()
+    for (const p of plantings) {
+      if (!p.actif) continue
+      const names = varietiesByRow.get(p.row_id) ?? []
+      if (!names.includes(p.variety_name)) {
+        names.push(p.variety_name)
+      }
+      varietiesByRow.set(p.row_id, names)
+    }
 
     // Grouper les rangs par parcelle
     const byParcel = new Map<string, typeof rows>()
@@ -48,10 +60,14 @@ export default function MobileRowSelect({ value, onChange, error }: MobileRowSel
 
       groups.push({
         group: groupLabel,
-        options: sorted.map((r) => ({
-          value: r.id,
-          label: `Rang ${r.numero}`,
-        })),
+        options: sorted.map((r) => {
+          const names = varietiesByRow.get(r.id)
+          const suffix = names?.length ? ` (${names.join(', ')})` : ' (vide)'
+          return {
+            value: r.id,
+            label: `Rang ${r.numero}${suffix}`,
+          }
+        }),
       })
     }
 
@@ -59,7 +75,7 @@ export default function MobileRowSelect({ value, onChange, error }: MobileRowSel
     groups.sort((a, b) => a.group.localeCompare(b.group))
 
     return groups
-  }, [rows, parcels, sites])
+  }, [rows, parcels, sites, plantings])
 
   return (
     <MobileSelect

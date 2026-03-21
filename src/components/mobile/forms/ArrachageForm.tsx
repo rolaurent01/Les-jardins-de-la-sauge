@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useCallback } from 'react'
+import { useState, useCallback, useMemo } from 'react'
 import { useMobileSync } from '@/components/mobile/MobileSyncContext'
 import MobileFormLayout from '@/components/mobile/MobileFormLayout'
 import MobileRowSelect from '@/components/mobile/fields/MobileRowSelect'
@@ -8,7 +8,8 @@ import MobileSearchSelect from '@/components/mobile/fields/MobileSearchSelect'
 import MobileInput from '@/components/mobile/fields/MobileInput'
 import MobileTimerInput from '@/components/mobile/fields/MobileTimerInput'
 import MobileTextarea from '@/components/mobile/fields/MobileTextarea'
-import { useCachedVarieties } from '@/hooks/useCachedData'
+import { useCachedPlantings } from '@/hooks/useCachedData'
+import { offlineDb } from '@/lib/offline/db'
 import { uprootingSchema } from '@/lib/validation/parcelles'
 import { todayISO } from '@/lib/utils/date'
 
@@ -29,13 +30,27 @@ interface ArrachageFormProps {
 /** Formulaire mobile — Arrachage (uprootings) */
 export default function ArrachageForm({ orgSlug }: ArrachageFormProps) {
   const { addEntry, farmId } = useMobileSync()
-  const { varieties, isLoading: varietiesLoading } = useCachedVarieties()
+  const { plantings } = useCachedPlantings()
 
   const [form, setForm] = useState(initialState)
   const [errors, setErrors] = useState<Record<string, string>>({})
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [success, setSuccess] = useState(false)
   const [globalError, setGlobalError] = useState<string | null>(null)
+
+  // Index des varietes actives par rang
+  const varietiesByRow = useMemo(() => {
+    const map = new Map<string, { id: string; name: string }[]>()
+    for (const p of plantings) {
+      if (!p.actif) continue
+      const list = map.get(p.row_id) ?? []
+      if (!list.some(v => v.id === p.variety_id)) {
+        list.push({ id: p.variety_id, name: p.variety_name })
+      }
+      map.set(p.row_id, list)
+    }
+    return map
+  }, [plantings])
 
   const set = useCallback(
     <K extends keyof ReturnType<typeof initialState>>(key: K, value: ReturnType<typeof initialState>[K]) => {
@@ -49,6 +64,31 @@ export default function ArrachageForm({ orgSlug }: ArrachageFormProps) {
     },
     [],
   )
+
+  // Quand le rang change, auto-remplir la variete
+  const handleRowChange = useCallback((rowId: string) => {
+    set('row_id', rowId)
+    const rowVars = varietiesByRow.get(rowId) ?? []
+    if (rowVars.length === 1) {
+      set('variety_id', rowVars[0].id)
+    } else {
+      set('variety_id', '')
+    }
+  }, [set, varietiesByRow])
+
+  // Varietes du rang selectionne
+  const rowVars = form.row_id ? (varietiesByRow.get(form.row_id) ?? []) : []
+  const hasRowVarieties = rowVars.length > 0
+  const autoVariety = rowVars.length === 1 ? rowVars[0] : null
+  const hasNoVarieties = form.row_id && rowVars.length === 0
+
+  // Options filtrées par rang
+  const varietyOptions = useMemo(() => {
+    if (hasRowVarieties) {
+      return rowVars.map(v => ({ value: v.id, label: v.name }))
+    }
+    return []
+  }, [hasRowVarieties, rowVars])
 
   const handleSubmit = async () => {
     setGlobalError(null)
@@ -79,6 +119,17 @@ export default function ArrachageForm({ orgSlug }: ArrachageFormProps) {
         farm_id: farmId,
         payload: result.data as unknown as Record<string, unknown>,
       })
+
+      // Marquer le(s) planting(s) comme inactifs dans le cache local
+      if (form.row_id) {
+        const targetPlantings = plantings.filter(p =>
+          p.row_id === form.row_id && p.actif && (!form.variety_id || p.variety_id === form.variety_id)
+        )
+        for (const p of targetPlantings) {
+          await offlineDb.plantings.update(p.id, { actif: false })
+        }
+      }
+
       setSuccess(true)
     } catch {
       setGlobalError('Erreur lors de l\'enregistrement')
@@ -96,12 +147,6 @@ export default function ArrachageForm({ orgSlug }: ArrachageFormProps) {
 
   const backHref = `/${orgSlug}/m/saisie/parcelle`
 
-  const varietyOptions = varieties.map((v) => ({
-    value: v.id,
-    label: v.nom_vernaculaire,
-    sublabel: v.nom_latin ?? undefined,
-  }))
-
   return (
     <MobileFormLayout
       title="Arrachage"
@@ -114,19 +159,50 @@ export default function ArrachageForm({ orgSlug }: ArrachageFormProps) {
     >
       <MobileRowSelect
         value={form.row_id}
-        onChange={(v) => set('row_id', v)}
+        onChange={handleRowChange}
         error={errors.row_id}
       />
 
-      <MobileSearchSelect
-        label="Variété"
-        value={form.variety_id}
-        onChange={(v) => set('variety_id', v)}
-        options={varietyOptions}
-        placeholder={varietiesLoading ? 'Chargement…' : '(optionnel — tout le rang si vide)'}
-        searchPlaceholder="Rechercher une variété..."
-        error={errors.variety_id}
-      />
+      {/* Rang vide */}
+      {hasNoVarieties && (
+        <div
+          className="rounded-xl px-3 py-2.5 text-xs"
+          style={{ backgroundColor: '#FEF3C7', border: '1px solid #F59E0B44', color: '#92400E' }}
+        >
+          Aucune variété active sur ce rang — rien à arracher.
+        </div>
+      )}
+
+      {/* 1 variete : lecture seule */}
+      {autoVariety && (
+        <div>
+          <label className="block text-sm font-medium mb-1" style={{ color: '#2C3E2D' }}>
+            Variété
+          </label>
+          <div
+            className="rounded-xl px-3 py-2.5 text-sm"
+            style={{ backgroundColor: '#F5F2ED', border: '1px solid #E8E3DB', color: '#2C3E2D' }}
+          >
+            {autoVariety.name}
+          </div>
+          <p className="text-xs mt-1" style={{ color: '#9CA89D' }}>
+            Seule variété active sur ce rang
+          </p>
+        </div>
+      )}
+
+      {/* Plusieurs varietes : select filtre */}
+      {rowVars.length > 1 && (
+        <MobileSearchSelect
+          label="Variété"
+          value={form.variety_id}
+          onChange={(v) => set('variety_id', v)}
+          options={varietyOptions}
+          placeholder="(optionnel — tout le rang si vide)"
+          searchPlaceholder="Rechercher une variété..."
+          error={errors.variety_id}
+        />
+      )}
 
       <MobileInput
         label="Date"

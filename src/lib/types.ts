@@ -108,6 +108,13 @@ export type RowWithParcel = Row & {
     | null
 }
 
+/** Variétés actives plantées par rang — pour enrichir les sélecteurs */
+export type RowPlantingInfo = {
+  row_id: string
+  variety_id: string
+  variety_name: string
+}
+
 // ---- Matières premières externes ----
 
 /** Matière première non-plante (sel, sucre, huile essentielle achetée…) */
@@ -326,7 +333,7 @@ export type RowCare = {
   farm_id: string
   uuid_client: string | null
   row_id: string | null
-  variety_id: string
+  variety_id: string | null
   date: string
   type_soin: TypeSoin | null
   temps_min: number | null

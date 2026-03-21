@@ -148,7 +148,7 @@ export type MobilePlantingFormData = z.infer<typeof mobilePlantingSchema>
 
 export const rowCareSchema = z.object({
   row_id: z.string().uuid('Rang invalide'),
-  variety_id: z.string().uuid('Variété invalide'),
+  variety_id: z.string().uuid('Variété invalide').nullable().optional(),
   date: dateNotInFuture,
   type_soin: z.enum(['desherbage', 'paillage', 'arrosage', 'autre']),
   temps_min: positiveInt.optional().nullable(),

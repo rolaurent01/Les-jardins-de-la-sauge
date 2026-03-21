@@ -1,18 +1,19 @@
 'use client'
 
-import { useState, useTransition, useEffect, useRef } from 'react'
+import { useState, useTransition, useEffect, useRef, useMemo, forwardRef } from 'react'
 import { Field } from '@/components/ui/Field'
-import type { HarvestWithRelations, RowWithParcel, Variety, PartiePlante, ActionResult } from '@/lib/types'
+import type { HarvestWithRelations, RowWithParcel, RowPlantingInfo, Variety, PartiePlante, ActionResult } from '@/lib/types'
 import { PARTIES_PLANTE, PARTIE_PLANTE_LABELS } from '@/lib/types'
-import { useRowVarieties } from '@/hooks/useRowVarieties'
 import { useVarietyParts } from '@/hooks/useVarietyParts'
 import { groupRowsByParcel } from '@/lib/utils/parcels'
+import { inputStyle, focusStyle, blurStyle } from '@/lib/ui/form-styles'
 
 type Props = {
   open: boolean
   harvest: HarvestWithRelations | null
   rows: RowWithParcel[]
   varieties: Pick<Variety, 'id' | 'nom_vernaculaire'>[]
+  rowPlantings: RowPlantingInfo[]
   lieuxSauvages: string[]
   onClose: () => void
   onSubmit: (fd: FormData) => Promise<ActionResult>
@@ -24,6 +25,7 @@ export default function CueilletteSlideOver({
   harvest,
   rows,
   varieties: catalogVarieties,
+  rowPlantings,
   lieuxSauvages,
   onClose,
   onSubmit,
@@ -43,17 +45,47 @@ export default function CueilletteSlideOver({
   const [selectedVarietyId, setSelectedVarietyId] = useState(harvest?.variety_id ?? '')
   const [selectedPartie, setSelectedPartie] = useState<string>(harvest?.partie_plante ?? '')
 
-  // ---- Hook logique adaptative variete (mode parcelle uniquement) ----
-  const { varieties: rowVarieties, loading: loadingVarieties, autoVariety } = useRowVarieties(
-    typeCueillette === 'parcelle' && selectedRowId ? selectedRowId : null,
-  )
+  // ---- Index des varietes actives par rang ----
+  const varietiesByRow = useMemo(() => {
+    const map = new Map<string, { id: string; nom_vernaculaire: string }[]>()
+    for (const p of rowPlantings) {
+      const list = map.get(p.row_id) ?? []
+      if (!list.some(v => v.id === p.variety_id)) {
+        list.push({ id: p.variety_id, nom_vernaculaire: p.variety_name })
+      }
+      map.set(p.row_id, list)
+    }
+    return map
+  }, [rowPlantings])
+
+  // ---- Label enrichi pour les options de rang ----
+  const rowLabelMap = useMemo(() => {
+    const map = new Map<string, string>()
+    for (const row of rows) {
+      const varieties = varietiesByRow.get(row.id)
+      const suffix = varieties?.length
+        ? ` (${varieties.map(v => v.nom_vernaculaire).join(', ')})`
+        : ' (vide)'
+      map.set(row.id, `Rang ${row.numero}${suffix}`)
+    }
+    return map
+  }, [rows, varietiesByRow])
+
+  // ---- Varietes du rang selectionne (mode parcelle) ----
+  const rowVarieties = typeCueillette === 'parcelle' && selectedRowId
+    ? (varietiesByRow.get(selectedRowId) ?? [])
+    : []
+  const hasRowVarieties = rowVarieties.length > 0
+  const hasMultipleVarieties = rowVarieties.length > 1
+  const hasNoVarieties = typeCueillette === 'parcelle' && selectedRowId && rowVarieties.length === 0
+  const autoVariety = rowVarieties.length === 1 ? rowVarieties[0] : null
 
   // ---- Hook logique adaptative partie_plante ----
   const { parts, loading: loadingParts, autoPart } = useVarietyParts(
     selectedVarietyId || null,
   )
 
-  // Auto-remplissage variete quand le hook retourne 1 seule variete
+  // Auto-remplissage variete quand 1 seule variete active sur le rang
   const prevAutoVarietyRef = useRef<string | null>(null)
   useEffect(() => {
     if (autoVariety && autoVariety.id !== prevAutoVarietyRef.current) {
@@ -100,9 +132,8 @@ export default function CueilletteSlideOver({
   }, [open, isPending, onClose])
 
   function handleTypeChange(type: 'parcelle' | 'sauvage') {
-    if (isEdit) return // Type non modifiable en edition
+    if (isEdit) return
     setTypeCueillette(type)
-    // Reset les champs dependant du type
     setSelectedRowId('')
     setSelectedVarietyId('')
     setSelectedPartie('')
@@ -152,10 +183,7 @@ export default function CueilletteSlideOver({
 
   const rowGroups = groupRowsByParcel(rows)
 
-  // Source du select variete en mode parcelle
-  const hasRowVarieties = typeCueillette === 'parcelle' && rowVarieties.length > 0
-  const hasMultipleVarieties = typeCueillette === 'parcelle' && rowVarieties.length > 1
-  const hasNoVarieties = typeCueillette === 'parcelle' && !loadingVarieties && selectedRowId && rowVarieties.length === 0
+  // Source du select variete
   const varietyOptions = hasRowVarieties ? rowVarieties : catalogVarieties
 
   // Source du select partie_plante
@@ -223,14 +251,14 @@ export default function CueilletteSlideOver({
                   onClick={() => handleTypeChange('parcelle')}
                   disabled={isPending || isEdit}
                 >
-                  🌿 Parcelle
+                  Parcelle
                 </ToggleBtn>
                 <ToggleBtn
                   active={typeCueillette === 'sauvage'}
                   onClick={() => handleTypeChange('sauvage')}
                   disabled={isPending || isEdit}
                 >
-                  🌾 Sauvage
+                  Sauvage
                 </ToggleBtn>
               </div>
               {isEdit && (
@@ -243,7 +271,7 @@ export default function CueilletteSlideOver({
             {/* ---- Champs conditionnels : Parcelle ---- */}
             {typeCueillette === 'parcelle' && (
               <>
-                {/* Rang */}
+                {/* Rang — labels enrichis avec varietes */}
                 <Field label="Rang" required>
                   <select
                     name="row_id"
@@ -260,20 +288,13 @@ export default function CueilletteSlideOver({
                       <optgroup key={groupKey} label={group.label}>
                         {group.rows.map(row => (
                           <option key={row.id} value={row.id}>
-                            Rang {row.numero}
+                            {rowLabelMap.get(row.id) ?? `Rang ${row.numero}`}
                           </option>
                         ))}
                       </optgroup>
                     ))}
                   </select>
                 </Field>
-
-                {/* Indicateur chargement varietes */}
-                {loadingVarieties && selectedRowId && (
-                  <div className="text-xs" style={{ color: '#9CA89D' }}>
-                    Chargement des varietes du rang…
-                  </div>
-                )}
 
                 {/* Avertissement : aucune variete active */}
                 {hasNoVarieties && (
@@ -314,31 +335,40 @@ export default function CueilletteSlideOver({
               </Field>
             )}
 
-            {/* Variete */}
-            <Field label="Variete" required>
-              <select
-                name="variety_id"
-                required
-                value={selectedVarietyId}
-                onChange={e => handleVarietyChange(e.target.value)}
-                disabled={isPending || loadingVarieties}
-                style={inputStyle}
-                onFocus={focusStyle}
-                onBlur={blurStyle}
-              >
-                <option value="">— Selectionner une variete</option>
-                {varietyOptions.map(v => (
-                  <option key={v.id} value={v.id}>
-                    {v.nom_vernaculaire}
-                  </option>
-                ))}
-              </select>
-              {autoVariety && selectedVarietyId === autoVariety.id && (
+            {/* Variete — mode parcelle : auto-remplie ou filtree / mode sauvage : catalogue complet */}
+            {typeCueillette === 'parcelle' && selectedRowId && hasRowVarieties && autoVariety ? (
+              <Field label="Variete">
+                <div
+                  className="px-3 py-2.5 rounded-lg text-sm"
+                  style={{ backgroundColor: '#F5F2ED', color: '#2C3E2D', border: '1px solid #D8E0D9' }}
+                >
+                  {autoVariety.nom_vernaculaire}
+                </div>
                 <p className="text-xs mt-1" style={{ color: '#6B7B6C' }}>
-                  Variete auto-selectionnee (seule variete active sur ce rang)
+                  Seule variete active sur ce rang
                 </p>
-              )}
-            </Field>
+              </Field>
+            ) : (
+              <Field label="Variete" required>
+                <select
+                  name="variety_id"
+                  required
+                  value={selectedVarietyId}
+                  onChange={e => handleVarietyChange(e.target.value)}
+                  disabled={isPending}
+                  style={inputStyle}
+                  onFocus={focusStyle}
+                  onBlur={blurStyle}
+                >
+                  <option value="">— Selectionner une variete</option>
+                  {(typeCueillette === 'sauvage' || hasNoVarieties ? catalogVarieties : varietyOptions).map(v => (
+                    <option key={v.id} value={v.id}>
+                      {v.nom_vernaculaire}
+                    </option>
+                  ))}
+                </select>
+              </Field>
+            )}
 
             {/* Partie plante */}
             <Field label="Partie de plante" required>
@@ -488,9 +518,6 @@ export default function CueilletteSlideOver({
 
 
 /** Bouton toggle pour le choix de type de cueillette */
-import { forwardRef } from 'react'
-import { inputStyle, focusStyle, blurStyle } from '@/lib/ui/form-styles'
-
 const ToggleBtn = forwardRef<
   HTMLButtonElement,
   {
@@ -526,7 +553,7 @@ function WarningBanner({ children }: { children: React.ReactNode }) {
       className="text-xs px-3 py-2 rounded-lg"
       style={{ backgroundColor: '#FEF3C7', color: '#92400E', border: '1px solid #F59E0B44' }}
     >
-      ⚠️ {children}
+      {children}
     </div>
   )
 }

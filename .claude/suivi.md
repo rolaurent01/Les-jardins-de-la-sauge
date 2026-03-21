@@ -2,6 +2,60 @@
 
 ---
 
+## [2026-03-21] — Auto-remplissage variété depuis les plantings du rang
+
+**Type :** `feat`
+**Objectif :** Quand l'utilisateur sélectionne un rang, récupérer automatiquement les variétés plantées et pré-remplir le champ variété.
+
+**Fichiers créés :**
+- `supabase/migrations/033_row_care_variety_nullable.sql` — `variety_id` nullable sur `row_care`
+
+**Fichiers modifiés :**
+- **DB/Types/Validation :**
+  - `src/lib/types.ts` — `RowCare.variety_id` → `string | null` + nouveau type `RowPlantingInfo`
+  - `src/lib/validation/parcelles.ts` — `rowCareSchema.variety_id` nullable/optionnel
+  - `src/lib/utils/parcelles-parsers.ts` — parser `variety_id` → null si vide
+  - `src/app/[orgSlug]/(dashboard)/parcelles/suivi-rang/actions.ts` — cast pour insert/update nullable
+
+- **Cache offline (IndexedDB) :**
+  - `src/lib/offline/db.ts` — nouvelle interface `CachedPlanting` + table Dexie v3
+  - `src/app/api/offline/reference-data/route.ts` — `loadPlantings()` + réponse enrichie
+  - `src/lib/offline/cache-loader.ts` — load/clear des plantings
+  - `src/hooks/useCachedData.ts` — `useCachedPlantings()` hook
+
+- **Sélecteur de rang enrichi :**
+  - `src/components/mobile/fields/MobileRowSelect.tsx` — labels `Rang 3 (Lavande vraie)` / `(vide)`
+  - `src/app/[orgSlug]/(dashboard)/parcelles/shared-actions.ts` — `fetchRowPlantings()`
+
+- **Desktop (pages + clients + slide-overs) :**
+  - `src/app/[orgSlug]/(dashboard)/parcelles/suivi-rang/page.tsx`
+  - `src/app/[orgSlug]/(dashboard)/parcelles/cueillette/page.tsx`
+  - `src/app/[orgSlug]/(dashboard)/parcelles/arrachage/page.tsx`
+  - `src/components/parcelles/SuiviRangClient.tsx`
+  - `src/components/parcelles/CueilletteClient.tsx`
+  - `src/components/parcelles/ArrachageClient.tsx`
+  - `src/components/parcelles/SuiviRangSlideOver.tsx` — remplace `useRowVarieties` par `rowPlantings` props
+  - `src/components/parcelles/CueilletteSlideOver.tsx` — idem
+  - `src/components/parcelles/ArrachageSlideOver.tsx` — idem
+
+- **Mobile (formulaires) :**
+  - `src/components/mobile/forms/SuiviRangForm.tsx` — auto-remplissage variété depuis `CachedPlanting`
+  - `src/components/mobile/forms/CueilletteForm.tsx` — idem
+  - `src/components/mobile/forms/ArrachageForm.tsx` — idem
+
+- **Cache local après saisie offline :**
+  - `src/components/mobile/forms/PlantationForm.tsx` — insert `CachedPlanting` local après `addEntry`
+  - `src/components/mobile/forms/ArrachageForm.tsx` — marque `CachedPlanting.actif = false` après `addEntry`
+
+**Logique variété :**
+- 1 variété active → auto-remplie, champ en lecture seule
+- Plusieurs variétés → sélecteur filtré sur les variétés du rang
+- Aucune variété (rang vide) → champ masqué, `variety_id = null` (suivi de rang) ou catalogue complet (cueillette)
+
+**Build :** OK
+
+---
+
 ## [2026-03-21] — Ajout mode Produit/Mélange sur formulaire mobile production de lot
 
 - **Fichiers modifiés** :

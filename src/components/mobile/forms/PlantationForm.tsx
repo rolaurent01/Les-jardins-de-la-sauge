@@ -11,6 +11,8 @@ import MobileTimerInput from '@/components/mobile/fields/MobileTimerInput'
 import MobileTextarea from '@/components/mobile/fields/MobileTextarea'
 import MobileCheckbox from '@/components/mobile/fields/MobileCheckbox'
 import { useCachedVarieties, useCachedSeedlings, useCachedSeedLots } from '@/hooks/useCachedData'
+import { offlineDb } from '@/lib/offline/db'
+import { generateUUID } from '@/lib/utils/uuid'
 import { mobilePlantingSchema } from '@/lib/validation/parcelles'
 import { todayISO } from '@/lib/utils/date'
 
@@ -125,6 +127,19 @@ export default function PlantationForm({ orgSlug }: PlantationFormProps) {
         farm_id: farmId,
         payload: result.data as unknown as Record<string, unknown>,
       })
+
+      // Mettre a jour le cache local des plantings pour que les selecteurs de rang se mettent a jour
+      const variety = varieties.find(v => v.id === form.variety_id)
+      if (variety && form.row_id) {
+        await offlineDb.plantings.add({
+          id: generateUUID(),
+          row_id: form.row_id,
+          variety_id: form.variety_id,
+          variety_name: variety.nom_vernaculaire,
+          actif: true,
+        })
+      }
+
       setSuccess(true)
     } catch {
       setGlobalError('Erreur lors de l\'enregistrement')

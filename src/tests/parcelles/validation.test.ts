@@ -233,6 +233,27 @@ describe('rowCareSchema', () => {
       const result = rowCareSchema.safeParse({ ...BASE, temps_min: 45 })
       expect(result.success).toBe(true)
     })
+
+    it('devrait accepter variety_id = null (rang sans plantation)', () => {
+      const result = rowCareSchema.safeParse({ ...BASE, variety_id: null })
+      expect(result.success).toBe(true)
+      if (result.success) expect(result.data.variety_id).toBeNull()
+    })
+
+    it('devrait accepter variety_id = undefined (champ absent)', () => {
+      const { variety_id: _, ...rest } = BASE
+      const result = rowCareSchema.safeParse(rest)
+      expect(result.success).toBe(true)
+    })
+
+    it('devrait accepter sans variety_id du tout', () => {
+      const result = rowCareSchema.safeParse({
+        row_id: ROW_UUID,
+        date: YESTERDAY,
+        type_soin: 'desherbage',
+      })
+      expect(result.success).toBe(true)
+    })
   })
 
   describe('cas invalides', () => {

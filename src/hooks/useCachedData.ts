@@ -7,6 +7,7 @@ import {
   type CachedSite,
   type CachedParcel,
   type CachedRow,
+  type CachedPlanting,
   type CachedRecipe,
   type CachedSeedLot,
   type CachedSeedling,
@@ -44,6 +45,15 @@ export function useCachedRows() {
     parcels: (parcels ?? []) as CachedParcel[],
     sites: (sites ?? []) as CachedSite[],
     isLoading: rows === undefined || parcels === undefined || sites === undefined,
+  }
+}
+
+/** Cache des plantations actives — pour enrichir les sélecteurs de rang */
+export function useCachedPlantings() {
+  const plantings = useLiveQuery(() => offlineDb.plantings.toArray())
+  return {
+    plantings: (plantings ?? []) as CachedPlanting[],
+    isLoading: plantings === undefined,
   }
 }
 

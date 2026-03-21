@@ -1,15 +1,16 @@
 import { fetchUprootings } from './actions'
-import { fetchRowsForSelect, fetchVarietiesForSelect } from '@/app/[orgSlug]/(dashboard)/parcelles/shared-actions'
+import { fetchRowsForSelect, fetchVarietiesForSelect, fetchRowPlantings } from '@/app/[orgSlug]/(dashboard)/parcelles/shared-actions'
 import ArrachageClient from '@/components/parcelles/ArrachageClient'
 
 export const metadata = { title: 'Arrachage — Carnet Culture' }
 
 export default async function ArrachagePage() {
   try {
-    const [uprootings, rows, varieties] = await Promise.all([
+    const [uprootings, rows, varieties, rowPlantings] = await Promise.all([
       fetchUprootings(),
       fetchRowsForSelect(),
       fetchVarietiesForSelect(),
+      fetchRowPlantings(),
     ])
 
     return (
@@ -17,6 +18,7 @@ export default async function ArrachagePage() {
         initialUprootings={uprootings}
         rows={rows}
         varieties={varieties}
+        rowPlantings={rowPlantings}
       />
     )
   } catch (err) {

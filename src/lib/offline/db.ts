@@ -75,6 +75,15 @@ export interface CachedExternalMaterial {
   unite: string
 }
 
+/** Cache plantations actives pour enrichir les sélecteurs de rang */
+export interface CachedPlanting {
+  id: string
+  row_id: string
+  variety_id: string
+  variety_name: string
+  actif: boolean
+}
+
 /** Cache semis enrichis pour le sélecteur plantation mobile */
 export interface CachedSeedling {
   id: string
@@ -111,6 +120,7 @@ export interface ReferenceDataResponse {
   sites: CachedSite[]
   parcels: CachedParcel[]
   rows: CachedRow[]
+  plantings: CachedPlanting[]
   recipes: CachedRecipe[]
   seedLots: CachedSeedLot[]
   seedlings: CachedSeedling[]
@@ -126,6 +136,7 @@ class OfflineDatabase extends Dexie {
   sites!: Table<CachedSite>
   parcels!: Table<CachedParcel>
   rows!: Table<CachedRow>
+  plantings!: Table<CachedPlanting>
   recipes!: Table<CachedRecipe>
   seedLots!: Table<CachedSeedLot>
   seedlings!: Table<CachedSeedling>
@@ -151,6 +162,19 @@ class OfflineDatabase extends Dexie {
       sites: 'id',
       parcels: 'id, site_id',
       rows: 'id, parcel_id',
+      recipes: 'id',
+      seedLots: 'id, variety_id',
+      seedlings: 'id, variety_id, statut',
+      externalMaterials: 'id',
+      syncQueue: '++id, uuid_client, status, farm_id, created_at',
+    })
+    this.version(3).stores({
+      context: 'key',
+      varieties: 'id, nom_vernaculaire',
+      sites: 'id',
+      parcels: 'id, site_id',
+      rows: 'id, parcel_id',
+      plantings: 'id, row_id, variety_id',
       recipes: 'id',
       seedLots: 'id, variety_id',
       seedlings: 'id, variety_id, statut',

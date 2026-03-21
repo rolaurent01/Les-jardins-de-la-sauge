@@ -113,7 +113,7 @@ export function parseRowCareForm(
 ): { data: ReturnType<typeof rowCareSchema.parse> } | { error: string } {
   const raw = {
     row_id:      (formData.get('row_id') as string) || '',
-    variety_id:  (formData.get('variety_id') as string) || '',
+    variety_id:  (formData.get('variety_id') as string)?.trim() || null,
     date:        (formData.get('date') as string) || '',
     type_soin:   (formData.get('type_soin') as string) || '',
     temps_min:   parseOptionalInt(formData, 'temps_min'),

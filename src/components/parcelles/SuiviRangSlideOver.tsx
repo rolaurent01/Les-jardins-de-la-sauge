@@ -1,9 +1,8 @@
 'use client'
 
-import { useState, useTransition, useEffect, useRef } from 'react'
+import { useState, useTransition, useEffect, useRef, useMemo } from 'react'
 import { Field } from '@/components/ui/Field'
-import type { RowCareWithRelations, RowWithParcel, Variety, ActionResult } from '@/lib/types'
-import { useRowVarieties } from '@/hooks/useRowVarieties'
+import type { RowCareWithRelations, RowWithParcel, RowPlantingInfo, Variety, ActionResult } from '@/lib/types'
 import { groupRowsByParcel } from '@/lib/utils/parcels'
 import { inputStyle, focusStyle, blurStyle } from '@/lib/ui/form-styles'
 
@@ -12,6 +11,7 @@ type Props = {
   rowCare: RowCareWithRelations | null
   rows: RowWithParcel[]
   varieties: Pick<Variety, 'id' | 'nom_vernaculaire'>[]
+  rowPlantings: RowPlantingInfo[]
   onClose: () => void
   onSubmit: (fd: FormData) => Promise<ActionResult>
   onSuccess: () => void
@@ -29,6 +29,7 @@ export default function SuiviRangSlideOver({
   rowCare,
   rows,
   varieties: catalogVarieties,
+  rowPlantings,
   onClose,
   onSubmit,
   onSuccess,
@@ -43,12 +44,40 @@ export default function SuiviRangSlideOver({
   const [selectedRowId, setSelectedRowId] = useState(rowCare?.row_id ?? '')
   const [selectedVarietyId, setSelectedVarietyId] = useState(rowCare?.variety_id ?? '')
 
-  // ---- Hook logique adaptative variete ----
-  const { varieties: rowVarieties, loading: loadingVarieties, autoVariety } = useRowVarieties(
-    selectedRowId || null,
-  )
+  // ---- Index des varietes actives par rang ----
+  const varietiesByRow = useMemo(() => {
+    const map = new Map<string, { id: string; nom_vernaculaire: string }[]>()
+    for (const p of rowPlantings) {
+      const list = map.get(p.row_id) ?? []
+      if (!list.some(v => v.id === p.variety_id)) {
+        list.push({ id: p.variety_id, nom_vernaculaire: p.variety_name })
+      }
+      map.set(p.row_id, list)
+    }
+    return map
+  }, [rowPlantings])
 
-  // Auto-remplissage variete quand le hook retourne 1 seule variete
+  // ---- Label enrichi pour les options de rang ----
+  const rowLabel = useMemo(() => {
+    const map = new Map<string, string>()
+    for (const row of rows) {
+      const varieties = varietiesByRow.get(row.id)
+      const suffix = varieties?.length
+        ? ` (${varieties.map(v => v.nom_vernaculaire).join(', ')})`
+        : ' (vide)'
+      map.set(row.id, `Rang ${row.numero}${suffix}`)
+    }
+    return map
+  }, [rows, varietiesByRow])
+
+  // ---- Varietes du rang selectionne ----
+  const rowVarieties = selectedRowId ? (varietiesByRow.get(selectedRowId) ?? []) : []
+  const hasRowVarieties = rowVarieties.length > 0
+  const hasMultipleVarieties = rowVarieties.length > 1
+  const hasNoVarieties = selectedRowId && rowVarieties.length === 0
+  const autoVariety = rowVarieties.length === 1 ? rowVarieties[0] : null
+
+  // Auto-remplissage variete quand 1 seule variete active sur le rang
   const prevAutoRef = useRef<string | null>(null)
   useEffect(() => {
     if (autoVariety && autoVariety.id !== prevAutoRef.current) {
@@ -94,7 +123,7 @@ export default function SuiviRangSlideOver({
 
     const fd = new FormData(e.currentTarget)
     fd.set('row_id', selectedRowId)
-    fd.set('variety_id', selectedVarietyId)
+    fd.set('variety_id', selectedVarietyId || '')
 
     startTransition(async () => {
       const result = await onSubmit(fd)
@@ -108,10 +137,7 @@ export default function SuiviRangSlideOver({
 
   const rowGroups = groupRowsByParcel(rows)
 
-  // Determiner la source du select variete
-  const hasRowVarieties = rowVarieties.length > 0
-  const hasMultipleVarieties = rowVarieties.length > 1
-  const hasNoVarieties = !loadingVarieties && selectedRowId && rowVarieties.length === 0
+  // Source du select variete
   const varietyOptions = hasRowVarieties ? rowVarieties : catalogVarieties
 
   return (
@@ -167,7 +193,7 @@ export default function SuiviRangSlideOver({
         <form onSubmit={handleSubmit} className="flex-1 overflow-y-auto flex flex-col">
           <div className="px-6 py-5 space-y-5 flex-1">
 
-            {/* Rang */}
+            {/* Rang — labels enrichis avec varietes */}
             <Field label="Rang" required>
               <select
                 ref={firstFieldRef}
@@ -185,7 +211,7 @@ export default function SuiviRangSlideOver({
                   <optgroup key={groupKey} label={group.label}>
                     {group.rows.map(row => (
                       <option key={row.id} value={row.id}>
-                        Rang {row.numero}
+                        {rowLabel.get(row.id) ?? `Rang ${row.numero}`}
                       </option>
                     ))}
                   </optgroup>
@@ -193,52 +219,78 @@ export default function SuiviRangSlideOver({
               </select>
             </Field>
 
-            {/* Indicateur de chargement des varietes */}
-            {loadingVarieties && selectedRowId && (
-              <div className="text-xs" style={{ color: '#9CA89D' }}>
-                Chargement des varietes du rang…
-              </div>
-            )}
-
-            {/* Avertissement : aucune variete active */}
+            {/* Rang vide : pas de champ variete */}
             {hasNoVarieties && (
-              <WarningBanner>
-                Aucune variete active sur ce rang. Le catalogue complet est propose.
-              </WarningBanner>
+              <div className="text-xs px-3 py-2 rounded-lg" style={{ backgroundColor: '#F5F2ED', color: '#6B7B6C' }}>
+                Aucune variete active sur ce rang — le soin sera enregistre sans variete.
+              </div>
             )}
 
             {/* Bandeau multi-varietes */}
             {hasMultipleVarieties && (
               <WarningBanner>
-                Ce rang a {rowVarieties.length} varietes actives. Selectionnez celle concernee. Vous pouvez ajouter une entree pour chaque variete.
+                Ce rang a {rowVarieties.length} varietes actives. Selectionnez celle concernee.
               </WarningBanner>
             )}
 
-            {/* Variete */}
-            <Field label="Variete" required>
-              <select
-                name="variety_id"
-                required
-                value={selectedVarietyId}
-                onChange={e => setSelectedVarietyId(e.target.value)}
-                disabled={isPending || loadingVarieties}
-                style={inputStyle}
-                onFocus={focusStyle}
-                onBlur={blurStyle}
-              >
-                <option value="">— Selectionner une variete</option>
-                {varietyOptions.map(v => (
-                  <option key={v.id} value={v.id}>
-                    {v.nom_vernaculaire}
-                  </option>
-                ))}
-              </select>
-              {autoVariety && selectedVarietyId === autoVariety.id && (
-                <p className="text-xs mt-1" style={{ color: '#6B7B6C' }}>
-                  Variete auto-selectionnee (seule variete active sur ce rang)
-                </p>
-              )}
-            </Field>
+            {/* Variete — masquee si rang vide, lecture seule si 1 seule variete */}
+            {selectedRowId && hasRowVarieties && (
+              autoVariety ? (
+                <Field label="Variete">
+                  <div
+                    className="px-3 py-2.5 rounded-lg text-sm"
+                    style={{ backgroundColor: '#F5F2ED', color: '#2C3E2D', border: '1px solid #D8E0D9' }}
+                  >
+                    {autoVariety.nom_vernaculaire}
+                  </div>
+                  <p className="text-xs mt-1" style={{ color: '#6B7B6C' }}>
+                    Seule variete active sur ce rang
+                  </p>
+                </Field>
+              ) : (
+                <Field label="Variete" required>
+                  <select
+                    name="variety_id"
+                    required
+                    value={selectedVarietyId}
+                    onChange={e => setSelectedVarietyId(e.target.value)}
+                    disabled={isPending}
+                    style={inputStyle}
+                    onFocus={focusStyle}
+                    onBlur={blurStyle}
+                  >
+                    <option value="">— Selectionner une variete</option>
+                    {varietyOptions.map(v => (
+                      <option key={v.id} value={v.id}>
+                        {v.nom_vernaculaire}
+                      </option>
+                    ))}
+                  </select>
+                </Field>
+              )
+            )}
+
+            {/* Fallback en mode edition : si pas de rang selectionne, montrer le catalogue */}
+            {!selectedRowId && (
+              <Field label="Variete">
+                <select
+                  name="variety_id"
+                  value={selectedVarietyId}
+                  onChange={e => setSelectedVarietyId(e.target.value)}
+                  disabled={isPending}
+                  style={inputStyle}
+                  onFocus={focusStyle}
+                  onBlur={blurStyle}
+                >
+                  <option value="">— Selectionner une variete</option>
+                  {catalogVarieties.map(v => (
+                    <option key={v.id} value={v.id}>
+                      {v.nom_vernaculaire}
+                    </option>
+                  ))}
+                </select>
+              </Field>
+            )}
 
             {/* Date */}
             <Field label="Date" required>
@@ -363,7 +415,7 @@ function WarningBanner({ children }: { children: React.ReactNode }) {
       className="text-xs px-3 py-2 rounded-lg"
       style={{ backgroundColor: '#FEF3C7', color: '#92400E', border: '1px solid #F59E0B44' }}
     >
-      ⚠️ {children}
+      {children}
     </div>
   )
 }

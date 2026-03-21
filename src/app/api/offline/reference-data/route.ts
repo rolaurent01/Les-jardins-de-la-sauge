@@ -50,12 +50,13 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
   }
 
   // Charger toutes les données de référence en parallèle
-  const [varieties, sites, parcels, rows, recipes, seedLots, seedlings, externalMaterials] =
+  const [varieties, sites, parcels, rows, plantings, recipes, seedLots, seedlings, externalMaterials] =
     await Promise.all([
       loadVarieties(admin, farmId),
       loadSites(admin, farmId),
       loadParcels(admin, farmId),
       loadRows(admin, farmId),
+      loadPlantings(admin, farmId),
       loadRecipes(admin, farmId),
       loadSeedLots(admin, farmId),
       loadSeedlings(admin, farmId),
@@ -67,6 +68,7 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
     sites,
     parcels,
     rows,
+    plantings,
     recipes,
     seedLots,
     seedlings,
@@ -152,6 +154,27 @@ async function loadRows(admin: any, farmId: string) {
 
   if (error) throw new Error(`Erreur chargement rangs : ${error.message}`)
   return data ?? []
+}
+
+/** Plantations actives avec nom de variété — pour enrichir les sélecteurs de rang */
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+async function loadPlantings(admin: any, farmId: string) {
+  const { data, error } = await admin
+    .from('plantings')
+    .select('id, row_id, variety_id, actif, varieties(nom_vernaculaire)')
+    .eq('farm_id', farmId)
+    .eq('actif', true)
+    .is('deleted_at', null)
+
+  if (error) throw new Error(`Erreur chargement plantations : ${error.message}`)
+
+  return (data ?? []).map((p: { id: string; row_id: string; variety_id: string; actif: boolean; varieties: { nom_vernaculaire: string } | null }) => ({
+    id: p.id,
+    row_id: p.row_id,
+    variety_id: p.variety_id,
+    variety_name: p.varieties?.nom_vernaculaire ?? '',
+    actif: p.actif,
+  }))
 }
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
