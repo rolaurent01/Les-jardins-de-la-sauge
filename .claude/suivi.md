@@ -42,6 +42,21 @@ Ajout du stock par ferme pour les materiaux externes (sucre, vinaigre, sel, etc.
 
 ---
 
+## [2026-03-21] — Mise a jour types TS pour stock materiaux externes
+
+**Type :** `chore`
+**Fichiers concernes :** `src/lib/supabase/types.ts`, `src/app/[orgSlug]/(dashboard)/stock/achats/actions.ts`, `src/lib/sync/dispatch.ts`
+
+### Description
+Mise a jour manuelle des types TypeScript suite a la migration 031.
+
+### Modifications
+- **types.ts** : `stock_movements` et `stock_purchases` — `variety_id`, `partie_plante`, `etat_plante` rendus nullable + ajout `external_material_id`, `numero_facture`. Nouvelle table `production_ingredient_sources`. Nouvelle vue `v_stock_external`. RPCs `create/update_purchase_with_stock` mises a jour avec params optionnels.
+- **actions.ts** : ajout `p_external_material_id: null` et `p_numero_facture: null` aux appels RPC existants (achats plantes)
+- **dispatch.ts** : idem pour le dispatch offline + propagation des champs `external_material_id` et `numero_facture` depuis le payload
+
+---
+
 ## [2026-03-20] — Fix update_harvest_with_stock RPC (bug modification poids cueillette)
 
 **Type :** `fix`
