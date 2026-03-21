@@ -4,6 +4,7 @@ import Link from 'next/link'
 const SEMIS_ACTIONS = [
   { id: 'sachet', label: 'Sachet de graines', emoji: '🌰' },
   { id: 'suivi-semis', label: 'Suivi semis', emoji: '🌱' },
+  { id: 'avancement', label: 'Avancement', emoji: '📋' },
 ]
 
 /**

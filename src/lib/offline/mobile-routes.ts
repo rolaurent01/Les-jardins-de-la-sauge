@@ -15,6 +15,7 @@ export function getMobileRoutes(orgSlug: string): string[] {
     // Formulaires semis
     `/${orgSlug}/m/saisie/semis/sachet`,
     `/${orgSlug}/m/saisie/semis/suivi-semis`,
+    `/${orgSlug}/m/saisie/semis/avancement`,
     // Formulaires parcelle
     `/${orgSlug}/m/saisie/parcelle/travail-sol`,
     `/${orgSlug}/m/saisie/parcelle/plantation`,

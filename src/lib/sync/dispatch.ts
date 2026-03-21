@@ -47,6 +47,10 @@ export async function dispatchSyncEntry(params: DispatchParams): Promise<Dispatc
     case 'production_lots':
       return dispatchProductionLot(params)
 
+    // Tables virtuelles — update
+    case 'seedlings_update':
+      return dispatchSeedlingUpdate(params)
+
     // Tables avec INSERT direct
     case 'seed_lots':
       return dispatchSeedLot(params)
@@ -359,6 +363,76 @@ async function dispatchProductionLot({ farm_id, user_id, uuid_client, payload }:
 
   if (error) throw new Error(error.message)
   return { server_id: String(lotId) }
+}
+
+/**
+ * Mise à jour partielle d'un seedling existant (avancement mobile).
+ * Merge uniquement les champs non-null du payload, recalcule le statut.
+ * Le payload DOIT contenir `server_id` (l'id réel du seedling en base).
+ */
+async function dispatchSeedlingUpdate({ farm_id, user_id, payload }: DispatchParams): Promise<DispatchResult> {
+  const admin = createAdminClient()
+
+  const serverId = payload.server_id as string | undefined
+  if (!serverId) throw new Error('seedlings_update requiert server_id dans le payload')
+
+  // Vérifier que le seedling existe et appartient à la ferme
+  const { data: existing, error: fetchErr } = await admin
+    .from('seedlings')
+    .select('id, processus, date_levee, date_repiquage, nb_plants_obtenus, nb_mortes_mottes, nb_mortes_caissette, nb_mortes_godet')
+    .eq('id', serverId)
+    .eq('farm_id', farm_id)
+    .is('deleted_at', null)
+    .single()
+
+  if (fetchErr || !existing) throw new Error('Semis introuvable ou supprimé')
+
+  // Construire l'objet de mise à jour : merge champs non-null du payload
+  const updateFields: Record<string, unknown> = { updated_by: user_id }
+
+  const mergeableKeys = [
+    'date_levee', 'date_repiquage', 'nb_plants_obtenus',
+    'nb_mortes_mottes', 'nb_mortes_caissette', 'nb_mortes_godet',
+    'nb_donnees', 'temps_repiquage_min', 'commentaire',
+  ] as const
+
+  for (const key of mergeableKeys) {
+    if (payload[key] !== undefined && payload[key] !== null) {
+      updateFields[key] = payload[key]
+    }
+  }
+
+  // Recalculer le statut avec les données mergées
+  const merged = {
+    processus: existing.processus as 'mini_motte' | 'caissette_godet',
+    date_levee: (updateFields.date_levee as string | null) ?? existing.date_levee,
+    date_repiquage: (updateFields.date_repiquage as string | null) ?? existing.date_repiquage,
+    nb_plants_obtenus: (updateFields.nb_plants_obtenus as number | null) ?? existing.nb_plants_obtenus,
+  }
+
+  // Calculer plantsPlantes à partir des plantings actifs
+  const { data: plantings } = await admin
+    .from('plantings')
+    .select('nb_plants')
+    .eq('seedling_id', serverId)
+    .eq('actif', true)
+    .is('deleted_at', null)
+
+  const plantsPlantes = (plantings ?? []).reduce(
+    (sum: number, p: { nb_plants: number | null }) => sum + ((p.nb_plants as number) ?? 0), 0,
+  )
+
+  updateFields.statut = computeSeedlingStatut(merged, plantsPlantes)
+
+  // Appliquer la mise à jour
+  const { error: updateErr } = await admin
+    .from('seedlings')
+    .update(updateFields)
+    .eq('id', serverId)
+
+  if (updateErr) throw new Error(updateErr.message)
+
+  return { server_id: serverId }
 }
 
 // ─────────────────────────────────────────────────────────────

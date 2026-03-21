@@ -19,10 +19,11 @@ export const SYNC_TABLES = [
   'production_lots',
 ] as const
 
-/** Cibles virtuelles (pas de table reelle — dispatch via RPC combinee) */
+/** Cibles virtuelles (pas de table reelle — dispatch via RPC combinee ou logique speciale) */
 export const SYNC_VIRTUAL_TABLES = [
   'cuttings_combined',
   'sortings_combined',
+  'seedlings_update',
 ] as const
 
 /** Toutes les cibles autorisees pour POST /api/sync */

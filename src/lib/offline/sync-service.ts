@@ -67,14 +67,18 @@ export async function addToSyncQueue(params: {
 /**
  * Traite toutes les saisies 'pending' une par une (FIFO).
  * Continue même si une entrée échoue.
+ * Fusionne les seedlings_update pending sur le même server_id avant envoi.
  */
 export async function processSyncQueue(): Promise<SyncResult> {
   const result: SyncResult = { sent: 0, failed: 0, errors: [] }
 
-  const pendingEntries = await offlineDb.syncQueue
+  let pendingEntries = await offlineDb.syncQueue
     .where('status')
     .equals('pending')
     .sortBy('created_at')
+
+  // Fusionner les seedlings_update multiples sur le même server_id
+  pendingEntries = await mergeSeedlingUpdates(pendingEntries)
 
   for (const entry of pendingEntries) {
     if (entry.id === undefined) continue
@@ -300,6 +304,72 @@ async function handleSyncError(entry: SyncQueueEntry, errorMessage: string): Pro
     tentatives: newTentatives,
     derniere_erreur: errorMessage,
   })
+}
+
+/**
+ * Fusionne les entrées seedlings_update pending qui ciblent le même server_id.
+ * Le payload le plus récent écrase les champs du plus ancien (last write wins).
+ * Les entrées fusionnées sont supprimées de IndexedDB, seule la dernière reste.
+ */
+async function mergeSeedlingUpdates(entries: SyncQueueEntry[]): Promise<SyncQueueEntry[]> {
+  // Grouper les seedlings_update par server_id
+  const updatesByServerId = new Map<string, SyncQueueEntry[]>()
+  const otherEntries: SyncQueueEntry[] = []
+
+  for (const entry of entries) {
+    if (entry.table_cible === 'seedlings_update' && entry.payload.server_id) {
+      const key = entry.payload.server_id as string
+      const group = updatesByServerId.get(key) ?? []
+      group.push(entry)
+      updatesByServerId.set(key, group)
+    } else {
+      otherEntries.push(entry)
+    }
+  }
+
+  const mergedUpdates: SyncQueueEntry[] = []
+
+  for (const [, group] of updatesByServerId) {
+    if (group.length === 1) {
+      mergedUpdates.push(group[0])
+      continue
+    }
+
+    // Fusionner les payloads (FIFO : le dernier écrase)
+    const mergedPayload: Record<string, unknown> = {}
+    for (const entry of group) {
+      for (const [k, v] of Object.entries(entry.payload)) {
+        if (v !== undefined && v !== null) {
+          mergedPayload[k] = v
+        }
+      }
+    }
+
+    // Garder la dernière entrée, mettre à jour son payload
+    const keeper = group[group.length - 1]
+    keeper.payload = mergedPayload
+
+    if (keeper.id !== undefined) {
+      await offlineDb.syncQueue.update(keeper.id, { payload: mergedPayload })
+    }
+
+    // Supprimer les entrées antérieures
+    const idsToDelete = group
+      .slice(0, -1)
+      .map((e) => e.id)
+      .filter((id): id is number => id !== undefined)
+
+    if (idsToDelete.length > 0) {
+      await offlineDb.syncQueue.bulkDelete(idsToDelete)
+    }
+
+    mergedUpdates.push(keeper)
+  }
+
+  // Reconstituer la liste triée par created_at (maintenir FIFO global)
+  return [...otherEntries, ...mergedUpdates].sort((a, b) =>
+    a.created_at.localeCompare(b.created_at)
+  )
 }
 
 /** Pause utilitaire */

@@ -2,6 +2,31 @@
 
 ---
 
+## [2026-03-21] — Avancement semis sur mobile (offline)
+
+**Type :** `feat`
+**Fichiers concernes :**
+- `src/lib/validation/sync.ts` — ajout `seedlings_update` dans SYNC_VIRTUAL_TABLES
+- `src/lib/sync/dispatch.ts` — nouveau `dispatchSeedlingUpdate()` (merge champs + recalcul statut)
+- `src/lib/offline/sync-service.ts` — fusion des entries pending sur meme server_id avant envoi
+- `src/lib/offline/seedling-cache.ts` — nouveau helper `updateCachedSeedlingOptimistic()`
+- `src/components/mobile/forms/AvancerSemisForm.tsx` — formulaire contextuel par statut
+- `src/app/[orgSlug]/(mobile)/m/saisie/semis/avancement/page.tsx` — page liste + avancement
+- `src/app/[orgSlug]/(mobile)/m/saisie/semis/page.tsx` — ajout lien "Avancement"
+- `src/lib/offline/mobile-routes.ts` — ajout route warm cache
+
+### Description
+
+Permet de faire avancer un semis d'etape en etape depuis le mobile (offline compatible).
+- Liste des semis groupes par statut avec bouton "Avancer"
+- Formulaire contextuel : semis→leve (date_levee), leve→repiquage (date_repiquage), leve/repiquage→pret (nb_plants_obtenus)
+- Mise a jour optimiste du cache IndexedDB (retour visuel immediat)
+- Sync via table virtuelle `seedlings_update` : merge champs non-null + recalcul statut serveur
+- Fusion des entries pending sur le meme semis avant envoi (evite doublons)
+- Gestion conflits : le serveur a toujours raison sur le statut (last write wins sur champs bruts)
+
+---
+
 ## [2026-03-21] — Tronconnage et triage : creation combinee (entree + sortie en 1 formulaire)
 
 **Type :** `feat`
