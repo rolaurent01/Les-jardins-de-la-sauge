@@ -51,6 +51,8 @@ export async function createPurchase(formData: FormData): Promise<ActionResult<S
     p_commentaire: parsed.data.commentaire ?? null,
     p_created_by: userId,
     p_uuid_client: null,
+    p_external_material_id: null,
+    p_numero_facture: null,
   })
 
   if (error) return { error: mapSupabaseError(error) }
@@ -83,6 +85,8 @@ export async function updatePurchase(
     p_prix: parsed.data.prix ?? null,
     p_commentaire: parsed.data.commentaire ?? null,
     p_updated_by: userId,
+    p_external_material_id: null,
+    p_numero_facture: null,
   })
 
   if (error) return { error: mapSupabaseError(error) }

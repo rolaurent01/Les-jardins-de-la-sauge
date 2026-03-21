@@ -1340,11 +1340,12 @@ export type Database = {
         Row: {
           id: string
           farm_id: string
-          variety_id: string
-          partie_plante: PartiePlante
+          variety_id: string | null
+          external_material_id: string | null
+          partie_plante: PartiePlante | null
           date: string
           type_mouvement: 'entree' | 'sortie'
-          etat_plante: string
+          etat_plante: string | null
           poids_g: number
           source_type: string
           source_id: string | null
@@ -1357,11 +1358,12 @@ export type Database = {
         Insert: {
           id?: string
           farm_id?: string
-          variety_id: string
-          partie_plante: PartiePlante
+          variety_id?: string | null
+          external_material_id?: string | null
+          partie_plante?: PartiePlante | null
           date: string
           type_mouvement: 'entree' | 'sortie'
-          etat_plante: string
+          etat_plante?: string | null
           poids_g: number
           source_type: string
           source_id?: string | null
@@ -1373,11 +1375,12 @@ export type Database = {
         Update: {
           id?: string
           farm_id?: string
-          variety_id?: string
-          partie_plante?: PartiePlante
+          variety_id?: string | null
+          external_material_id?: string | null
+          partie_plante?: PartiePlante | null
           date?: string
           type_mouvement?: 'entree' | 'sortie'
-          etat_plante?: string
+          etat_plante?: string | null
           poids_g?: number
           source_type?: string
           source_id?: string | null
@@ -1394,13 +1397,15 @@ export type Database = {
           id: string
           farm_id: string
           uuid_client: string | null
-          variety_id: string
-          partie_plante: PartiePlante
+          variety_id: string | null
+          external_material_id: string | null
+          partie_plante: PartiePlante | null
           date: string
-          etat_plante: string
+          etat_plante: string | null
           poids_g: number
-          fournisseur: string
+          fournisseur: string | null
           numero_lot_fournisseur: string | null
+          numero_facture: string | null
           certif_ab: boolean
           prix: number | null
           commentaire: string | null
@@ -1412,13 +1417,15 @@ export type Database = {
           id?: string
           farm_id?: string
           uuid_client?: string | null
-          variety_id: string
-          partie_plante: PartiePlante
+          variety_id?: string | null
+          external_material_id?: string | null
+          partie_plante?: PartiePlante | null
           date: string
-          etat_plante: string
+          etat_plante?: string | null
           poids_g: number
-          fournisseur: string
+          fournisseur?: string | null
           numero_lot_fournisseur?: string | null
+          numero_facture?: string | null
           certif_ab?: boolean
           prix?: number | null
           commentaire?: string | null
@@ -1430,13 +1437,15 @@ export type Database = {
           id?: string
           farm_id?: string
           uuid_client?: string | null
-          variety_id?: string
-          partie_plante?: PartiePlante
+          variety_id?: string | null
+          external_material_id?: string | null
+          partie_plante?: PartiePlante | null
           date?: string
-          etat_plante?: string
+          etat_plante?: string | null
           poids_g?: number
-          fournisseur?: string
+          fournisseur?: string | null
           numero_lot_fournisseur?: string | null
+          numero_facture?: string | null
           certif_ab?: boolean
           prix?: number | null
           commentaire?: string | null
@@ -1768,6 +1777,35 @@ export type Database = {
         Relationships: []
       }
 
+      // Table de liaison : quel achat alimente quel ingredient externe d'un lot
+      production_ingredient_sources: {
+        Row: {
+          id: string
+          farm_id: string
+          production_lot_ingredient_id: string
+          stock_purchase_id: string
+          poids_g: number
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          farm_id: string
+          production_lot_ingredient_id: string
+          stock_purchase_id: string
+          poids_g: number
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          farm_id?: string
+          production_lot_ingredient_id?: string
+          stock_purchase_id?: string
+          poids_g?: number
+          created_at?: string
+        }
+        Relationships: []
+      }
+
       product_stock_movements: {
         Row: {
           id: string
@@ -1972,6 +2010,17 @@ export type Database = {
         }
         Relationships: []
       }
+      // Vue v_stock_external — stock matériaux externes en temps réel par ferme
+      v_stock_external: {
+        Row: {
+          farm_id: string
+          external_material_id: string
+          nom: string
+          unite: string
+          stock_g: number
+        }
+        Relationships: []
+      }
     }
     Functions: {
       /** Cree un harvest + stock_movement d'entree (frais) dans une seule transaction */
@@ -2131,18 +2180,20 @@ export type Database = {
       create_purchase_with_stock: {
         Args: {
           p_farm_id: string
-          p_variety_id: string
-          p_partie_plante: string
+          p_variety_id: string | null
+          p_partie_plante: string | null
           p_date: string
-          p_etat_plante: string
+          p_etat_plante: string | null
           p_poids_g: number
-          p_fournisseur: string
+          p_fournisseur: string | null
           p_numero_lot_fournisseur: string | null
           p_certif_ab: boolean
           p_prix: number | null
           p_commentaire: string | null
           p_created_by: string
           p_uuid_client: string | null
+          p_external_material_id: string | null
+          p_numero_facture: string | null
         }
         Returns: string
       }
@@ -2150,17 +2201,19 @@ export type Database = {
       update_purchase_with_stock: {
         Args: {
           p_purchase_id: string
-          p_variety_id: string
-          p_partie_plante: string
+          p_variety_id: string | null
+          p_partie_plante: string | null
           p_date: string
-          p_etat_plante: string
+          p_etat_plante: string | null
           p_poids_g: number
-          p_fournisseur: string
+          p_fournisseur: string | null
           p_numero_lot_fournisseur: string | null
           p_certif_ab: boolean
           p_prix: number | null
           p_commentaire: string | null
           p_updated_by: string
+          p_external_material_id: string | null
+          p_numero_facture: string | null
         }
         Returns: undefined
       }

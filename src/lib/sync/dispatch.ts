@@ -146,17 +146,19 @@ async function dispatchPurchase({ farm_id, user_id, uuid_client, payload }: Disp
   const { data, error } = await admin.rpc('create_purchase_with_stock', {
     p_farm_id: farm_id,
     p_uuid_client: uuid_client,
-    p_variety_id: payload.variety_id as string,
-    p_partie_plante: payload.partie_plante as string,
+    p_variety_id: (payload.variety_id as string) ?? null,
+    p_partie_plante: (payload.partie_plante as string) ?? null,
     p_date: payload.date as string,
-    p_etat_plante: payload.etat_plante as string,
+    p_etat_plante: (payload.etat_plante as string) ?? null,
     p_poids_g: payload.poids_g as number,
-    p_fournisseur: payload.fournisseur as string,
+    p_fournisseur: (payload.fournisseur as string) ?? null,
     p_numero_lot_fournisseur: (payload.numero_lot_fournisseur as string) ?? null,
     p_certif_ab: payload.certif_ab as boolean,
     p_prix: (payload.prix as number) ?? null,
     p_commentaire: (payload.commentaire as string) ?? null,
     p_created_by: user_id,
+    p_external_material_id: (payload.external_material_id as string) ?? null,
+    p_numero_facture: (payload.numero_facture as string) ?? null,
   })
   if (error) throw new Error(error.message)
   return { server_id: String(data) }
