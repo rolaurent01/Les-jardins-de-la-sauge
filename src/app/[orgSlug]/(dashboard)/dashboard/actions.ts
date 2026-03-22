@@ -35,12 +35,25 @@ export interface DashboardParcelleData {
 }
 
 export interface DashboardTempsData {
+  // Transformation
   cueillette_min: number
   tronconnage_min: number
   sechage_min: number
   triage_min: number
   production_min: number
+  // Culture (via production_summary)
+  semis_min: number
+  repiquage_min: number
+  plantation_min: number
+  suivi_rang_min: number
+  arrachage_min: number
+  // Culture (requête directe — pas de variety_id)
+  travail_sol_min: number
+  occultation_min: number
+  // Totaux
   total_min: number
+  total_culture_min: number
+  total_transformation_min: number
   top_varietes: { nom: string; total_min: number }[]
 }
 
@@ -267,18 +280,57 @@ export async function fetchDashboardTemps(_farmId: string | undefined, annee: nu
   const { farmId } = await getContext()
   const supabase = createAdminClient()
 
+  const startDate = `${annee}-01-01`
+  const endDate = `${annee}-12-31`
+
+  // 1. Temps via production_summary (par variété)
   const { data, error } = await supabase
     .from('production_summary')
-    .select('variety_id, temps_cueillette_min, temps_tronconnage_min, temps_sechage_min, temps_triage_min, temps_production_min')
+    .select('variety_id, temps_cueillette_min, temps_tronconnage_min, temps_sechage_min, temps_triage_min, temps_production_min, temps_semis_min, temps_repiquage_min, temps_plantation_min, temps_suivi_rang_min, temps_arrachage_min')
     .eq('farm_id', farmId)
     .eq('annee', annee)
     .is('mois', null)
 
+  // 2. Temps travail de sol (pas de variety_id → requête directe)
+  const { data: swData } = await supabase
+    .from('soil_works')
+    .select('temps_min')
+    .eq('farm_id', farmId)
+    .gte('date', startDate)
+    .lte('date', endDate)
+    .not('temps_min', 'is', null)
+
+  // 3. Temps occultation (pas de variety_id → requête directe)
+  // On prend temps_min (mise en place) + temps_retrait_min (retrait bâche)
+  const { data: occData } = await supabase
+    .from('occultations')
+    .select('temps_min, temps_retrait_min, date_debut')
+    .eq('farm_id', farmId)
+    .gte('date_debut', startDate)
+    .lte('date_debut', endDate)
+
+  const empty: DashboardTempsData = {
+    cueillette_min: 0, tronconnage_min: 0, sechage_min: 0, triage_min: 0, production_min: 0,
+    semis_min: 0, repiquage_min: 0, plantation_min: 0, suivi_rang_min: 0, arrachage_min: 0,
+    travail_sol_min: 0, occultation_min: 0,
+    total_min: 0, total_culture_min: 0, total_transformation_min: 0, top_varietes: [],
+  }
+
+  // Cumul temps travail de sol
+  const travailSol = (swData ?? []).reduce((acc, r) => acc + (Number(r.temps_min) || 0), 0)
+
+  // Cumul temps occultation (mise en place + retrait)
+  const occultation = (occData ?? []).reduce((acc, r) =>
+    acc + (Number(r.temps_min) || 0) + (Number(r.temps_retrait_min) || 0), 0)
+
   if (error || !data || data.length === 0) {
-    return { cueillette_min: 0, tronconnage_min: 0, sechage_min: 0, triage_min: 0, production_min: 0, total_min: 0, top_varietes: [] }
+    return { ...empty, travail_sol_min: travailSol, occultation_min: occultation,
+      total_culture_min: travailSol + occultation,
+      total_min: travailSol + occultation }
   }
 
   let cueillette = 0, tronconnage = 0, sechage = 0, triage = 0, production = 0
+  let semis = 0, repiquage = 0, plantation = 0, suiviRang = 0, arrachage = 0
 
   const tempsParVariete = new Map<string, number>()
 
@@ -288,12 +340,22 @@ export async function fetchDashboardTemps(_farmId: string | undefined, annee: nu
     const s = Number(row.temps_sechage_min) || 0
     const ti = Number(row.temps_triage_min) || 0
     const p = Number(row.temps_production_min) || 0
+    const se = Number(row.temps_semis_min) || 0
+    const re = Number(row.temps_repiquage_min) || 0
+    const pl = Number(row.temps_plantation_min) || 0
+    const sr = Number(row.temps_suivi_rang_min) || 0
+    const ar = Number(row.temps_arrachage_min) || 0
     cueillette += c
     tronconnage += tr
     sechage += s
     triage += ti
     production += p
-    tempsParVariete.set(row.variety_id, c + tr + s + ti + p)
+    semis += se
+    repiquage += re
+    plantation += pl
+    suiviRang += sr
+    arrachage += ar
+    tempsParVariete.set(row.variety_id, c + tr + s + ti + p + se + re + pl + sr + ar)
   }
 
   // Top 5 variétés par temps total
@@ -316,7 +378,9 @@ export async function fetchDashboardTemps(_farmId: string | undefined, annee: nu
     }))
   }
 
-  const total = cueillette + tronconnage + sechage + triage + production
+  const totalCulture = semis + repiquage + plantation + suiviRang + arrachage + travailSol + occultation
+  const totalTransformation = cueillette + tronconnage + sechage + triage + production
+  const total = totalCulture + totalTransformation
 
   return {
     cueillette_min: cueillette,
@@ -324,7 +388,16 @@ export async function fetchDashboardTemps(_farmId: string | undefined, annee: nu
     sechage_min: sechage,
     triage_min: triage,
     production_min: production,
+    semis_min: semis,
+    repiquage_min: repiquage,
+    plantation_min: plantation,
+    suivi_rang_min: suiviRang,
+    arrachage_min: arrachage,
+    travail_sol_min: travailSol,
+    occultation_min: occultation,
     total_min: total,
+    total_culture_min: totalCulture,
+    total_transformation_min: totalTransformation,
     top_varietes: topVarietes,
   }
 }

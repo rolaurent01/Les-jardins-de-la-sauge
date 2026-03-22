@@ -1919,6 +1919,11 @@ export type Database = {
           temps_sechage_min: number
           temps_triage_min: number
           temps_production_min: number
+          temps_semis_min: number
+          temps_repiquage_min: number
+          temps_plantation_min: number
+          temps_suivi_rang_min: number
+          temps_arrachage_min: number
           // pas de created_by/updated_by — table agrégat maintenue par triggers
           updated_at: string
         }
@@ -1940,6 +1945,11 @@ export type Database = {
           temps_sechage_min?: number
           temps_triage_min?: number
           temps_production_min?: number
+          temps_semis_min?: number
+          temps_repiquage_min?: number
+          temps_plantation_min?: number
+          temps_suivi_rang_min?: number
+          temps_arrachage_min?: number
           updated_at?: string
         }
         Update: {
@@ -1960,6 +1970,11 @@ export type Database = {
           temps_sechage_min?: number
           temps_triage_min?: number
           temps_production_min?: number
+          temps_semis_min?: number
+          temps_repiquage_min?: number
+          temps_plantation_min?: number
+          temps_suivi_rang_min?: number
+          temps_arrachage_min?: number
           updated_at?: string
         }
         Relationships: []

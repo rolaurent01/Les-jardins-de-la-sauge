@@ -2,6 +2,27 @@
 
 ---
 
+## [2026-03-22] — Temps de travail complets dans le dashboard
+
+**Type :** `feat`
+**Objectif :** Afficher tous les temps de travail dans le widget dashboard (12 catégories au lieu de 5), regroupés en Culture / Transformation.
+
+**Fichiers créés :**
+- `supabase/migrations/036_ps_temps_culture.sql` — 5 nouvelles colonnes sur `production_summary` (semis, repiquage, plantation, suivi_rang, arrachage), mise à jour `_ps_upsert` (21 params), 4 triggers (`fn_ps_seedlings`, `fn_ps_plantings`, `fn_ps_row_care`, `fn_ps_uprootings`), rebuild complet
+
+**Fichiers modifiés :**
+- `src/lib/supabase/types.ts` — ajout 5 colonnes temps dans Row/Insert/Update de production_summary
+- `src/app/[orgSlug]/(dashboard)/dashboard/actions.ts` — `DashboardTempsData` étendu (12 catégories + sous-totaux culture/transformation), `fetchDashboardTemps()` requête les 5 nouveaux champs PS + requêtes directes SUM sur `soil_works` et `occultations` (pas de variety_id)
+- `src/components/dashboard/DashboardTempsWidget.tsx` — refonte avec 2 groupes légende (Culture: semis, repiquage, plantation, travail de sol, suivi de rang, arrachage, occultation / Transformation: cueillette, tronçonnage, séchage, triage, production), donut toutes catégories
+
+**Architecture :**
+- Tables avec variety_id (seedlings, plantings, row_care, uprootings) → agrégées dans production_summary via triggers
+- Tables sans variety_id (soil_works, occultations) → requêtées directement dans fetchDashboardTemps car incompatibles avec le modèle per-variety de production_summary
+
+**Migration à exécuter :** `036_ps_temps_culture.sql` dans Supabase SQL Editor
+
+---
+
 ## [2026-03-22] — Gestion des années + warnings + refonte dashboard
 
 **Type :** `feat`
