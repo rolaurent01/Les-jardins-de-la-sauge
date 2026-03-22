@@ -2,6 +2,31 @@
 
 ---
 
+## [2026-03-22] — Tableau combiné tronçonnage/triage (1 ligne par opération)
+
+**Type :** `feat`
+**Fichiers concernés :**
+- `src/components/transformation/types.ts` (ajout CombinedTransformationRow + updateCombined)
+- `src/components/transformation/TransformationClient.tsx` (refonte : regroupement paires, tableau combiné, masquage filtre type)
+- `src/components/transformation/CombinedTransformationSlideOver.tsx` (support mode édition avec pré-remplissage)
+- `src/app/[orgSlug]/(dashboard)/transformation/tronconnage/actions.ts` (ajout updateCuttingCombined)
+- `src/app/[orgSlug]/(dashboard)/transformation/tronconnage/page.tsx` (passage updateCombined)
+- `src/app/[orgSlug]/(dashboard)/transformation/triage/actions.ts` (ajout updateSortingCombined)
+- `src/app/[orgSlug]/(dashboard)/transformation/triage/page.tsx` (passage updateCombined)
+- `supabase/migrations/038_update_combined_transformation.sql` (RPCs update_cutting_combined + update_sorting_combined)
+
+### Description
+Pour tronçonnage et triage (modules `combined: true`), les paires entrée/sortie sont maintenant regroupées en une seule ligne dans le tableau. Colonnes : Variété | Partie | Date | Poids entrée | Poids sortie | Rendement % | Temps | Commentaire. Le filtre Tous/Entrées/Sorties est masqué pour ces modules (conservé pour séchage). L'édition ouvre le formulaire combiné pré-rempli. Export CSV adapté.
+
+### Détails techniques
+- `groupPairedItems()` : regroupe les items par `paired_id`, gère les orphelins (records sans paired)
+- Rendement calculé : `(poids_sortie / poids_entree) * 100`, badge couleur (vert >= 90%, orange >= 70%, rouge < 70%)
+- `CombinedTransformationSlideOver` : props `editItem` + `onSubmitUpdate`, pré-remplissage conditionnel à l'ouverture
+- RPCs SQL `update_cutting_combined` et `update_sorting_combined` : update atomique des 2 records + 2 stock_movements
+- Séchage inchangé (mode flat avec filtre type conservé)
+
+---
+
 ## [2026-03-22] — Stock de graines : suivi par sachet + inventaire + stats
 
 **Type :** `feature`
