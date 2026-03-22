@@ -10,12 +10,13 @@ import MobileInput from '@/components/mobile/fields/MobileInput'
 import MobileTimerInput from '@/components/mobile/fields/MobileTimerInput'
 import MobileTextarea from '@/components/mobile/fields/MobileTextarea'
 import MobileCheckbox from '@/components/mobile/fields/MobileCheckbox'
-import { useCachedVarieties, useCachedSeedlings, useCachedSeedLots } from '@/hooks/useCachedData'
+import { useCachedVarieties, useCachedSeedlings, useCachedSeedLots, useCachedRows } from '@/hooks/useCachedData'
 import { offlineDb } from '@/lib/offline/db'
 import { generateUUID } from '@/lib/utils/uuid'
 import { mobilePlantingSchema } from '@/lib/validation/parcelles'
 import { todayISO } from '@/lib/utils/date'
 import DateYearWarning from '@/components/shared/DateYearWarning'
+import { useSpacingCalc } from '@/hooks/useSpacingCalc'
 
 /** Formate une date ISO en JJ/MM/AAAA */
 function fmtDate(iso: string): string {
@@ -76,6 +77,34 @@ export default function PlantationForm({ orgSlug }: PlantationFormProps) {
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [success, setSuccess] = useState(false)
   const [globalError, setGlobalError] = useState<string | null>(null)
+
+  const { rows: cachedRows } = useCachedRows()
+  const { autoField, computeSpacing, markManual, resetSpacing } = useSpacingCalc()
+
+  /** Met à jour un champ d'espacement et auto-calcule le 3e si possible */
+  const setSpacingField = useCallback(
+    (field: 'nb_plants' | 'espacement_cm' | 'longueur_m', value: string) => {
+      setForm(prev => {
+        const updated = { ...prev, [field]: value }
+        const result = computeSpacing(field, value, {
+          nb_plants: updated.nb_plants,
+          espacement_cm: updated.espacement_cm,
+          longueur_m: updated.longueur_m,
+        })
+        if (result) {
+          return { ...updated, [result.field]: result.value }
+        }
+        return updated
+      })
+      setErrors(prev => {
+        if (!prev[field]) return prev
+        const next = { ...prev }
+        delete next[field]
+        return next
+      })
+    },
+    [computeSpacing],
+  )
 
   const set = useCallback(
     <K extends keyof ReturnType<typeof initialState>>(key: K, value: ReturnType<typeof initialState>[K]) => {
@@ -154,7 +183,28 @@ export default function PlantationForm({ orgSlug }: PlantationFormProps) {
     setErrors({})
     setSuccess(false)
     setGlobalError(null)
+    resetSpacing()
   }
+
+  /** Pré-remplir longueur/largeur depuis le rang sélectionné */
+  const handleRowChange = useCallback(
+    (rowId: string) => {
+      set('row_id', rowId)
+      if (rowId) {
+        const row = cachedRows.find(r => r.id === rowId)
+        if (row) {
+          if (row.longueur_m != null) {
+            set('longueur_m', row.longueur_m.toString())
+            markManual('longueur_m')
+          }
+          if (row.largeur_m != null) {
+            set('largeur_m', row.largeur_m.toString())
+          }
+        }
+      }
+    },
+    [set, cachedRows, markManual],
+  )
 
   const backHref = `/${orgSlug}/m/saisie/parcelle`
 
@@ -194,7 +244,7 @@ export default function PlantationForm({ orgSlug }: PlantationFormProps) {
     >
       <MobileRowSelect
         value={form.row_id}
-        onChange={(v) => set('row_id', v)}
+        onChange={handleRowChange}
         error={errors.row_id}
       />
 
@@ -274,10 +324,10 @@ export default function PlantationForm({ orgSlug }: PlantationFormProps) {
       />
 
       <MobileInput
-        label="Nb plants"
+        label={`Nb plants${autoField === 'nb_plants' ? ' (auto)' : ''}`}
         type="number"
         value={form.nb_plants}
-        onChange={(v) => set('nb_plants', v)}
+        onChange={(v) => setSpacingField('nb_plants', v)}
         placeholder="0"
         error={errors.nb_plants}
       />
@@ -292,24 +342,34 @@ export default function PlantationForm({ orgSlug }: PlantationFormProps) {
       />
 
       <MobileInput
-        label="Espacement"
+        label={`Espacement${autoField === 'espacement_cm' ? ' (auto)' : ''}`}
         type="number"
         value={form.espacement_cm}
-        onChange={(v) => set('espacement_cm', v)}
+        onChange={(v) => setSpacingField('espacement_cm', v)}
         placeholder="0"
         suffix="cm"
         error={errors.espacement_cm}
       />
 
       <MobileInput
-        label="Longueur"
+        label={`Longueur${autoField === 'longueur_m' ? ' (auto)' : ''}`}
         type="number"
         value={form.longueur_m}
-        onChange={(v) => set('longueur_m', v)}
+        onChange={(v) => setSpacingField('longueur_m', v)}
         placeholder="0"
         suffix="m"
         error={errors.longueur_m}
       />
+
+      {/* Résumé espacement */}
+      {parseFloat(form.nb_plants) > 0 && parseFloat(form.espacement_cm) > 0 && parseFloat(form.longueur_m) > 0 && (
+        <div
+          className="text-xs px-3 py-2 rounded-lg"
+          style={{ backgroundColor: '#F0F4F0', color: '#6B7B6C', border: '1px solid #E0E6E0' }}
+        >
+          {form.nb_plants} plants × {form.espacement_cm} cm = {(parseFloat(form.nb_plants) * parseFloat(form.espacement_cm) / 100).toFixed(1)} m
+        </div>
+      )}
 
       <MobileInput
         label="Largeur"

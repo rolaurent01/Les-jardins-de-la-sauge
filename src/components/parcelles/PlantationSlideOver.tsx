@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useTransition, useEffect, useRef } from 'react'
+import { useState, useTransition, useEffect, useRef, useCallback } from 'react'
 import { Field } from '@/components/ui/Field'
 import type { PlantingWithRelations, RowWithParcel, Variety, ActionResult, SeedlingStatut } from '@/lib/types'
 import { SEEDLING_STATUT_LABELS } from '@/lib/types'
@@ -11,6 +11,7 @@ import { formatDate } from '@/lib/utils/format'
 import { groupRowsByParcel } from '@/lib/utils/parcels'
 import { inputStyle, focusStyle, blurStyle } from '@/lib/ui/form-styles'
 import DateYearWarning from '@/components/shared/DateYearWarning'
+import { useSpacingCalc } from '@/hooks/useSpacingCalc'
 
 type Props = {
   open: boolean
@@ -62,9 +63,35 @@ export default function PlantationSlideOver({
   const [originMode, setOriginMode] = useState<'semis' | 'fournisseur'>(
     planting?.seedling_id ? 'semis' : 'fournisseur',
   )
+  const [nbPlants, setNbPlants] = useState<string>(planting?.nb_plants?.toString() ?? '')
+  const [espacementCm, setEspacementCm] = useState<string>(planting?.espacement_cm?.toString() ?? '')
   const [longueurM, setLongueurM] = useState<string>(planting?.longueur_m?.toString() ?? '')
   const [largeurM, setLargeurM] = useState<string>(planting?.largeur_m?.toString() ?? '')
   const [datePlantation, setDatePlantation] = useState(planting?.date_plantation ?? '')
+
+  const { autoField, computeSpacing, markManual, resetSpacing } = useSpacingCalc()
+
+  /** Met à jour un champ d'espacement et auto-calcule le 3e si possible */
+  const handleSpacingField = useCallback(
+    (field: 'nb_plants' | 'espacement_cm' | 'longueur_m', value: string) => {
+      const setters = {
+        nb_plants: setNbPlants,
+        espacement_cm: setEspacementCm,
+        longueur_m: setLongueurM,
+      }
+      setters[field](value)
+
+      const result = computeSpacing(field, value, {
+        nb_plants: field === 'nb_plants' ? value : nbPlants,
+        espacement_cm: field === 'espacement_cm' ? value : espacementCm,
+        longueur_m: field === 'longueur_m' ? value : longueurM,
+      })
+      if (result) {
+        setters[result.field](result.value)
+      }
+    },
+    [computeSpacing, nbPlants, espacementCm, longueurM],
+  )
 
   // ---- Avertissements rang ----
   const [warnings, setWarnings] = useState<RowWarnings | null>(null)
@@ -81,11 +108,14 @@ export default function PlantationSlideOver({
     setSelectedVarietyId(planting?.variety_id ?? '')
     setSelectedSeedlingId(planting?.seedling_id ?? '')
     setOriginMode(planting?.seedling_id ? 'semis' : 'fournisseur')
+    setNbPlants(planting?.nb_plants?.toString() ?? '')
+    setEspacementCm(planting?.espacement_cm?.toString() ?? '')
     setLongueurM(planting?.longueur_m?.toString() ?? '')
     setLargeurM(planting?.largeur_m?.toString() ?? '')
     setDatePlantation(planting?.date_plantation ?? '')
     setError(null)
     setWarnings(null)
+    resetSpacing()
   }, [planting])
 
   // Focus premier champ
@@ -127,7 +157,11 @@ export default function PlantationSlideOver({
     if (!isEdit && rowId) {
       const row = rows.find(r => r.id === rowId)
       if (row) {
-        if (row.longueur_m != null) setLongueurM(row.longueur_m.toString())
+        if (row.longueur_m != null) {
+          setLongueurM(row.longueur_m.toString())
+          // Considérer comme valeur manuelle pour le calcul d'espacement
+          markManual('longueur_m')
+        }
         if ((row as RowWithParcel & { largeur_m?: number | null }).largeur_m != null) {
           setLargeurM(((row as RowWithParcel & { largeur_m?: number | null }).largeur_m as number).toString())
         }
@@ -451,15 +485,19 @@ export default function PlantationSlideOver({
               </Field>
 
               {/* Nb plants */}
-              <Field label="Nb plants">
+              <Field label={`Nb plants${autoField === 'nb_plants' ? ' (auto)' : ''}`}>
                 <input
                   name="nb_plants"
                   type="number"
                   min="1"
                   step="1"
-                  defaultValue={planting?.nb_plants ?? ''}
+                  value={nbPlants}
+                  onChange={e => handleSpacingField('nb_plants', e.target.value)}
                   disabled={isPending}
-                  style={inputStyle}
+                  style={{
+                    ...inputStyle,
+                    ...(autoField === 'nb_plants' ? { backgroundColor: '#F0F4F0' } : {}),
+                  }}
                   onFocus={focusStyle}
                   onBlur={blurStyle}
                 />
@@ -487,16 +525,20 @@ export default function PlantationSlideOver({
               </Field>
 
               {/* Espacement */}
-              <Field label="Espacement (cm)">
+              <Field label={`Espacement (cm)${autoField === 'espacement_cm' ? ' (auto)' : ''}`}>
                 <input
                   name="espacement_cm"
                   type="number"
                   min="1"
                   step="1"
-                  defaultValue={planting?.espacement_cm ?? ''}
+                  value={espacementCm}
+                  onChange={e => handleSpacingField('espacement_cm', e.target.value)}
                   disabled={isPending}
                   placeholder="cm"
-                  style={inputStyle}
+                  style={{
+                    ...inputStyle,
+                    ...(autoField === 'espacement_cm' ? { backgroundColor: '#F0F4F0' } : {}),
+                  }}
                   onFocus={focusStyle}
                   onBlur={blurStyle}
                 />
@@ -505,17 +547,20 @@ export default function PlantationSlideOver({
 
             <div className="grid grid-cols-2 gap-4">
               {/* Longueur */}
-              <Field label="Longueur (m)">
+              <Field label={`Longueur (m)${autoField === 'longueur_m' ? ' (auto)' : ''}`}>
                 <input
                   name="longueur_m"
                   type="number"
                   min="0"
                   step="0.1"
                   value={longueurM}
-                  onChange={e => setLongueurM(e.target.value)}
+                  onChange={e => handleSpacingField('longueur_m', e.target.value)}
                   disabled={isPending}
                   placeholder="m"
-                  style={inputStyle}
+                  style={{
+                    ...inputStyle,
+                    ...(autoField === 'longueur_m' ? { backgroundColor: '#F0F4F0' } : {}),
+                  }}
                   onFocus={focusStyle}
                   onBlur={blurStyle}
                 />
@@ -538,6 +583,16 @@ export default function PlantationSlideOver({
                 />
               </Field>
             </div>
+
+            {/* Résumé espacement */}
+            {parseFloat(nbPlants) > 0 && parseFloat(espacementCm) > 0 && parseFloat(longueurM) > 0 && (
+              <div
+                className="text-xs px-3 py-2 rounded-lg"
+                style={{ backgroundColor: '#F0F4F0', color: '#6B7B6C', border: '1px solid #E0E6E0' }}
+              >
+                {nbPlants} plants × {espacementCm} cm = {(parseFloat(nbPlants) * parseFloat(espacementCm) / 100).toFixed(1)} m
+              </div>
+            )}
 
             {/* Certif AB */}
             <div>
