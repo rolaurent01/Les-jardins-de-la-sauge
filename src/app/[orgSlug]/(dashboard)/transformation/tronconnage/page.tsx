@@ -1,4 +1,4 @@
-import { fetchCuttings, createCutting, updateCutting, deleteCutting, createCuttingCombined, deleteCuttingPaired } from './actions'
+import { fetchCuttings, createCutting, updateCutting, deleteCutting, createCuttingCombined, updateCuttingCombined, deleteCuttingPaired } from './actions'
 import { fetchVarietiesForSelect } from '@/app/[orgSlug]/(dashboard)/parcelles/shared-actions'
 import TransformationClient from '@/components/transformation/TransformationClient'
 import { TRONCONNAGE_CONFIG } from '@/components/transformation/types'
@@ -18,7 +18,7 @@ export default async function TronconnagePage() {
         config={TRONCONNAGE_CONFIG}
         items={items as unknown as TransformationItem[]}
         varieties={varieties}
-        actions={{ create: createCutting, update: updateCutting, delete: deleteCutting, createCombined: createCuttingCombined, deletePaired: deleteCuttingPaired }}
+        actions={{ create: createCutting, update: updateCutting, delete: deleteCutting, createCombined: createCuttingCombined, updateCombined: updateCuttingCombined, deletePaired: deleteCuttingPaired }}
       />
     )
   } catch (err) {

@@ -1,4 +1,4 @@
-import { fetchSortings, createSorting, updateSorting, deleteSorting, createSortingCombined, deleteSortingPaired } from './actions'
+import { fetchSortings, createSorting, updateSorting, deleteSorting, createSortingCombined, updateSortingCombined, deleteSortingPaired } from './actions'
 import { fetchVarietiesForSelect } from '@/app/[orgSlug]/(dashboard)/parcelles/shared-actions'
 import TransformationClient from '@/components/transformation/TransformationClient'
 import { TRIAGE_CONFIG } from '@/components/transformation/types'
@@ -18,7 +18,7 @@ export default async function TriagePage() {
         config={TRIAGE_CONFIG}
         items={items as unknown as TransformationItem[]}
         varieties={varieties}
-        actions={{ create: createSorting, update: updateSorting, delete: deleteSorting, createCombined: createSortingCombined, deletePaired: deleteSortingPaired }}
+        actions={{ create: createSorting, update: updateSorting, delete: deleteSorting, createCombined: createSortingCombined, updateCombined: updateSortingCombined, deletePaired: deleteSortingPaired }}
       />
     )
   } catch (err) {

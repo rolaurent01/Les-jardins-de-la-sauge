@@ -6,7 +6,7 @@ import type { Variety, PartiePlante, ActionResult } from '@/lib/types'
 import { PARTIES_PLANTE, PARTIE_PLANTE_LABELS } from '@/lib/types'
 import { useVarietyParts } from '@/hooks/useVarietyParts'
 import QuickAddVariety from '@/components/varieties/QuickAddVariety'
-import type { TransformationModuleConfig } from './types'
+import type { TransformationModuleConfig, CombinedTransformationRow } from './types'
 import { ETAT_PLANTE_LABELS } from './types'
 import { inputStyle, focusStyle, blurStyle } from '@/lib/ui/form-styles'
 import DateYearWarning from '@/components/shared/DateYearWarning'
@@ -17,7 +17,9 @@ type Props = {
   onClose: () => void
   varieties: Pick<Variety, 'id' | 'nom_vernaculaire'>[]
   onSubmit: (fd: FormData) => Promise<ActionResult>
+  onSubmitUpdate?: (id: string, fd: FormData) => Promise<ActionResult>
   onSuccess: () => void
+  editItem?: CombinedTransformationRow | null
 }
 
 export default function CombinedTransformationSlideOver({
@@ -26,7 +28,9 @@ export default function CombinedTransformationSlideOver({
   onClose,
   varieties: catalogVarieties,
   onSubmit,
+  onSubmitUpdate,
   onSuccess,
+  editItem,
 }: Props) {
   const [isPending, startTransition] = useTransition()
   const [error, setError] = useState<string | null>(null)
@@ -56,21 +60,33 @@ export default function CombinedTransformationSlideOver({
     }
   }, [autoPart])
 
-  // Reset a l'ouverture
+  const isEditing = editItem != null
+
+  // Reset / pre-fill a l'ouverture
   useEffect(() => {
     if (open) {
-      setSelectedVarietyId('')
-      setSelectedPartie('')
-      setSelectedEtat('')
-      setPoidsEntree('')
-      setPoidsSortie('')
-      setSortieManuallyEdited(false)
-      setDate('')
+      if (editItem) {
+        setSelectedVarietyId(editItem.variety_id)
+        setSelectedPartie(editItem.partie_plante)
+        setSelectedEtat(editItem.etat_plante ?? '')
+        setPoidsEntree(String(editItem.poids_entree_g))
+        setPoidsSortie(editItem.poids_sortie_g != null ? String(editItem.poids_sortie_g) : '')
+        setSortieManuallyEdited(true)
+        setDate(editItem.date)
+      } else {
+        setSelectedVarietyId('')
+        setSelectedPartie('')
+        setSelectedEtat('')
+        setPoidsEntree('')
+        setPoidsSortie('')
+        setSortieManuallyEdited(false)
+        setDate('')
+      }
       setError(null)
       prevAutoPartRef.current = null
       setAllVarieties(catalogVarieties)
     }
-  }, [open, catalogVarieties])
+  }, [open, catalogVarieties, editItem])
 
   // Fermeture Escape
   useEffect(() => {
@@ -129,7 +145,9 @@ export default function CombinedTransformationSlideOver({
     }
 
     startTransition(async () => {
-      const result = await onSubmit(fd)
+      const result = isEditing && onSubmitUpdate
+        ? await onSubmitUpdate(editItem.id, fd)
+        : await onSubmit(fd)
       if ('error' in result) {
         setError(result.error)
       } else {
@@ -138,9 +156,8 @@ export default function CombinedTransformationSlideOver({
     })
   }
 
-  const titleLabel = config.module === 'tronconnage'
-    ? 'Nouveau tronconnage'
-    : 'Nouveau triage'
+  const moduleLabel = config.module === 'tronconnage' ? 'tronconnage' : 'triage'
+  const titleLabel = isEditing ? `Modifier ${moduleLabel}` : `Nouveau ${moduleLabel}`
 
   return (
     <>
@@ -375,6 +392,7 @@ export default function CombinedTransformationSlideOver({
                 step="1"
                 disabled={isPending}
                 placeholder="en minutes"
+                defaultValue={editItem?.temps_min ?? ''}
                 style={inputStyle}
                 onFocus={focusStyle}
                 onBlur={blurStyle}
@@ -388,6 +406,7 @@ export default function CombinedTransformationSlideOver({
                 rows={3}
                 disabled={isPending}
                 placeholder="Observations…"
+                defaultValue={editItem?.commentaire ?? ''}
                 style={{ ...inputStyle, resize: 'vertical', minHeight: '80px' }}
                 onFocus={focusStyle}
                 onBlur={blurStyle}
@@ -433,7 +452,7 @@ export default function CombinedTransformationSlideOver({
                 opacity: isPending ? 0.6 : 1,
               }}
             >
-              {isPending ? 'Enregistrement…' : 'Enregistrer'}
+              {isPending ? 'Enregistrement…' : isEditing ? 'Modifier' : 'Enregistrer'}
             </button>
           </div>
         </form>

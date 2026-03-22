@@ -59,6 +59,22 @@ export type TransformationItem = {
   varieties: { id: string; nom_vernaculaire: string; nom_latin: string | null }
 }
 
+/** Ligne regroupee pour les modules combines (tronconnage, triage) */
+export type CombinedTransformationRow = {
+  id: string              // id du record entree
+  sortieId: string | null // id du record sortie
+  variety_id: string
+  partie_plante: string
+  etat_plante?: string    // etat du record entree (triage)
+  date: string
+  poids_entree_g: number
+  poids_sortie_g: number | null
+  rendement: number | null  // (poids_sortie / poids_entree) * 100
+  temps_min: number | null
+  commentaire: string | null
+  varieties: { id: string; nom_vernaculaire: string; nom_latin: string | null }
+}
+
 /** Actions passees en props au composant client */
 export type TransformationActions = {
   create: (fd: FormData) => Promise<import('@/lib/types').ActionResult>
@@ -66,6 +82,8 @@ export type TransformationActions = {
   delete: (id: string) => Promise<import('@/lib/types').ActionResult>
   /** Creation combinee entree + sortie (tronconnage, triage) */
   createCombined?: (fd: FormData) => Promise<import('@/lib/types').ActionResult>
+  /** Modification combinee entree + sortie (tronconnage, triage) */
+  updateCombined?: (id: string, fd: FormData) => Promise<import('@/lib/types').ActionResult>
   /** Suppression groupee (record + son paired) */
   deletePaired?: (id: string) => Promise<import('@/lib/types').ActionResult>
 }
