@@ -15,6 +15,7 @@ import { offlineDb } from '@/lib/offline/db'
 import { generateUUID } from '@/lib/utils/uuid'
 import { mobilePlantingSchema } from '@/lib/validation/parcelles'
 import { todayISO } from '@/lib/utils/date'
+import DateYearWarning from '@/components/shared/DateYearWarning'
 
 /** Formate une date ISO en JJ/MM/AAAA */
 function fmtDate(iso: string): string {
@@ -261,6 +262,7 @@ export default function PlantationForm({ orgSlug }: PlantationFormProps) {
         onChange={(v) => set('date_plantation', v)}
         error={errors.date_plantation}
       />
+      <DateYearWarning date={form.date_plantation} />
 
       <MobileSelect
         label="Lune"

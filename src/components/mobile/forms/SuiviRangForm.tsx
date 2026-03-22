@@ -12,6 +12,7 @@ import MobileTextarea from '@/components/mobile/fields/MobileTextarea'
 import { useCachedVarieties, useCachedPlantings } from '@/hooks/useCachedData'
 import { rowCareSchema } from '@/lib/validation/parcelles'
 import { todayISO } from '@/lib/utils/date'
+import DateYearWarning from '@/components/shared/DateYearWarning'
 
 const TYPE_SOIN_OPTIONS = [
   { value: 'desherbage', label: 'Désherbage' },
@@ -229,6 +230,7 @@ export default function SuiviRangForm({ orgSlug }: SuiviRangFormProps) {
         onChange={(v) => set('date', v)}
         error={errors.date}
       />
+      <DateYearWarning date={form.date} />
 
       <MobileSelect
         label="Type de soin"

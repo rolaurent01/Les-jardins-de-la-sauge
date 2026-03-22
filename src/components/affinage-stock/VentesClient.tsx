@@ -13,6 +13,7 @@ import ExportButton from '@/components/shared/ExportButton'
 import type { ExportColumn } from '@/components/shared/ExportButton'
 import { normalize } from '@/lib/utils/normalize'
 import { Th } from '@/components/ui/Th'
+import YearFilter from '@/components/shared/YearFilter'
 
 const VENTES_EXPORT_COLUMNS: ExportColumn[] = [
   { key: 'varieties', label: 'Variété', format: (v) => (v as { nom_vernaculaire?: string } | null)?.nom_vernaculaire ?? '' },
@@ -48,6 +49,7 @@ export default function VentesClient({ sales: initialSales, varieties, stockLeve
   const [sales, setSales] = useState(initialSales)
   const [search, setSearch] = useState('')
   const [etatFilter, setEtatFilter] = useState<string>('all')
+  const [yearFilter, setYearFilter] = useState<number | null>(null)
   const [slideOverOpen, setSlideOverOpen] = useState(false)
   const [editingItem, setEditingItem] = useState<StockDirectSaleWithVariety | null>(null)
   const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null)
@@ -61,7 +63,12 @@ export default function VentesClient({ sales: initialSales, varieties, stockLeve
     return () => clearTimeout(timer)
   }, [confirmDeleteId])
 
+  const availableYears = Array.from(new Set(
+    sales.map(s => s.date ? new Date(s.date).getFullYear() : null).filter((y): y is number => y !== null)
+  )).sort((a, b) => b - a)
+
   const displayed = sales.filter(item => {
+    if (yearFilter && item.date && new Date(item.date).getFullYear() !== yearFilter) return false
     if (etatFilter !== 'all' && item.etat_plante !== etatFilter) return false
     if (!search.trim()) return true
     const q = normalize(search)
@@ -135,6 +142,13 @@ export default function VentesClient({ sales: initialSales, varieties, stockLeve
           </button>
         </div>
       </div>
+
+      {/* Filtre par année */}
+      {availableYears.length > 1 && (
+        <div className="mb-4">
+          <YearFilter years={availableYears} selectedYear={yearFilter} onChange={setYearFilter} />
+        </div>
+      )}
 
       {/* Barre de recherche + filtres */}
       <div className="flex items-center gap-3 mb-4 flex-wrap">

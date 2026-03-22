@@ -45,7 +45,7 @@ export interface DashboardTempsData {
 }
 
 export interface DashboardAvancementData {
-  varietes: { nom: string; cueilli_g: number; prevu_g: number; pct: number }[]
+  varietes: { nom: string; partie_plante: string | null; cueilli_g: number; prevu_g: number; pct: number }[]
   global_pct: number
 }
 
@@ -335,10 +335,13 @@ export async function fetchDashboardAvancement(_farmId: string | undefined, anne
   const { farmId } = await getContext()
   const supabase = createAdminClient()
 
-  // Forecasts frais pour l'année
+  const startDate = `${annee}-01-01`
+  const endDate = `${annee}-12-31`
+
+  // Forecasts frais pour l'année (avec partie_plante)
   const { data: forecasts } = await supabase
     .from('forecasts')
-    .select('variety_id, quantite_prevue_g')
+    .select('variety_id, partie_plante, quantite_prevue_g')
     .eq('farm_id', farmId)
     .eq('annee', annee)
     .eq('etat_plante', 'frais')
@@ -347,19 +350,24 @@ export async function fetchDashboardAvancement(_farmId: string | undefined, anne
     return { varietes: [], global_pct: 0 }
   }
 
-  // Cumuls cueillis depuis production_summary
-  const varietyIds = forecasts.map(f => f.variety_id)
-  const { data: summaries } = await supabase
-    .from('production_summary')
-    .select('variety_id, total_cueilli_g')
+  // Harvests de l'année par variété × partie
+  const varietyIds = [...new Set(forecasts.map(f => f.variety_id))]
+  const { data: harvests } = await supabase
+    .from('harvests')
+    .select('variety_id, partie_plante, poids_g')
     .eq('farm_id', farmId)
-    .eq('annee', annee)
-    .is('mois', null)
+    .gte('date', startDate)
+    .lte('date', endDate)
+    .is('deleted_at', null)
     .in('variety_id', varietyIds)
 
-  const cueilliMap = new Map<string, number>(
-    (summaries ?? []).map(s => [s.variety_id, Number(s.total_cueilli_g) || 0])
-  )
+  // Agréger cueilli par variété × partie
+  const cueilliMap = new Map<string, number>()
+  for (const h of harvests ?? []) {
+    const partie = h.partie_plante ?? 'plante_entiere'
+    const key = `${h.variety_id}:${partie}`
+    cueilliMap.set(key, (cueilliMap.get(key) ?? 0) + (Number(h.poids_g) || 0))
+  }
 
   // Noms des variétés
   const { data: varieties } = await supabase
@@ -369,14 +377,24 @@ export async function fetchDashboardAvancement(_farmId: string | undefined, anne
 
   const nameMap = new Map((varieties ?? []).map(v => [v.id, v.nom_vernaculaire]))
 
-  // Top 10 par objectif décroissant
+  // Top 10 par objectif décroissant — chaque forecast = variété × partie
   const items = forecasts
     .filter(f => (Number(f.quantite_prevue_g) || 0) > 0)
     .map(f => {
       const prevu = Number(f.quantite_prevue_g) || 0
-      const cueilli = cueilliMap.get(f.variety_id) ?? 0
+      const partie = f.partie_plante ?? null
+      let cueilli = 0
+      if (partie) {
+        cueilli = cueilliMap.get(`${f.variety_id}:${partie}`) ?? 0
+      } else {
+        // Pas de partie → sommer toutes les parties
+        for (const [key, val] of cueilliMap) {
+          if (key.startsWith(`${f.variety_id}:`)) cueilli += val
+        }
+      }
       return {
         nom: nameMap.get(f.variety_id) ?? 'Inconnue',
+        partie_plante: partie,
         cueilli_g: cueilli,
         prevu_g: prevu,
         pct: prevu > 0 ? Math.round((cueilli / prevu) * 100) : 0,

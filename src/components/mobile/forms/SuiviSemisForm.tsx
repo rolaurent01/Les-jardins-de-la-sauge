@@ -11,6 +11,7 @@ import MobileTextarea from '@/components/mobile/fields/MobileTextarea'
 import { useCachedVarieties, useCachedSeedLots } from '@/hooks/useCachedData'
 import { seedlingSchema } from '@/lib/validation/semis'
 import { todayISO } from '@/lib/utils/date'
+import DateYearWarning from '@/components/shared/DateYearWarning'
 
 type Processus = 'mini_motte' | 'caissette_godet'
 
@@ -239,6 +240,7 @@ export default function SuiviSemisForm({ orgSlug }: SuiviSemisFormProps) {
         onChange={(v) => set('date_semis', v)}
         error={errors.date_semis}
       />
+      <DateYearWarning date={form.date_semis} />
 
       {/* Champs conditionnels — Mini-mottes */}
       {processus === 'mini_motte' && (

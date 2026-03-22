@@ -13,6 +13,7 @@ import {
 import QuickAddVariety from '@/components/varieties/QuickAddVariety'
 import type { SeedLotForSelect } from './SemisClient'
 import { inputStyle, focusStyle, blurStyle } from '@/lib/ui/form-styles'
+import DateYearWarning from '@/components/shared/DateYearWarning'
 
 /** Sections du formulaire progressif */
 type Section = 'identite' | 'levee' | 'repiquage' | 'resultats'
@@ -82,6 +83,7 @@ export default function SemisSlideOver({
   })
 
   const [showAll, setShowAll] = useState(!isEdit)
+  const [dateSemis, setDateSemis] = useState(seedling?.date_semis ?? '')
 
   /* Resync si les variétés initiales changent */
   useEffect(() => {
@@ -101,6 +103,7 @@ export default function SemisSlideOver({
     setNbMortesG(seedling?.nb_mortes_godet ?? 0)
     setNbDonnees(seedling?.nb_donnees ?? 0)
     setNbObtenus(seedling?.nb_plants_obtenus ?? null)
+    setDateSemis(seedling?.date_semis ?? '')
     setError(null)
 
     if (!seedling) {
@@ -409,12 +412,14 @@ export default function SemisSlideOver({
                       name="date_semis"
                       type="date"
                       required
-                      defaultValue={seedling?.date_semis ?? ''}
+                      value={dateSemis}
+                      onChange={e => setDateSemis(e.target.value)}
                       disabled={isPending}
                       style={inputStyle}
                       onFocus={focusStyle}
                       onBlur={blurStyle}
                     />
+                    <DateYearWarning date={dateSemis} />
                   </Field>
                   <Field label="Poids graines (g)">
                     <input

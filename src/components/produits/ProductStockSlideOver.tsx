@@ -2,6 +2,7 @@
 
 import { useState, useTransition, useEffect, useRef } from 'react'
 import { createProductStockMovement } from '@/app/[orgSlug]/(dashboard)/produits/stock/actions'
+import DateYearWarning from '@/components/shared/DateYearWarning'
 
 type LotForSelect = {
   id: string
@@ -204,6 +205,7 @@ export default function ProductStockSlideOver({ open, lots, stockByLot, onClose,
                 style={{ backgroundColor: '#FFF', borderColor: '#D8E0D9', color: '#2C3E2D' }}
                 required
               />
+              <DateYearWarning date={date} />
             </Field>
 
             {/* Quantite */}

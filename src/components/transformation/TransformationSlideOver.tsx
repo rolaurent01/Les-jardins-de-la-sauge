@@ -9,6 +9,7 @@ import QuickAddVariety from '@/components/varieties/QuickAddVariety'
 import type { TransformationModuleConfig, TransformationItem } from './types'
 import { ETAT_PLANTE_LABELS } from './types'
 import { inputStyle, focusStyle, blurStyle } from '@/lib/ui/form-styles'
+import DateYearWarning from '@/components/shared/DateYearWarning'
 
 type Props = {
   config: TransformationModuleConfig
@@ -41,6 +42,7 @@ export default function TransformationSlideOver({
   const [selectedPartie, setSelectedPartie] = useState<string>(item?.partie_plante ?? '')
   const [selectedEtat, setSelectedEtat] = useState<string>(item?.etat_plante ?? '')
   const [allVarieties, setAllVarieties] = useState(catalogVarieties)
+  const [date, setDate] = useState(item?.date ?? '')
 
   // ---- Hook logique adaptative partie_plante ----
   const { parts, loading: loadingParts, autoPart } = useVarietyParts(
@@ -61,6 +63,7 @@ export default function TransformationSlideOver({
     setSelectedVarietyId(item?.variety_id ?? '')
     setSelectedPartie(item?.partie_plante ?? '')
     setSelectedEtat(item?.etat_plante ?? '')
+    setDate(item?.date ?? '')
     setError(null)
     prevAutoPartRef.current = null
     setAllVarieties(catalogVarieties)
@@ -294,12 +297,14 @@ export default function TransformationSlideOver({
                 type="date"
                 required
                 max={new Date().toISOString().split('T')[0]}
-                defaultValue={item?.date ?? ''}
+                value={date}
+                onChange={e => setDate(e.target.value)}
                 disabled={isPending}
                 style={inputStyle}
                 onFocus={focusStyle}
                 onBlur={blurStyle}
               />
+              <DateYearWarning date={date} />
             </Field>
 
             {/* Grille 2 colonnes */}

@@ -106,8 +106,8 @@ export async function fetchVarietiesForForecast(): Promise<
 
 /**
  * Récupère les données réalisées pour le prévisionnel :
- * - cueilliParVariete : total cueilli (g) par variété depuis harvests
- * - stockParVarieteEtat : stock actuel (g) par variété × état depuis v_stock
+ * - cueilliParVarietePartie : total cueilli (g) par variété × partie depuis harvests de l'année
+ * - stockParVarietePartieEtat : entrées stock (g) par variété × partie × état depuis stock_movements de l'année
  */
 export async function fetchRealisedData(annee: number): Promise<RealisedData> {
   const supabase = await createClient()
@@ -116,7 +116,7 @@ export async function fetchRealisedData(annee: number): Promise<RealisedData> {
   const startDate = `${annee}-01-01`
   const endDate = `${annee}-12-31`
 
-  // Requêtes en parallèle
+  // Requêtes en parallèle : harvests de l'année + mouvements d'entrée stock de l'année
   const [harvestsResult, stockResult] = await Promise.all([
     supabase
       .from('harvests')
@@ -126,9 +126,13 @@ export async function fetchRealisedData(annee: number): Promise<RealisedData> {
       .lte('date', endDate)
       .is('deleted_at', null),
     supabase
-      .from('v_stock')
-      .select('variety_id, partie_plante, etat_plante, stock_g')
-      .eq('farm_id', farmId),
+      .from('stock_movements')
+      .select('variety_id, partie_plante, etat_plante, poids_g')
+      .eq('farm_id', farmId)
+      .eq('type_mouvement', 'entree')
+      .gte('date', startDate)
+      .lte('date', endDate)
+      .is('deleted_at', null),
   ])
 
   if (harvestsResult.error) throw new Error(`Erreur chargement récoltes : ${harvestsResult.error.message}`)
@@ -142,13 +146,13 @@ export async function fetchRealisedData(annee: number): Promise<RealisedData> {
     cueilliParVarietePartie[key] = (cueilliParVarietePartie[key] ?? 0) + (h.poids_g ?? 0)
   }
 
-  // Agréger le stock par variété × partie × état
+  // Agréger les entrées stock de l'année par variété × partie × état
   const stockParVarietePartieEtat: Record<string, number> = {}
   for (const s of stockResult.data ?? []) {
     if (!s.etat_plante) continue
     const partie = s.partie_plante ?? 'plante_entiere'
     const key = `${s.variety_id}:${partie}:${s.etat_plante}`
-    stockParVarietePartieEtat[key] = (stockParVarietePartieEtat[key] ?? 0) + (s.stock_g ?? 0)
+    stockParVarietePartieEtat[key] = (stockParVarietePartieEtat[key] ?? 0) + (s.poids_g ?? 0)
   }
 
   return { cueilliParVarietePartie, stockParVarietePartieEtat }

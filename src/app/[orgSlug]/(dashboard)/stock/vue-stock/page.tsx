@@ -1,4 +1,4 @@
-import { fetchStock, fetchStockAlerts } from './actions'
+import { fetchStock, fetchStockAlerts, fetchStockYears } from './actions'
 import VueStockClient from '@/components/stock/VueStockClient'
 
 export const metadata = {
@@ -6,10 +6,11 @@ export const metadata = {
 }
 
 export default async function VueStockPage() {
-  const [stock, alerts] = await Promise.all([
+  const [stock, alerts, years] = await Promise.all([
     fetchStock(),
     fetchStockAlerts(),
+    fetchStockYears(),
   ])
 
-  return <VueStockClient entries={stock} alerts={alerts} />
+  return <VueStockClient entries={stock} alerts={alerts} years={years} />
 }

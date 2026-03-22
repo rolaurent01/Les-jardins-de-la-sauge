@@ -5,6 +5,7 @@ import { Field } from '@/components/ui/Field'
 import type { OccultationWithRelations, RowWithParcel, MethodeOccultation, ActionResult } from '@/lib/types'
 import { groupRowsByParcel } from '@/lib/utils/parcels'
 import { inputStyle, focusStyle, blurStyle } from '@/lib/ui/form-styles'
+import DateYearWarning from '@/components/shared/DateYearWarning'
 
 type Props = {
   open: boolean
@@ -43,11 +44,13 @@ export default function OccultationSlideOver({
   // ---- State du formulaire ----
   const [selectedRowId, setSelectedRowId] = useState(occultation?.row_id ?? '')
   const [methode, setMethode] = useState<MethodeOccultation>(occultation?.methode ?? 'paille')
+  const [dateDebut, setDateDebut] = useState(occultation?.date_debut ?? '')
 
   // Resync a l'ouverture/changement d'occultation
   useEffect(() => {
     setSelectedRowId(occultation?.row_id ?? '')
     setMethode(occultation?.methode ?? 'paille')
+    setDateDebut(occultation?.date_debut ?? '')
     setError(null)
   }, [occultation])
 
@@ -213,12 +216,14 @@ export default function OccultationSlideOver({
                   name="date_debut"
                   type="date"
                   required
-                  defaultValue={occultation?.date_debut ?? ''}
+                  value={dateDebut}
+                  onChange={e => setDateDebut(e.target.value)}
                   disabled={isPending}
                   style={inputStyle}
                   onFocus={focusStyle}
                   onBlur={blurStyle}
                 />
+                <DateYearWarning date={dateDebut} />
               </Field>
               <Field label="Date fin">
                 <input

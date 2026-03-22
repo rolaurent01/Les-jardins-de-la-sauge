@@ -5,6 +5,7 @@ import { Field } from '@/components/ui/Field'
 import type { UprootingWithRelations, RowWithParcel, RowPlantingInfo, Variety, ActionResult } from '@/lib/types'
 import { groupRowsByParcel } from '@/lib/utils/parcels'
 import { inputStyle, focusStyle, blurStyle } from '@/lib/ui/form-styles'
+import DateYearWarning from '@/components/shared/DateYearWarning'
 
 type Props = {
   open: boolean
@@ -36,6 +37,7 @@ export default function ArrachageSlideOver({
   // ---- State du formulaire ----
   const [selectedRowId, setSelectedRowId] = useState(uprooting?.row_id ?? '')
   const [selectedVarietyId, setSelectedVarietyId] = useState(uprooting?.variety_id ?? '')
+  const [date, setDate] = useState(uprooting?.date ?? '')
 
   // ---- Index des varietes actives par rang ----
   const varietiesByRow = useMemo(() => {
@@ -83,6 +85,7 @@ export default function ArrachageSlideOver({
   useEffect(() => {
     setSelectedRowId(uprooting?.row_id ?? '')
     setSelectedVarietyId(uprooting?.variety_id ?? '')
+    setDate(uprooting?.date ?? '')
     setError(null)
     prevAutoRef.current = null
   }, [uprooting])
@@ -274,12 +277,14 @@ export default function ArrachageSlideOver({
                 name="date"
                 type="date"
                 required
-                defaultValue={uprooting?.date ?? ''}
+                value={date}
+                onChange={e => setDate(e.target.value)}
                 disabled={isPending}
                 style={inputStyle}
                 onFocus={focusStyle}
                 onBlur={blurStyle}
               />
+              <DateYearWarning date={date} />
             </Field>
 
             {/* Temps */}

@@ -1,5 +1,7 @@
 import Link from 'next/link'
 import type { DashboardAvancementData } from '@/app/[orgSlug]/(dashboard)/dashboard/actions'
+import { PARTIE_PLANTE_LABELS } from '@/lib/types'
+import type { PartiePlante } from '@/lib/types'
 
 /** Couleur de la barre d'avancement */
 function progressColor(pct: number): string {
@@ -72,11 +74,16 @@ export function DashboardAvancementWidget({ data, orgSlug }: Props) {
           </div>
 
           {/* Barres par variété */}
-          {data.varietes.map(v => (
-            <div key={v.nom}>
+          {data.varietes.map((v, i) => (
+            <div key={`${v.nom}-${v.partie_plante ?? i}`}>
               <div className="flex items-center justify-between mb-0.5">
                 <span className="text-xs font-medium truncate flex-1 mr-2" style={{ color: '#2C3E2D' }}>
                   {v.nom}
+                  {v.partie_plante && (
+                    <span className="ml-1 text-[10px] font-normal" style={{ color: '#6B7B6C' }}>
+                      ({PARTIE_PLANTE_LABELS[v.partie_plante as PartiePlante] ?? v.partie_plante})
+                    </span>
+                  )}
                 </span>
                 <span className="text-xs flex-shrink-0" style={{ color: '#6B7B6C' }}>
                   {v.pct}% ({formatKg(v.cueilli_g)}/{formatKg(v.prevu_g)})

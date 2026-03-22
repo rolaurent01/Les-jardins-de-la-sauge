@@ -13,6 +13,7 @@ import ExportButton from '@/components/shared/ExportButton'
 import type { ExportColumn } from '@/components/shared/ExportButton'
 import { normalize } from '@/lib/utils/normalize'
 import { Th } from '@/components/ui/Th'
+import YearFilter from '@/components/shared/YearFilter'
 
 const ACHATS_EXPORT_COLUMNS: ExportColumn[] = [
   { key: 'varieties', label: 'Variété', format: (v) => (v as { nom_vernaculaire?: string } | null)?.nom_vernaculaire ?? '' },
@@ -52,6 +53,7 @@ export default function AchatsClient({ purchases: initialPurchases, varieties, s
   const [purchases, setPurchases] = useState(initialPurchases)
   const [search, setSearch] = useState('')
   const [etatFilter, setEtatFilter] = useState<string>('all')
+  const [yearFilter, setYearFilter] = useState<number | null>(null)
   const [slideOverOpen, setSlideOverOpen] = useState(false)
   const [editingItem, setEditingItem] = useState<StockPurchaseWithVariety | null>(null)
   const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null)
@@ -65,7 +67,12 @@ export default function AchatsClient({ purchases: initialPurchases, varieties, s
     return () => clearTimeout(timer)
   }, [confirmDeleteId])
 
+  const availableYears = Array.from(new Set(
+    purchases.map(p => p.date ? new Date(p.date).getFullYear() : null).filter((y): y is number => y !== null)
+  )).sort((a, b) => b - a)
+
   const displayed = purchases.filter(item => {
+    if (yearFilter && item.date && new Date(item.date).getFullYear() !== yearFilter) return false
     if (etatFilter !== 'all' && item.etat_plante !== etatFilter) return false
     if (!search.trim()) return true
     const q = normalize(search)
@@ -139,6 +146,13 @@ export default function AchatsClient({ purchases: initialPurchases, varieties, s
           </button>
         </div>
       </div>
+
+      {/* Filtre par année */}
+      {availableYears.length > 1 && (
+        <div className="mb-4">
+          <YearFilter years={availableYears} selectedYear={yearFilter} onChange={setYearFilter} />
+        </div>
+      )}
 
       {/* Barre de recherche + filtres */}
       <div className="flex items-center gap-3 mb-4 flex-wrap">

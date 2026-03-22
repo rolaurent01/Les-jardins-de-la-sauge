@@ -13,6 +13,7 @@ import { useCachedVarieties, useCachedPlantings } from '@/hooks/useCachedData'
 import { harvestSchema } from '@/lib/validation/parcelles'
 import { todayISO } from '@/lib/utils/date'
 import { PARTIE_PLANTE_OPTIONS } from '@/lib/constants/partie-plante'
+import DateYearWarning from '@/components/shared/DateYearWarning'
 
 type TypeCueillette = 'parcelle' | 'sauvage'
 
@@ -264,6 +265,7 @@ export default function CueilletteForm({ orgSlug }: CueilletteFormProps) {
         onChange={(v) => set('date', v)}
         error={errors.date}
       />
+      <DateYearWarning date={form.date} />
 
       <MobileInput
         label="Poids"

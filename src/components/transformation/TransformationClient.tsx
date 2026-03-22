@@ -18,6 +18,7 @@ import ExportButton from '@/components/shared/ExportButton'
 import type { ExportColumn } from '@/components/shared/ExportButton'
 import { normalize } from '@/lib/utils/normalize'
 import { Th } from '@/components/ui/Th'
+import YearFilter from '@/components/shared/YearFilter'
 
 /** Formate un poids en g ou kg */
 function formatWeight(g: number): string {
@@ -58,6 +59,7 @@ export default function TransformationClient({ config, items: initialItems, vari
   const [items, setItems] = useState(initialItems)
   const [search, setSearch] = useState('')
   const [typeFilter, setTypeFilter] = useState<TypeFilter>('all')
+  const [yearFilter, setYearFilter] = useState<number | null>(null)
   const [slideOverOpen, setSlideOverOpen] = useState(false)
   const [slideOverType, setSlideOverType] = useState<TransformationType>('entree')
   const [editingItem, setEditingItem] = useState<TransformationItem | null>(null)
@@ -84,7 +86,13 @@ export default function TransformationClient({ config, items: initialItems, vari
     return ETAT_PLANTE_LABELS[item.etat_plante ?? ''] ?? '—'
   }
 
+  // Années disponibles
+  const availableYears = Array.from(new Set(
+    items.map(i => i.date ? new Date(i.date).getFullYear() : null).filter((y): y is number => y !== null)
+  )).sort((a, b) => b - a)
+
   const displayed = items.filter(item => {
+    if (yearFilter && item.date && new Date(item.date).getFullYear() !== yearFilter) return false
     const matchType = typeFilter === 'all' || item.type === typeFilter
     if (!matchType) return false
     if (!search.trim()) return true
@@ -187,6 +195,13 @@ export default function TransformationClient({ config, items: initialItems, vari
           )}
         </div>
       </div>
+
+      {/* Filtre par année */}
+      {availableYears.length > 1 && (
+        <div className="mb-4">
+          <YearFilter years={availableYears} selectedYear={yearFilter} onChange={setYearFilter} />
+        </div>
+      )}
 
       {/* Barre de recherche + filtres */}
       <div className="flex items-center gap-3 mb-4 flex-wrap">

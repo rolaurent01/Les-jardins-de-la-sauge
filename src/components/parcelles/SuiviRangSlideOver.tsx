@@ -5,6 +5,7 @@ import { Field } from '@/components/ui/Field'
 import type { RowCareWithRelations, RowWithParcel, RowPlantingInfo, Variety, ActionResult } from '@/lib/types'
 import { groupRowsByParcel } from '@/lib/utils/parcels'
 import { inputStyle, focusStyle, blurStyle } from '@/lib/ui/form-styles'
+import DateYearWarning from '@/components/shared/DateYearWarning'
 
 type Props = {
   open: boolean
@@ -43,6 +44,7 @@ export default function SuiviRangSlideOver({
   // ---- State du formulaire ----
   const [selectedRowId, setSelectedRowId] = useState(rowCare?.row_id ?? '')
   const [selectedVarietyId, setSelectedVarietyId] = useState(rowCare?.variety_id ?? '')
+  const [date, setDate] = useState(rowCare?.date ?? '')
 
   // ---- Index des varietes actives par rang ----
   const varietiesByRow = useMemo(() => {
@@ -90,6 +92,7 @@ export default function SuiviRangSlideOver({
   useEffect(() => {
     setSelectedRowId(rowCare?.row_id ?? '')
     setSelectedVarietyId(rowCare?.variety_id ?? '')
+    setDate(rowCare?.date ?? '')
     setError(null)
     prevAutoRef.current = null
   }, [rowCare])
@@ -298,12 +301,14 @@ export default function SuiviRangSlideOver({
                 name="date"
                 type="date"
                 required
-                defaultValue={rowCare?.date ?? ''}
+                value={date}
+                onChange={e => setDate(e.target.value)}
                 disabled={isPending}
                 style={inputStyle}
                 onFocus={focusStyle}
                 onBlur={blurStyle}
               />
+              <DateYearWarning date={date} />
             </Field>
 
             {/* Type de soin */}

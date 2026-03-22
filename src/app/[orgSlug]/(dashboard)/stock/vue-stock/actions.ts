@@ -39,7 +39,31 @@ export async function fetchStock(): Promise<StockEntry[]> {
   if (error) throw new Error(`Erreur v_stock : ${error.message}`)
   if (!data || data.length === 0) return []
 
-  // Récupérer les variétés correspondantes
+  return enrichStockRows(supabase, data)
+}
+
+/**
+ * Récupère le stock à une date donnée via la fonction SQL stock_at_date.
+ */
+export async function fetchStockAtDate(date: string): Promise<StockEntry[]> {
+  const { farmId } = await getContext()
+  const supabase = createAdminClient()
+
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const { data, error } = await (supabase.rpc as any)('stock_at_date', {
+    p_farm_id: farmId,
+    p_date: date,
+  })
+
+  if (error) throw new Error(`Erreur stock_at_date : ${error.message}`)
+  if (!data || data.length === 0) return []
+
+  return enrichStockRows(supabase, data)
+}
+
+/** Enrichit les lignes de stock brutes avec les infos variété */
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+async function enrichStockRows(supabase: any, data: { variety_id: string; partie_plante: string; etat_plante: string; stock_g: number }[]): Promise<StockEntry[]> {
   const varietyIds = [...new Set(data.map(d => d.variety_id))]
   const { data: varieties, error: vErr } = await supabase
     .from('varieties')
@@ -48,8 +72,9 @@ export async function fetchStock(): Promise<StockEntry[]> {
 
   if (vErr) throw new Error(`Erreur variétés : ${vErr.message}`)
 
-  const varietyMap = new Map(
-    (varieties ?? []).map(v => [v.id, v])
+  type VarietyInfo = { id: string; nom_vernaculaire: string; nom_latin: string | null; famille: string | null }
+  const varietyMap = new Map<string, VarietyInfo>(
+    (varieties ?? []).map((v: VarietyInfo) => [v.id, v])
   )
 
   const entries: StockEntry[] = data.map(row => {
@@ -78,6 +103,30 @@ export async function fetchStock(): Promise<StockEntry[]> {
   })
 
   return entries
+}
+
+/**
+ * Récupère les années distinctes ayant des mouvements de stock + année courante.
+ */
+export async function fetchStockYears(): Promise<number[]> {
+  const { farmId } = await getContext()
+  const supabase = createAdminClient()
+
+  const { data, error } = await supabase
+    .from('stock_movements')
+    .select('date')
+    .eq('farm_id', farmId)
+    .is('deleted_at', null)
+
+  if (error) throw new Error(`Erreur stock_movements : ${error.message}`)
+
+  const currentYear = new Date().getFullYear()
+  const yearsSet = new Set<number>([currentYear])
+  for (const row of data ?? []) {
+    if (row.date) yearsSet.add(new Date(row.date).getFullYear())
+  }
+
+  return Array.from(yearsSet).sort((a, b) => a - b)
 }
 
 /**

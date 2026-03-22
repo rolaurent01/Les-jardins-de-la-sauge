@@ -1,7 +1,9 @@
 'use client'
 
-import { useState, useMemo } from 'react'
+import { useState, useMemo, useTransition } from 'react'
 import type { StockEntry, StockAlert } from '@/app/[orgSlug]/(dashboard)/stock/vue-stock/actions'
+import { fetchStock, fetchStockAtDate } from '@/app/[orgSlug]/(dashboard)/stock/vue-stock/actions'
+import YearFilter from '@/components/shared/YearFilter'
 import { ETATS_PLANTE, ETAT_PLANTE_LABELS, ETAT_PLANTE_COLORS } from '@/lib/constants/etat-plante'
 import type { EtatPlanteValue } from '@/lib/constants/etat-plante'
 import { PARTIE_COLORS } from '@/lib/utils/colors'
@@ -92,9 +94,13 @@ function pivotStock(entries: StockEntry[]): StockRow[] {
 type Props = {
   entries: StockEntry[]
   alerts: StockAlert[]
+  years: number[]
 }
 
-export default function VueStockClient({ entries, alerts }: Props) {
+export default function VueStockClient({ entries: initialEntries, alerts, years }: Props) {
+  const [entries, setEntries] = useState(initialEntries)
+  const [selectedYear, setSelectedYear] = useState<number | null>(null) // null = temps réel
+  const [isPending, startTransition] = useTransition()
   const [search, setSearch] = useState('')
   const [familleFilter, setFamilleFilter] = useState<string>('all')
   const [partieFilter, setPartieFilter] = useState<string>('all')
@@ -275,7 +281,8 @@ export default function VueStockClient({ entries, alerts }: Props) {
             Vue Stock
           </h1>
           <p className="text-sm mt-0.5" style={{ color: '#9CA89D' }}>
-            Stock temps réel — {displayed.length} ligne{displayed.length !== 1 ? 's' : ''}
+            {selectedYear ? `Stock au 31/12/${selectedYear}` : 'Stock temps réel'} — {displayed.length} ligne{displayed.length !== 1 ? 's' : ''}
+            {isPending && ' (chargement...)'}
           </p>
         </div>
 
@@ -284,6 +291,22 @@ export default function VueStockClient({ entries, alerts }: Props) {
             <ExportMenu onCsv={exportCsv} onXlsx={exportXlsx} />
           </div>
         )}
+      </div>
+
+      {/* Sélecteur d'année */}
+      <div className="mb-4">
+        <YearFilter
+          years={years}
+          selectedYear={selectedYear}
+          allLabel="Actuel"
+          onChange={(y) => {
+            setSelectedYear(y)
+            startTransition(async () => {
+              const data = y ? await fetchStockAtDate(`${y}-12-31`) : await fetchStock()
+              setEntries(data)
+            })
+          }}
+        />
       </div>
 
       {/* Alertes stock bas */}

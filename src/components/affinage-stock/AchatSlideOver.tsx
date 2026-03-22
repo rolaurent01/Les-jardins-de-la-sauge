@@ -9,6 +9,7 @@ import QuickAddVariety from '@/components/varieties/QuickAddVariety'
 import { ETAT_PLANTE_LABELS } from '@/components/transformation/types'
 import type { StockPurchaseWithVariety } from '@/lib/types'
 import { inputStyle, focusStyle, blurStyle } from '@/lib/ui/form-styles'
+import DateYearWarning from '@/components/shared/DateYearWarning'
 
 const ETATS = ['frais', 'tronconnee', 'sechee', 'tronconnee_sechee', 'sechee_triee', 'tronconnee_sechee_triee'] as const
 
@@ -41,6 +42,7 @@ export default function AchatSlideOver({
   const [selectedPartie, setSelectedPartie] = useState<string>(item?.partie_plante ?? '')
   const [selectedEtat, setSelectedEtat] = useState<string>(item?.etat_plante ?? '')
   const [allVarieties, setAllVarieties] = useState(catalogVarieties)
+  const [date, setDate] = useState(item?.date ?? '')
 
   const { parts, loading: loadingParts, autoPart } = useVarietyParts(
     selectedVarietyId || null,
@@ -58,6 +60,7 @@ export default function AchatSlideOver({
     setSelectedVarietyId(item?.variety_id ?? '')
     setSelectedPartie(item?.partie_plante ?? '')
     setSelectedEtat(item?.etat_plante ?? '')
+    setDate(item?.date ?? '')
     setError(null)
     prevAutoPartRef.current = null
     setAllVarieties(catalogVarieties)
@@ -248,12 +251,14 @@ export default function AchatSlideOver({
                 type="date"
                 required
                 max={new Date().toISOString().split('T')[0]}
-                defaultValue={item?.date ?? ''}
+                value={date}
+                onChange={e => setDate(e.target.value)}
                 disabled={isPending}
                 style={inputStyle}
                 onFocus={focusStyle}
                 onBlur={blurStyle}
               />
+              <DateYearWarning date={date} />
             </Field>
 
             {/* Poids */}

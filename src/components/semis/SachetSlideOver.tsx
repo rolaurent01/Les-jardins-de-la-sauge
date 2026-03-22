@@ -5,6 +5,7 @@ import { Field } from '@/components/ui/Field'
 import type { SeedLotWithVariety, Variety, ActionResult } from '@/lib/types'
 import QuickAddVariety from '@/components/varieties/QuickAddVariety'
 import { inputStyle, focusStyle, blurStyle } from '@/lib/ui/form-styles'
+import DateYearWarning from '@/components/shared/DateYearWarning'
 
 type Props = {
   open:      boolean
@@ -25,6 +26,7 @@ export default function SachetSlideOver({ open, seedLot, varieties: initialVarie
   const [varieties, setVarieties] = useState(initialVarieties)
   /* Variété sélectionnée dans le select */
   const [selectedVarietyId, setSelectedVarietyId] = useState(seedLot?.variety_id ?? '')
+  const [dateAchat, setDateAchat] = useState(seedLot?.date_achat ?? '')
 
   /* Resync si les variétés initiales changent (re-render parent) */
   useEffect(() => {
@@ -34,6 +36,7 @@ export default function SachetSlideOver({ open, seedLot, varieties: initialVarie
   /* Resync si on change de sachet (nouveau slide-over via key prop) */
   useEffect(() => {
     setSelectedVarietyId(seedLot?.variety_id ?? '')
+    setDateAchat(seedLot?.date_achat ?? '')
     setError(null)
   }, [seedLot])
 
@@ -203,12 +206,14 @@ export default function SachetSlideOver({ open, seedLot, varieties: initialVarie
                   name="date_achat"
                   type="date"
                   required
-                  defaultValue={seedLot?.date_achat ?? ''}
+                  value={dateAchat}
+                  onChange={e => setDateAchat(e.target.value)}
                   disabled={isPending}
                   style={inputStyle}
                   onFocus={focusStyle}
                   onBlur={blurStyle}
                 />
+                <DateYearWarning date={dateAchat} />
               </Field>
 
               <Field label="Date facture">

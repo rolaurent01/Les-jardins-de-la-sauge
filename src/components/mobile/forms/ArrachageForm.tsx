@@ -12,6 +12,7 @@ import { useCachedPlantings } from '@/hooks/useCachedData'
 import { offlineDb } from '@/lib/offline/db'
 import { uprootingSchema } from '@/lib/validation/parcelles'
 import { todayISO } from '@/lib/utils/date'
+import DateYearWarning from '@/components/shared/DateYearWarning'
 
 function initialState() {
   return {
@@ -212,6 +213,7 @@ export default function ArrachageForm({ orgSlug }: ArrachageFormProps) {
         onChange={(v) => set('date', v)}
         error={errors.date}
       />
+      <DateYearWarning date={form.date} />
 
       <MobileTimerInput
         label="Temps"

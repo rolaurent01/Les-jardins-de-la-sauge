@@ -17,6 +17,7 @@ import type { ExportColumn } from '@/components/shared/ExportButton'
 import { formatDate, formatDuration } from '@/lib/utils/format'
 import { normalize } from '@/lib/utils/normalize'
 import { Th } from '@/components/ui/Th'
+import YearFilter from '@/components/shared/YearFilter'
 
 /** Formate un poids en g ou kg */
 function formatWeight(g: number): string {
@@ -64,6 +65,7 @@ export default function CueilletteClient({ initialHarvests, rows, varieties, lie
   const [search, setSearch] = useState('')
   const [showArchived, setShowArchived] = useState(false)
   const [typeFilter, setTypeFilter] = useState<TypeFilter>('all')
+  const [yearFilter, setYearFilter] = useState<number | null>(null)
   const [slideOverOpen, setSlideOverOpen] = useState(false)
   const [editingHarvest, setEditingHarvest] = useState<HarvestWithRelations | null>(null)
   const [confirmArchiveId, setConfirmArchiveId] = useState<string | null>(null)
@@ -80,7 +82,13 @@ export default function CueilletteClient({ initialHarvests, rows, varieties, lie
   const active = harvests.filter(h => !h.deleted_at)
   const archived = harvests.filter(h => !!h.deleted_at)
 
+  // Années disponibles extraites des données
+  const availableYears = Array.from(new Set(
+    active.map(h => h.date ? new Date(h.date).getFullYear() : null).filter((y): y is number => y !== null)
+  )).sort((a, b) => b - a)
+
   const displayed = (showArchived ? archived : active).filter(h => {
+    if (yearFilter && h.date && new Date(h.date).getFullYear() !== yearFilter) return false
     const matchType = typeFilter === 'all' || h.type_cueillette === typeFilter
     if (!matchType) return false
     if (!search.trim()) return true
@@ -166,6 +174,13 @@ export default function CueilletteClient({ initialHarvests, rows, varieties, lie
           </button>
         </div>
       </div>
+
+      {/* Filtre par année */}
+      {availableYears.length > 1 && (
+        <div className="mb-4">
+          <YearFilter years={availableYears} selectedYear={yearFilter} onChange={setYearFilter} />
+        </div>
+      )}
 
       {/* Barre de recherche + filtres */}
       <div className="flex items-center gap-3 mb-4 flex-wrap">

@@ -13,6 +13,7 @@ import ExportButton from '@/components/shared/ExportButton'
 import type { ExportColumn } from '@/components/shared/ExportButton'
 import { normalize } from '@/lib/utils/normalize'
 import { Th } from '@/components/ui/Th'
+import YearFilter from '@/components/shared/YearFilter'
 
 const AJUSTEMENTS_EXPORT_COLUMNS: ExportColumn[] = [
   { key: 'varieties', label: 'Variété', format: (v) => (v as { nom_vernaculaire?: string } | null)?.nom_vernaculaire ?? '' },
@@ -57,6 +58,7 @@ export default function AjustementsClient({ adjustments: initialAdjustments, var
   const [search, setSearch] = useState('')
   const [typeFilter, setTypeFilter] = useState<TypeFilter>('all')
   const [etatFilter, setEtatFilter] = useState<string>('all')
+  const [yearFilter, setYearFilter] = useState<number | null>(null)
   const [slideOverOpen, setSlideOverOpen] = useState(false)
   const [slideOverType, setSlideOverType] = useState<'entree' | 'sortie'>('entree')
   const [editingItem, setEditingItem] = useState<StockAdjustmentWithVariety | null>(null)
@@ -71,7 +73,12 @@ export default function AjustementsClient({ adjustments: initialAdjustments, var
     return () => clearTimeout(timer)
   }, [confirmDeleteId])
 
+  const availableYears = Array.from(new Set(
+    adjustments.map(a => a.date ? new Date(a.date).getFullYear() : null).filter((y): y is number => y !== null)
+  )).sort((a, b) => b - a)
+
   const displayed = adjustments.filter(item => {
+    if (yearFilter && item.date && new Date(item.date).getFullYear() !== yearFilter) return false
     if (typeFilter !== 'all' && item.type_mouvement !== typeFilter) return false
     if (etatFilter !== 'all' && item.etat_plante !== etatFilter) return false
     if (!search.trim()) return true
@@ -148,6 +155,13 @@ export default function AjustementsClient({ adjustments: initialAdjustments, var
           </button>
         </div>
       </div>
+
+      {/* Filtre par année */}
+      {availableYears.length > 1 && (
+        <div className="mb-4">
+          <YearFilter years={availableYears} selectedYear={yearFilter} onChange={setYearFilter} />
+        </div>
+      )}
 
       {/* Barre de recherche + filtres */}
       <div className="flex items-center gap-3 mb-4 flex-wrap">

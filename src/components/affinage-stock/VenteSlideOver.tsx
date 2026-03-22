@@ -9,6 +9,7 @@ import QuickAddVariety from '@/components/varieties/QuickAddVariety'
 import { ETAT_PLANTE_LABELS } from '@/components/transformation/types'
 import type { StockDirectSaleWithVariety } from '@/lib/types'
 import { inputStyle, focusStyle, blurStyle } from '@/lib/ui/form-styles'
+import DateYearWarning from '@/components/shared/DateYearWarning'
 
 const ETATS = ['frais', 'tronconnee', 'sechee', 'tronconnee_sechee', 'sechee_triee', 'tronconnee_sechee_triee'] as const
 
@@ -46,6 +47,7 @@ export default function VenteSlideOver({
   const [selectedEtat, setSelectedEtat] = useState<string>(item?.etat_plante ?? '')
   const [poidsValue, setPoidsValue] = useState<string>(item?.poids_g?.toString() ?? '')
   const [allVarieties, setAllVarieties] = useState(catalogVarieties)
+  const [date, setDate] = useState(item?.date ?? '')
 
   const { parts, loading: loadingParts, autoPart } = useVarietyParts(
     selectedVarietyId || null,
@@ -64,6 +66,7 @@ export default function VenteSlideOver({
     setSelectedPartie(item?.partie_plante ?? '')
     setSelectedEtat(item?.etat_plante ?? '')
     setPoidsValue(item?.poids_g?.toString() ?? '')
+    setDate(item?.date ?? '')
     setError(null)
     prevAutoPartRef.current = null
     setAllVarieties(catalogVarieties)
@@ -284,12 +287,14 @@ export default function VenteSlideOver({
                 type="date"
                 required
                 max={new Date().toISOString().split('T')[0]}
-                defaultValue={item?.date ?? ''}
+                value={date}
+                onChange={e => setDate(e.target.value)}
                 disabled={isPending}
                 style={inputStyle}
                 onFocus={focusStyle}
                 onBlur={blurStyle}
               />
+              <DateYearWarning date={date} />
             </Field>
 
             {/* Poids */}

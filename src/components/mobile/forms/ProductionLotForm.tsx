@@ -10,6 +10,7 @@ import MobileTextarea from '@/components/mobile/fields/MobileTextarea'
 import { useCachedRecipes } from '@/hooks/useCachedData'
 import { mobileProductionLotSchema } from '@/lib/validation/produits'
 import { todayISO } from '@/lib/utils/date'
+import DateYearWarning from '@/components/shared/DateYearWarning'
 import type { ProductionMode } from '@/lib/types'
 import { MODE_LABELS, MODE_DESCRIPTIONS } from '@/components/produits/types'
 
@@ -177,6 +178,7 @@ export default function ProductionLotForm({ orgSlug }: ProductionLotFormProps) {
         onChange={(v) => set('date_production', v)}
         error={errors.date_production}
       />
+      <DateYearWarning date={form.date_production} />
 
       <MobileTimerInput
         label="Temps"

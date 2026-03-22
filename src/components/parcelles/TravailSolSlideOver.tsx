@@ -5,6 +5,7 @@ import { Field } from '@/components/ui/Field'
 import type { SoilWorkWithRelations, RowWithParcel, ActionResult } from '@/lib/types'
 import { groupRowsByParcel } from '@/lib/utils/parcels'
 import { inputStyle, focusStyle, blurStyle } from '@/lib/ui/form-styles'
+import DateYearWarning from '@/components/shared/DateYearWarning'
 
 type Props = {
   open:      boolean
@@ -21,9 +22,11 @@ export default function TravailSolSlideOver({ open, soilWork, rows, onClose, onS
   const firstFieldRef = useRef<HTMLSelectElement>(null)
 
   const [selectedRowId, setSelectedRowId] = useState(soilWork?.row_id ?? '')
+  const [date, setDate] = useState(soilWork?.date ?? '')
 
   useEffect(() => {
     setSelectedRowId(soilWork?.row_id ?? '')
+    setDate(soilWork?.date ?? '')
     setError(null)
   }, [soilWork])
 
@@ -147,12 +150,14 @@ export default function TravailSolSlideOver({ open, soilWork, rows, onClose, onS
                 name="date"
                 type="date"
                 required
-                defaultValue={soilWork?.date ?? ''}
+                value={date}
+                onChange={e => setDate(e.target.value)}
                 disabled={isPending}
                 style={inputStyle}
                 onFocus={focusStyle}
                 onBlur={blurStyle}
               />
+              <DateYearWarning date={date} />
             </Field>
 
             {/* Type de travail */}

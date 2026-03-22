@@ -10,6 +10,7 @@ import MobileTimerInput from '@/components/mobile/fields/MobileTimerInput'
 import MobileTextarea from '@/components/mobile/fields/MobileTextarea'
 import { soilWorkSchema } from '@/lib/validation/parcelles'
 import { todayISO } from '@/lib/utils/date'
+import DateYearWarning from '@/components/shared/DateYearWarning'
 
 const TYPE_TRAVAIL_OPTIONS = [
   { value: 'depaillage', label: 'Dépaillage' },
@@ -127,6 +128,7 @@ export default function TravailSolForm({ orgSlug }: TravailSolFormProps) {
         onChange={(v) => set('date', v)}
         error={errors.date}
       />
+      <DateYearWarning date={form.date} />
 
       <MobileSelect
         label="Type de travail"

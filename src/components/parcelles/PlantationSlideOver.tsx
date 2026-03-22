@@ -10,6 +10,7 @@ import QuickAddVariety from '@/components/varieties/QuickAddVariety'
 import { formatDate } from '@/lib/utils/format'
 import { groupRowsByParcel } from '@/lib/utils/parcels'
 import { inputStyle, focusStyle, blurStyle } from '@/lib/ui/form-styles'
+import DateYearWarning from '@/components/shared/DateYearWarning'
 
 type Props = {
   open: boolean
@@ -63,6 +64,7 @@ export default function PlantationSlideOver({
   )
   const [longueurM, setLongueurM] = useState<string>(planting?.longueur_m?.toString() ?? '')
   const [largeurM, setLargeurM] = useState<string>(planting?.largeur_m?.toString() ?? '')
+  const [datePlantation, setDatePlantation] = useState(planting?.date_plantation ?? '')
 
   // ---- Avertissements rang ----
   const [warnings, setWarnings] = useState<RowWarnings | null>(null)
@@ -81,6 +83,7 @@ export default function PlantationSlideOver({
     setOriginMode(planting?.seedling_id ? 'semis' : 'fournisseur')
     setLongueurM(planting?.longueur_m?.toString() ?? '')
     setLargeurM(planting?.largeur_m?.toString() ?? '')
+    setDatePlantation(planting?.date_plantation ?? '')
     setError(null)
     setWarnings(null)
   }, [planting])
@@ -419,12 +422,14 @@ export default function PlantationSlideOver({
                   name="date_plantation"
                   type="date"
                   required
-                  defaultValue={planting?.date_plantation ?? ''}
+                  value={datePlantation}
+                  onChange={e => setDatePlantation(e.target.value)}
                   disabled={isPending}
                   style={inputStyle}
                   onFocus={focusStyle}
                   onBlur={blurStyle}
                 />
+                <DateYearWarning date={datePlantation} />
               </Field>
             </div>
 

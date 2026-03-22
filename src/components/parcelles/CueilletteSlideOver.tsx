@@ -7,6 +7,7 @@ import { PARTIES_PLANTE, PARTIE_PLANTE_LABELS } from '@/lib/types'
 import { useVarietyParts } from '@/hooks/useVarietyParts'
 import { groupRowsByParcel } from '@/lib/utils/parcels'
 import { inputStyle, focusStyle, blurStyle } from '@/lib/ui/form-styles'
+import DateYearWarning from '@/components/shared/DateYearWarning'
 
 type Props = {
   open: boolean
@@ -44,6 +45,7 @@ export default function CueilletteSlideOver({
   const [selectedRowId, setSelectedRowId] = useState(harvest?.row_id ?? '')
   const [selectedVarietyId, setSelectedVarietyId] = useState(harvest?.variety_id ?? '')
   const [selectedPartie, setSelectedPartie] = useState<string>(harvest?.partie_plante ?? '')
+  const [date, setDate] = useState(harvest?.date ?? '')
 
   // ---- Index des varietes actives par rang ----
   const varietiesByRow = useMemo(() => {
@@ -109,6 +111,7 @@ export default function CueilletteSlideOver({
     setSelectedRowId(harvest?.row_id ?? '')
     setSelectedVarietyId(harvest?.variety_id ?? '')
     setSelectedPartie(harvest?.partie_plante ?? '')
+    setDate(harvest?.date ?? '')
     setError(null)
     prevAutoVarietyRef.current = null
     prevAutoPartRef.current = null
@@ -407,12 +410,14 @@ export default function CueilletteSlideOver({
                 name="date"
                 type="date"
                 required
-                defaultValue={harvest?.date ?? ''}
+                value={date}
+                onChange={e => setDate(e.target.value)}
                 disabled={isPending}
                 style={inputStyle}
                 onFocus={focusStyle}
                 onBlur={blurStyle}
               />
+              <DateYearWarning date={date} />
             </Field>
 
             {/* Grille 2 colonnes */}

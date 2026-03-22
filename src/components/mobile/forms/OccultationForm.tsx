@@ -11,6 +11,7 @@ import MobileTextarea from '@/components/mobile/fields/MobileTextarea'
 import MobileCheckbox from '@/components/mobile/fields/MobileCheckbox'
 import { occultationSchema } from '@/lib/validation/parcelles'
 import { todayISO } from '@/lib/utils/date'
+import DateYearWarning from '@/components/shared/DateYearWarning'
 
 const METHODE_OPTIONS = [
   { value: 'paille', label: 'Paille' },
@@ -151,6 +152,7 @@ export default function OccultationForm({ orgSlug }: OccultationFormProps) {
         onChange={(v) => set('date_debut', v)}
         error={errors.date_debut}
       />
+      <DateYearWarning date={form.date_debut} />
 
       <MobileSelect
         label="Méthode"

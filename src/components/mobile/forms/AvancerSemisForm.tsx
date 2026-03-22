@@ -11,6 +11,7 @@ import { SEEDLING_STATUT_LABELS } from '@/lib/types'
 import type { SeedlingStatut } from '@/lib/types'
 import { updateCachedSeedlingOptimistic } from '@/lib/offline/seedling-cache'
 import { todayISO } from '@/lib/utils/date'
+import DateYearWarning from '@/components/shared/DateYearWarning'
 
 /** Couleurs des badges statut (identiques au desktop) */
 const STATUT_COLORS: Record<string, { bg: string; color: string }> = {
@@ -166,6 +167,7 @@ export default function AvancerSemisForm({ seedling, orgSlug, onBack }: AvancerS
             value={dateLevee}
             onChange={setDateLevee}
           />
+          <DateYearWarning date={dateLevee} />
           {isMiniMotte && (
             <MobileInput
               label="Mortes avant levée"
@@ -196,6 +198,7 @@ export default function AvancerSemisForm({ seedling, orgSlug, onBack }: AvancerS
             value={dateRepiquage}
             onChange={setDateRepiquage}
           />
+          <DateYearWarning date={dateRepiquage} />
           <MobileInput
             label="Mortes en godet"
             type="number"

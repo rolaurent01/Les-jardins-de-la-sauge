@@ -10,6 +10,7 @@ import MobileCheckbox from '@/components/mobile/fields/MobileCheckbox'
 import { useCachedVarieties } from '@/hooks/useCachedData'
 import { seedLotSchema } from '@/lib/validation/semis'
 import { todayISO } from '@/lib/utils/date'
+import DateYearWarning from '@/components/shared/DateYearWarning'
 
 /** État initial du formulaire */
 function initialState() {
@@ -168,6 +169,7 @@ export default function SachetForm({ orgSlug }: SachetFormProps) {
         onChange={(v) => set('date_achat', v)}
         error={errors.date_achat}
       />
+      <DateYearWarning date={form.date_achat} />
 
       <MobileInput
         label="Date facture"

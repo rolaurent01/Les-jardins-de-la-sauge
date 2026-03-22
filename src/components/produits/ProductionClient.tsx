@@ -17,6 +17,7 @@ import ExportButton from '@/components/shared/ExportButton'
 import type { ExportColumn } from '@/components/shared/ExportButton'
 import { normalize } from '@/lib/utils/normalize'
 import { Th } from '@/components/ui/Th'
+import YearFilter from '@/components/shared/YearFilter'
 
 /** Formate un poids en grammes de facon lisible */
 function formatWeight(g: number | null): string {
@@ -60,6 +61,7 @@ export default function ProductionClient({ initialLots, recipes, categories, sto
   const [showArchived, setShowArchived] = useState(false)
   const [modeFilter, setModeFilter] = useState<ModeFilter>('all')
   const [categoryFilter, setCategoryFilter] = useState<string>('all')
+  const [yearFilter, setYearFilter] = useState<number | null>(null)
   const [wizardOpen, setWizardOpen] = useState(false)
   const [confirmArchiveId, setConfirmArchiveId] = useState<string | null>(null)
   const [pendingId, setPendingId] = useState<string | null>(null)
@@ -77,7 +79,12 @@ export default function ProductionClient({ initialLots, recipes, categories, sto
   const active = lots.filter(l => !l.deleted_at)
   const archived = lots.filter(l => !!l.deleted_at)
 
+  const availableYears = Array.from(new Set(
+    active.map(l => l.date_production ? new Date(l.date_production).getFullYear() : null).filter((y): y is number => y !== null)
+  )).sort((a, b) => b - a)
+
   const displayed = (showArchived ? archived : active).filter(l => {
+    if (yearFilter && l.date_production && new Date(l.date_production).getFullYear() !== yearFilter) return false
     if (modeFilter !== 'all' && l.mode !== modeFilter) return false
     if (categoryFilter !== 'all') {
       const recipeName = l.recipes?.nom ?? ''
@@ -163,6 +170,13 @@ export default function ProductionClient({ initialLots, recipes, categories, sto
           </button>
         </div>
       </div>
+
+      {/* Filtre par année */}
+      {availableYears.length > 1 && (
+        <div className="mb-4">
+          <YearFilter years={availableYears} selectedYear={yearFilter} onChange={setYearFilter} />
+        </div>
+      )}
 
       {/* Barre de recherche + filtres */}
       <div className="flex items-center gap-3 mb-4 flex-wrap">

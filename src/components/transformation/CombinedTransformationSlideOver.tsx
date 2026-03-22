@@ -9,6 +9,7 @@ import QuickAddVariety from '@/components/varieties/QuickAddVariety'
 import type { TransformationModuleConfig } from './types'
 import { ETAT_PLANTE_LABELS } from './types'
 import { inputStyle, focusStyle, blurStyle } from '@/lib/ui/form-styles'
+import DateYearWarning from '@/components/shared/DateYearWarning'
 
 type Props = {
   config: TransformationModuleConfig
@@ -37,6 +38,7 @@ export default function CombinedTransformationSlideOver({
   const [poidsEntree, setPoidsEntree] = useState('')
   const [poidsSortie, setPoidsSortie] = useState('')
   const [sortieManuallyEdited, setSortieManuallyEdited] = useState(false)
+  const [date, setDate] = useState('')
   const [allVarieties, setAllVarieties] = useState(catalogVarieties)
 
   const isTronconnage = config.module === 'tronconnage'
@@ -63,6 +65,7 @@ export default function CombinedTransformationSlideOver({
       setPoidsEntree('')
       setPoidsSortie('')
       setSortieManuallyEdited(false)
+      setDate('')
       setError(null)
       prevAutoPartRef.current = null
       setAllVarieties(catalogVarieties)
@@ -295,11 +298,14 @@ export default function CombinedTransformationSlideOver({
                 type="date"
                 required
                 max={new Date().toISOString().split('T')[0]}
+                value={date}
+                onChange={e => setDate(e.target.value)}
                 disabled={isPending}
                 style={inputStyle}
                 onFocus={focusStyle}
                 onBlur={blurStyle}
               />
+              <DateYearWarning date={date} />
             </Field>
 
             {/* Poids entree + sortie */}

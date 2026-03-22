@@ -12,6 +12,7 @@ import { useCachedVarieties } from '@/hooks/useCachedData'
 import { purchaseSchema } from '@/lib/validation/affinage-stock'
 import { todayISO } from '@/lib/utils/date'
 import { PARTIE_PLANTE_OPTIONS } from '@/lib/constants/partie-plante'
+import DateYearWarning from '@/components/shared/DateYearWarning'
 
 const ETAT_PLANTE_OPTIONS = [
   { value: 'frais', label: 'Frais' },
@@ -169,6 +170,7 @@ export default function AchatForm({ orgSlug }: AchatFormProps) {
         onChange={(v) => set('date', v)}
         error={errors.date}
       />
+      <DateYearWarning date={form.date} />
 
       <MobileInput
         label="Poids"

@@ -2,6 +2,50 @@
 
 ---
 
+## [2026-03-22] — Gestion des années + warnings + refonte dashboard
+
+**Type :** `feat`
+**Objectif :** Ajouter la gestion complète des années calendaires : filtre année sur toutes les pages, stock historique, warnings sur saisie en année passée/clôturée, refonte widget avancement avec partie de plante.
+
+**Fichiers créés :**
+- `supabase/migrations/035_stock_at_date_and_season_closures.sql` — fonction SQL `stock_at_date(farm_id, date)` + table `season_closures` avec RLS
+- `src/components/shared/YearFilter.tsx` — composant réutilisable de sélection d'année (boutons toggle)
+- `src/components/shared/DateYearWarning.tsx` — composant warning pour dates en année passée ou clôturée
+- `src/app/[orgSlug]/(dashboard)/cloture/actions.ts` — `fetchClosedYears()` server action
+
+**Fichiers modifiés :**
+- **Vue Stock :**
+  - `src/app/[orgSlug]/(dashboard)/stock/vue-stock/actions.ts` — ajout `fetchStockAtDate()` (via RPC), `fetchStockYears()`, refactor `enrichStockRows()`
+  - `src/app/[orgSlug]/(dashboard)/stock/vue-stock/page.tsx` — passe les années au client
+  - `src/components/stock/VueStockClient.tsx` — sélecteur année (temps réel ou historique)
+
+- **Pages listes (filtre année client-side) :**
+  - `src/components/parcelles/CueilletteClient.tsx`
+  - `src/components/transformation/TransformationClient.tsx`
+  - `src/components/affinage-stock/AchatsClient.tsx`
+  - `src/components/affinage-stock/VentesClient.tsx`
+  - `src/components/affinage-stock/AjustementsClient.tsx`
+  - `src/components/produits/ProductionClient.tsx`
+
+- **Prévisionnel :**
+  - `src/app/[orgSlug]/(dashboard)/previsionnel/actions.ts` — `fetchRealisedData` utilise `stock_movements` filtrés par année au lieu de `v_stock` global
+
+- **Dashboard :**
+  - `src/app/[orgSlug]/(dashboard)/dashboard/actions.ts` — `fetchDashboardAvancement` réécrit avec harvests par année + variété×partie
+  - `src/components/dashboard/DashboardAvancementWidget.tsx` — affichage partie de plante sur chaque barre
+
+- **Warnings année passée/clôturée (28 formulaires) :**
+  - 14 desktop SlideOvers : CueilletteSlideOver, ArrachageSlideOver, PlantationSlideOver, OccultationSlideOver, SuiviRangSlideOver, TravailSolSlideOver, SemisSlideOver, SachetSlideOver, VenteSlideOver, AchatSlideOver, AjustementSlideOver, TransformationSlideOver, CombinedTransformationSlideOver, ProductStockSlideOver
+  - 14 mobile forms : CueilletteForm, ArrachageForm, PlantationForm, OccultationForm, SuiviRangForm, TravailSolForm, SuiviSemisForm, AvancerSemisForm, TransformationMobileForm, CombinedTransformationMobileForm, AchatForm, VenteForm, SachetForm, ProductionLotForm
+
+**Détails :**
+- `stock_at_date` : fonction SQL SECURITY DEFINER qui calcule le stock cumulé à une date donnée
+- `season_closures` : table avec contrainte unique (farm_id, annee), RLS activé
+- Warnings : non bloquants, jaune pour année passée, orange pour année clôturée
+- Pas de blocage sur modifications d'années antérieures (pas de données comptables)
+
+---
+
 ## [2026-03-22] — Prévisionnel : ajout dimension partie de plante
 
 **Type :** `feat`
