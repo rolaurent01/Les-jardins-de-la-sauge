@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useTransition } from 'react'
+import { useState, useEffect, useMemo, useTransition } from 'react'
 import { useRouter } from 'next/navigation'
 import type { Variety, SeedlingStatut } from '@/lib/types'
 import { SEEDLING_STATUT_LABELS } from '@/lib/types'
@@ -12,6 +12,7 @@ import {
   updateSeedling,
 } from '@/app/[orgSlug]/(dashboard)/semis/suivi/actions'
 import SemisSlideOver from './SemisSlideOver'
+import YearFilter from '@/components/shared/YearFilter'
 import ExportButton from '@/components/shared/ExportButton'
 import type { ExportColumn } from '@/components/shared/ExportButton'
 import { normalize } from '@/lib/utils/normalize'
@@ -60,6 +61,7 @@ export default function SemisClient({ initialSeedlings, seedLots, varieties }: P
   const [showArchived, setShowArchived]         = useState(false)
   const [processFilter, setProcessFilter]       = useState<ProcessFilter>('all')
   const [statutFilter, setStatutFilter]         = useState<StatutFilter>('all')
+  const [selectedYear, setSelectedYear]         = useState<number | null>(new Date().getFullYear())
   const [slideOverOpen, setSlideOverOpen]       = useState(false)
   const [editingSeedling, setEditingSeedling]   = useState<SeedlingWithPlantsInfo | null>(null)
   const [confirmArchiveId, setConfirmArchiveId] = useState<string | null>(null)
@@ -76,7 +78,19 @@ export default function SemisClient({ initialSeedlings, seedLots, varieties }: P
   const active   = seedlings.filter(s => !s.deleted_at)
   const archived = seedlings.filter(s => !!s.deleted_at)
 
+  // Années disponibles (basées sur date_semis)
+  const years = useMemo(() => {
+    const set = new Set<number>()
+    for (const s of seedlings) {
+      if (s.date_semis) set.add(new Date(s.date_semis).getFullYear())
+    }
+    return Array.from(set).sort((a, b) => b - a)
+  }, [seedlings])
+
   const displayed = (showArchived ? archived : active).filter(s => {
+    if (selectedYear !== null && s.date_semis) {
+      if (new Date(s.date_semis).getFullYear() !== selectedYear) return false
+    }
     if (processFilter !== 'all' && s.processus !== processFilter) return false
     if (statutFilter !== 'all' && s.statut !== statutFilter) return false
     if (!search.trim()) return true
@@ -131,9 +145,14 @@ export default function SemisClient({ initialSeedlings, seedLots, varieties }: P
     })
   }
 
+  // Semis actifs filtrés par année (pour compteurs statut cohérents)
+  const activeForYear = selectedYear !== null
+    ? active.filter(s => s.date_semis && new Date(s.date_semis).getFullYear() === selectedYear)
+    : active
+
   // Compteurs par statut pour les filtres
   const statutCounts: Partial<Record<SeedlingStatut, number>> = {}
-  for (const s of active) {
+  for (const s of activeForYear) {
     statutCounts[s.statut] = (statutCounts[s.statut] ?? 0) + 1
   }
 
@@ -146,7 +165,8 @@ export default function SemisClient({ initialSeedlings, seedLots, varieties }: P
             Suivi des semis
           </h1>
           <p className="text-sm mt-0.5" style={{ color: '#9CA89D' }}>
-            {active.length} semis actif{active.length !== 1 ? 's' : ''}
+            {activeForYear.length} semis actif{activeForYear.length !== 1 ? 's' : ''}
+            {selectedYear !== null && <> ({selectedYear})</>}
             {archived.length > 0 && (
               <> · {archived.length} archivé{archived.length !== 1 ? 's' : ''}</>
             )}
@@ -169,6 +189,11 @@ export default function SemisClient({ initialSeedlings, seedLots, varieties }: P
             Nouveau semis
           </button>
         </div>
+      </div>
+
+      {/* Filtre année */}
+      <div className="mb-4">
+        <YearFilter years={years} selectedYear={selectedYear} onChange={setSelectedYear} />
       </div>
 
       {/* Barre d'outils */}

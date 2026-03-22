@@ -2,6 +2,23 @@
 
 ---
 
+## [2026-03-22] — Filtre par année sur la vue Suivi des semis
+
+**Type :** `feat`
+**Fichiers concernés :**
+- `src/components/semis/SemisClient.tsx` (ajout YearFilter, état selectedYear, filtrage par année)
+
+### Description
+Ajout d'un filtre par année (basé sur `date_semis`) dans la vue Suivi des semis. Par défaut, l'année courante est sélectionnée. Le composant réutilisable `YearFilter` (déjà existant) est utilisé. Les compteurs par statut et le compteur total dans l'en-tête reflètent l'année sélectionnée. Le bouton "Tout" permet de voir toutes les années.
+
+### Détails techniques
+- `years` : calculé via `useMemo` à partir des `date_semis` de tous les seedlings
+- `selectedYear` : initialisé à `new Date().getFullYear()` (année courante)
+- `activeForYear` : sous-ensemble filtré par année pour les compteurs statut et le compteur header
+- Le filtre s'applique avant les autres filtres (processus, statut, recherche)
+
+---
+
 ## [2026-03-22] — Tableau combiné tronçonnage/triage (1 ligne par opération)
 
 **Type :** `feat`
