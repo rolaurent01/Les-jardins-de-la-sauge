@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useTransition } from 'react'
 import { useRouter } from 'next/navigation'
-import type { SeedLotWithVariety, Variety } from '@/lib/types'
+import type { SeedLotWithVariety, Variety, SeedStockLevel } from '@/lib/types'
 import { archiveSeedLot, restoreSeedLot, createSeedLot, updateSeedLot } from '@/app/[orgSlug]/(dashboard)/semis/sachets/actions'
 import SachetSlideOver from './SachetSlideOver'
 import ExportButton from '@/components/shared/ExportButton'
@@ -21,6 +21,7 @@ type Props = {
   initialSeedLots: SeedLotWithVariety[]
   varieties: Pick<Variety, 'id' | 'nom_vernaculaire' | 'nom_latin'>[]
   certifBio?: boolean
+  seedStockLevels?: SeedStockLevel[]
 }
 
 const SACHETS_EXPORT_COLUMNS: ExportColumn[] = [
@@ -34,7 +35,7 @@ const SACHETS_EXPORT_COLUMNS: ExportColumn[] = [
   { key: 'commentaire', label: 'Commentaire' },
 ]
 
-export default function SachetsClient({ initialSeedLots, varieties, certifBio = false }: Props) {
+export default function SachetsClient({ initialSeedLots, varieties, certifBio = false, seedStockLevels = [] }: Props) {
   const router = useRouter()
   const [, startTransition] = useTransition()
 
@@ -218,6 +219,7 @@ export default function SachetsClient({ initialSeedLots, varieties, certifBio = 
                 <Th>Fournisseur</Th>
                 <Th>Date achat</Th>
                 <Th align="right">Poids sachet</Th>
+                <Th align="right">Stock restant</Th>
                 <Th>AB</Th>
                 <Th align="right">Actions</Th>
               </tr>
@@ -260,6 +262,22 @@ export default function SachetsClient({ initialSeedLots, varieties, certifBio = 
                     {/* Poids sachet */}
                     <td className="px-4 py-3 text-right" style={{ color: '#6B7B6C' }}>
                       {s.poids_sachet_g != null ? `${s.poids_sachet_g} g` : <Dash />}
+                    </td>
+
+                    {/* Stock restant */}
+                    <td className="px-4 py-3 text-right" style={{ color: '#2C3E2D' }}>
+                      {(() => {
+                        const stock = seedStockLevels.find(sl => sl.seed_lot_id === s.id)
+                        if (!stock) return <Dash />
+                        const pct = s.poids_sachet_g ? Math.round((stock.stock_g / s.poids_sachet_g) * 100) : null
+                        const color = pct !== null ? (pct > 50 ? '#22C55E' : pct > 20 ? '#F59E0B' : '#DC2626') : '#6B7B6C'
+                        return (
+                          <span style={{ color, fontWeight: 500 }}>
+                            {stock.stock_g} g
+                            {pct !== null && <span className="text-xs ml-1" style={{ color: '#9CA89D' }}>({pct}%)</span>}
+                          </span>
+                        )
+                      })()}
                     </td>
 
                     {/* Certification AB */}

@@ -2,6 +2,42 @@
 
 ---
 
+## [2026-03-22] — Stock de graines : suivi par sachet + inventaire + stats
+
+**Type :** `feature`
+**Objectif :** Ajouter un systeme complet de suivi du stock de graines par sachet, avec inventaire manuel post-campagne et calcul automatique du poids de graines par semis/plant.
+
+**Fichiers crees :**
+- `supabase/migrations/037_seed_stock.sql` — tables `seed_stock_movements` et `seed_stock_adjustments`, vues `v_seed_stock` et `v_seed_cost_per_seedling`, triggers auto (entree a la creation du sachet, sortie si poids_graines_utilise_g renseigne sur seedling, archivage auto quand stock = 0), RPCs transactionnelles (`create_seed_adjustment`, `update_seed_adjustment`, `delete_seed_adjustment`), backfill des sachets et seedlings existants
+- `src/lib/validation/seed-stock.ts` — schema Zod pour le formulaire inventaire
+- `src/lib/utils/seed-stock-parsers.ts` — parser FormData pour inventaire graines
+- `src/app/[orgSlug]/(dashboard)/stock/graines/page.tsx` — page stock graines
+- `src/app/[orgSlug]/(dashboard)/stock/graines/actions.ts` — server actions CRUD inventaire
+- `src/components/seed-stock/SeedStockClient.tsx` — composant principal avec 2 onglets (vue stock + historique inventaires)
+- `src/components/seed-stock/SeedAdjustmentSlideOver.tsx` — slide-over inventaire avec apercu du delta
+- `src/components/dashboard/DashboardSeedCostWidget.tsx` — widget dashboard poids graines/plant par variete
+
+**Fichiers modifies :**
+- `src/lib/types.ts` — ajout types `SeedStockMovement`, `SeedStockAdjustment`, `SeedStockAdjustmentWithRelations`, `SeedStockLevel`, `SeedCostPerSeedling`
+- `src/lib/supabase/types.ts` — ajout tables `seed_stock_movements` et `seed_stock_adjustments`, vues `v_seed_stock` et `v_seed_cost_per_seedling`, RPCs `create_seed_adjustment`, `update_seed_adjustment`, `delete_seed_adjustment`
+- `src/components/Sidebar.tsx` — ajout lien "Stock graines" dans section Affinage du stock
+- `src/components/semis/SachetsClient.tsx` — ajout colonne "Stock restant" avec jauge couleur
+- `src/app/[orgSlug]/(dashboard)/semis/sachets/page.tsx` — injection des stock levels dans SachetsClient
+- `src/app/api/backup/route.ts` — ajout `seed_stock_movements` et `seed_stock_adjustments` au backup
+- `src/app/[orgSlug]/(dashboard)/dashboard/page.tsx` — ajout widget DashboardSeedCostWidget
+- `src/app/[orgSlug]/(dashboard)/dashboard/actions.ts` — ajout `fetchDashboardSeedCost()` + types
+
+**Architecture :**
+- Pattern identique a stock plantes : table source (seed_stock_adjustments) → mouvement (seed_stock_movements) → vue agregee (v_seed_stock)
+- L'utilisateur saisit le poids constata (inventaire), le systeme calcule le delta automatiquement (entree ou sortie)
+- Repartition egale du poids consomme sur les semis lies au sachet pour estimer le poids graines/semis et graines/plant
+- Archivage auto du sachet quand stock tombe a 0 (avec desarchivage si correction d'inventaire)
+- Champ poids_graines_utilise_g sur seedlings reste optionnel — s'il est renseigne, il genere un mouvement de sortie en temps reel
+
+**Migration a executer :** `037_seed_stock.sql` dans Supabase SQL Editor
+
+---
+
 ## [2026-03-22] — Temps de travail complets dans le dashboard
 
 **Type :** `feat`

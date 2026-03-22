@@ -613,3 +613,66 @@ export async function fetchDashboardActiviteRecente(_farmId?: string): Promise<D
   return items.slice(0, 10).map(({ _sortDate, ...rest }) => rest)
 }
 
+/* ─── Widget Graines — poids par plant par variete ─── */
+
+export interface DashboardSeedCostRow {
+  variety_id: string
+  nom_vernaculaire: string
+  nb_semis: number
+  poids_total_g: number
+  poids_par_plant_g: number | null
+  nb_plants_total: number
+}
+
+export async function fetchDashboardSeedCost(): Promise<DashboardSeedCostRow[]> {
+  const { farmId } = await getContext()
+  const supabase = createAdminClient()
+
+  const { data, error } = await supabase
+    .from('v_seed_cost_per_seedling')
+    .select('seedling_id, farm_id, variety_id, nb_plants_obtenus, poids_graines_estime_g, poids_par_plant_g')
+    .eq('farm_id', farmId)
+
+  if (error || !data || data.length === 0) return []
+
+  // Collecter les variety_ids
+  const varietyIds = [...new Set(data.map(d => d.variety_id).filter((id): id is string => id != null))]
+  if (varietyIds.length === 0) return []
+
+  const { data: varieties } = await supabase
+    .from('varieties')
+    .select('id, nom_vernaculaire')
+    .in('id', varietyIds)
+
+  const varietyMap = new Map((varieties ?? []).map(v => [v.id, v.nom_vernaculaire]))
+
+  // Agreger par variete
+  const byVariety = new Map<string, { nb_semis: number; poids_total: number; nb_plants: number }>()
+
+  for (const row of data) {
+    if (!row.variety_id) continue
+    const existing = byVariety.get(row.variety_id) ?? { nb_semis: 0, poids_total: 0, nb_plants: 0 }
+    existing.nb_semis += 1
+    existing.poids_total += Number(row.poids_graines_estime_g) || 0
+    existing.nb_plants += Number(row.nb_plants_obtenus) || 0
+    byVariety.set(row.variety_id, existing)
+  }
+
+  const rows: DashboardSeedCostRow[] = []
+  for (const [vid, agg] of byVariety) {
+    rows.push({
+      variety_id: vid,
+      nom_vernaculaire: varietyMap.get(vid) ?? 'Inconnue',
+      nb_semis: agg.nb_semis,
+      poids_total_g: Math.round(agg.poids_total * 100) / 100,
+      poids_par_plant_g: agg.nb_plants > 0 ? Math.round((agg.poids_total / agg.nb_plants) * 100) / 100 : null,
+      nb_plants_total: agg.nb_plants,
+    })
+  }
+
+  // Trier par poids total decroissant
+  rows.sort((a, b) => b.poids_total_g - a.poids_total_g)
+
+  return rows.slice(0, 10)
+}
+

@@ -167,6 +167,7 @@ const NAV: NavSection[] = [
     label: 'Affinage du stock',
     emoji: '📦',
     children: [
+      { label: 'Stock graines',    href: '/stock/graines'      },
       { label: 'Achats',          href: '/stock/achats'       },
       { label: 'Ventes directes', href: '/stock/ventes'       },
       { label: 'Ajustements',     href: '/stock/ajustements'  },

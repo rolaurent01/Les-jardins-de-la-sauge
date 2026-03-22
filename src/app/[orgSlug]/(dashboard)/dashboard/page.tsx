@@ -6,6 +6,7 @@ import {
   fetchDashboardTemps,
   fetchDashboardAvancement,
   fetchDashboardActiviteRecente,
+  fetchDashboardSeedCost,
 } from './actions'
 import { DashboardStockWidget } from '@/components/dashboard/DashboardStockWidget'
 import { DashboardProductionWidget } from '@/components/dashboard/DashboardProductionWidget'
@@ -13,6 +14,7 @@ import { DashboardParcellesWidget } from '@/components/dashboard/DashboardParcel
 import { DashboardAvancementWidget } from '@/components/dashboard/DashboardAvancementWidget'
 import { DashboardTempsWidget } from '@/components/dashboard/DashboardTempsWidget'
 import { DashboardActiviteWidget } from '@/components/dashboard/DashboardActiviteWidget'
+import { DashboardSeedCostWidget } from '@/components/dashboard/DashboardSeedCostWidget'
 
 /**
  * Page dashboard — centre de commande avec 6 widgets.
@@ -23,13 +25,14 @@ export default async function DashboardPage() {
 
   // Chargement parallèle — chaque widget est indépendant
   // Chaque action appelle getContext() en interne pour valider l'auth
-  const [stock, production, parcelles, temps, avancement, activite] = await Promise.allSettled([
+  const [stock, production, parcelles, temps, avancement, activite, seedCost] = await Promise.allSettled([
     fetchDashboardStock(),
     fetchDashboardProduction(undefined, currentYear),
     fetchDashboardParcelles(),
     fetchDashboardTemps(undefined, currentYear),
     fetchDashboardAvancement(undefined, currentYear),
     fetchDashboardActiviteRecente(),
+    fetchDashboardSeedCost(),
   ])
 
   return (
@@ -74,6 +77,13 @@ export default async function DashboardPage() {
           <DashboardTempsWidget data={temps.value} orgSlug={orgSlug} />
         ) : (
           <WidgetError title="⏱️ Temps de travail" />
+        )}
+
+        {/* Graines — poids par plant */}
+        {seedCost.status === 'fulfilled' ? (
+          <DashboardSeedCostWidget data={seedCost.value} orgSlug={orgSlug} />
+        ) : (
+          <WidgetError title="&#x1F331; Graines" />
         )}
 
         {/* Activité récente — pleine largeur */}

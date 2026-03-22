@@ -2011,6 +2011,103 @@ export type Database = {
         }
         Relationships: []
       }
+
+      // ── Stock graines (migration 037) ──
+
+      seed_stock_movements: {
+        Row: {
+          id: string
+          farm_id: string
+          seed_lot_id: string
+          variety_id: string | null
+          date: string
+          type_mouvement: string
+          poids_g: number
+          source_type: string
+          source_id: string | null
+          commentaire: string | null
+          deleted_at: string | null
+          created_at: string
+          created_by: string | null
+          updated_by: string | null
+        }
+        Insert: {
+          id?: string
+          farm_id: string
+          seed_lot_id: string
+          variety_id?: string | null
+          date: string
+          type_mouvement: string
+          poids_g: number
+          source_type: string
+          source_id?: string | null
+          commentaire?: string | null
+          deleted_at?: string | null
+          created_at?: string
+          created_by?: string | null
+          updated_by?: string | null
+        }
+        Update: {
+          id?: string
+          farm_id?: string
+          seed_lot_id?: string
+          variety_id?: string | null
+          date?: string
+          type_mouvement?: string
+          poids_g?: number
+          source_type?: string
+          source_id?: string | null
+          commentaire?: string | null
+          deleted_at?: string | null
+          created_at?: string
+          created_by?: string | null
+          updated_by?: string | null
+        }
+        Relationships: []
+      }
+
+      seed_stock_adjustments: {
+        Row: {
+          id: string
+          uuid_client: string | null
+          farm_id: string
+          seed_lot_id: string
+          date: string
+          poids_constate_g: number
+          commentaire: string | null
+          deleted_at: string | null
+          created_at: string
+          created_by: string | null
+          updated_by: string | null
+        }
+        Insert: {
+          id?: string
+          uuid_client?: string | null
+          farm_id: string
+          seed_lot_id: string
+          date: string
+          poids_constate_g: number
+          commentaire?: string | null
+          deleted_at?: string | null
+          created_at?: string
+          created_by?: string | null
+          updated_by?: string | null
+        }
+        Update: {
+          id?: string
+          uuid_client?: string | null
+          farm_id?: string
+          seed_lot_id?: string
+          date?: string
+          poids_constate_g?: number
+          commentaire?: string | null
+          deleted_at?: string | null
+          created_at?: string
+          created_by?: string | null
+          updated_by?: string | null
+        }
+        Relationships: []
+      }
     }
 
     Views: {
@@ -2022,6 +2119,31 @@ export type Database = {
           partie_plante: string
           etat_plante: string
           stock_g: number
+        }
+        Relationships: []
+      }
+      // Vue v_seed_stock — stock restant par sachet de graines (migration 037)
+      v_seed_stock: {
+        Row: {
+          farm_id: string
+          seed_lot_id: string
+          variety_id: string | null
+          lot_interne: string
+          poids_initial_g: number | null
+          stock_g: number
+        }
+        Relationships: []
+      }
+      // Vue v_seed_cost_per_seedling — cout graines estime par semis (migration 037)
+      v_seed_cost_per_seedling: {
+        Row: {
+          seedling_id: string
+          farm_id: string
+          seed_lot_id: string
+          variety_id: string | null
+          nb_plants_obtenus: number | null
+          poids_graines_estime_g: number
+          poids_par_plant_g: number | null
         }
         Relationships: []
       }
@@ -2320,6 +2442,41 @@ export type Database = {
       }
       /** Supprime un ajustement + son stock_movement dans une seule transaction */
       delete_adjustment_with_stock: {
+        Args: {
+          p_adjustment_id: string
+          p_farm_id: string
+        }
+        Returns: undefined
+      }
+
+      // ── Stock graines (migration 037) ──
+
+      /** Cree un inventaire de sachet + calcule le mouvement de stock */
+      create_seed_adjustment: {
+        Args: {
+          p_farm_id: string
+          p_seed_lot_id: string
+          p_date: string
+          p_poids_constate_g: number
+          p_commentaire: string | null
+          p_created_by: string
+          p_uuid_client: string | null
+        }
+        Returns: string
+      }
+      /** Met a jour un inventaire de sachet + recalcule le mouvement de stock */
+      update_seed_adjustment: {
+        Args: {
+          p_adjustment_id: string
+          p_date: string
+          p_poids_constate_g: number
+          p_commentaire: string | null
+          p_updated_by: string
+        }
+        Returns: undefined
+      }
+      /** Supprime un inventaire de sachet + son mouvement de stock */
+      delete_seed_adjustment: {
         Args: {
           p_adjustment_id: string
           p_farm_id: string

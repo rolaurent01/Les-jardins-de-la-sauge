@@ -793,6 +793,69 @@ export type StockAdjustmentWithVariety = StockAdjustment & {
   varieties: { id: string; nom_vernaculaire: string } | null
 }
 
+// ---- Stock Graines ----
+
+/** Mouvement de stock graines — table seed_stock_movements */
+export type SeedStockMovement = {
+  id: string
+  farm_id: string
+  seed_lot_id: string
+  variety_id: string | null
+  date: string
+  type_mouvement: 'entree' | 'sortie'
+  poids_g: number
+  source_type: 'achat' | 'semis' | 'ajustement'
+  source_id: string | null
+  commentaire: string | null
+  deleted_at: string | null
+  created_at: string
+  created_by: string | null
+  updated_by: string | null
+}
+
+/** Ajustement (inventaire) de stock graines — table seed_stock_adjustments */
+export type SeedStockAdjustment = {
+  id: string
+  farm_id: string
+  uuid_client: string | null
+  seed_lot_id: string
+  date: string
+  poids_constate_g: number
+  commentaire: string | null
+  deleted_at: string | null
+  created_at: string
+  created_by: string | null
+  updated_by: string | null
+}
+
+/** Ajustement graines avec sachet et variete joints */
+export type SeedStockAdjustmentWithRelations = SeedStockAdjustment & {
+  seed_lots: Pick<SeedLot, 'id' | 'lot_interne' | 'variety_id' | 'poids_sachet_g'> & {
+    varieties: Pick<Variety, 'id' | 'nom_vernaculaire'> | null
+  } | null
+}
+
+/** Stock restant par sachet — vue v_seed_stock */
+export type SeedStockLevel = {
+  farm_id: string
+  seed_lot_id: string
+  variety_id: string | null
+  lot_interne: string
+  poids_initial_g: number | null
+  stock_g: number
+}
+
+/** Cout en graines par semis — vue v_seed_cost_per_seedling */
+export type SeedCostPerSeedling = {
+  seedling_id: string
+  farm_id: string
+  seed_lot_id: string
+  variety_id: string | null
+  nb_plants_obtenus: number | null
+  poids_graines_estime_g: number
+  poids_par_plant_g: number | null
+}
+
 // ---- Module Prévisionnel ----
 
 /** États de plante pour le prévisionnel */

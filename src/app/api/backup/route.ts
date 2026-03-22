@@ -8,6 +8,7 @@ const TABLES_WITH_FARM_ID = [
   'soil_works', 'plantings', 'row_care', 'harvests', 'uprootings', 'occultations',
   'cuttings', 'dryings', 'sortings',
   'stock_movements', 'stock_purchases', 'stock_direct_sales', 'stock_adjustments',
+  'seed_stock_movements', 'seed_stock_adjustments',
   'recipes', 'production_lots', 'product_stock_movements',
   'forecasts', 'production_summary',
 ] as const
