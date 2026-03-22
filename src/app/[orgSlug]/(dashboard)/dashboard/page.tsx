@@ -32,7 +32,7 @@ export default async function DashboardPage() {
     fetchDashboardTemps(undefined, currentYear),
     fetchDashboardAvancement(undefined, currentYear),
     fetchDashboardActiviteRecente(),
-    fetchDashboardSeedCost(),
+    fetchDashboardSeedCost(undefined, currentYear),
   ])
 
   return (

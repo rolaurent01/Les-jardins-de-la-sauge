@@ -624,14 +624,38 @@ export interface DashboardSeedCostRow {
   nb_plants_total: number
 }
 
-export async function fetchDashboardSeedCost(): Promise<DashboardSeedCostRow[]> {
+export async function fetchDashboardSeedCost(_farmId: string | undefined, annee: number): Promise<DashboardSeedCostRow[]> {
   const { farmId } = await getContext()
   const supabase = createAdminClient()
+
+  // Ne montrer les stats que si au moins un inventaire a ete fait
+  const { count: adjCount } = await supabase
+    .from('seed_stock_adjustments')
+    .select('id', { count: 'exact', head: true })
+    .eq('farm_id', farmId)
+    .is('deleted_at', null)
+
+  if (!adjCount || adjCount === 0) return []
+
+  // Recuperer les seedling_ids de l'annee (filtre sur date_semis)
+  const { data: seedlingIds } = await supabase
+    .from('seedlings')
+    .select('id')
+    .eq('farm_id', farmId)
+    .is('deleted_at', null)
+    .gte('date_semis', `${annee}-01-01`)
+    .lte('date_semis', `${annee}-12-31`)
+    .not('seed_lot_id', 'is', null)
+
+  if (!seedlingIds || seedlingIds.length === 0) return []
+
+  const ids = seedlingIds.map(s => s.id)
 
   const { data, error } = await supabase
     .from('v_seed_cost_per_seedling')
     .select('seedling_id, farm_id, variety_id, nb_plants_obtenus, poids_graines_estime_g, poids_par_plant_g')
     .eq('farm_id', farmId)
+    .in('seedling_id', ids)
 
   if (error || !data || data.length === 0) return []
 

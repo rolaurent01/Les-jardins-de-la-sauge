@@ -40,10 +40,22 @@ export function DashboardSeedCostWidget({ data, orgSlug }: Props) {
       </div>
 
       {!hasData ? (
-        <p className="text-sm" style={{ color: '#9CA89D' }}>
-          Aucune donnee de consommation de graines disponible.
-          Effectuez un inventaire de vos sachets pour voir les stats.
-        </p>
+        <div className="text-sm space-y-2" style={{ color: '#9CA89D' }}>
+          <p>
+            Aucune donnee disponible.
+          </p>
+          <p>
+            Faites un premier inventaire dans{' '}
+            <a
+              href={`/${orgSlug}/stock/graines`}
+              className="underline"
+              style={{ color: 'var(--color-primary)' }}
+            >
+              Stock graines
+            </a>
+            {' '}pour voir la consommation par variete.
+          </p>
+        </div>
       ) : (
         <div className="space-y-2">
           {/* Legende */}
