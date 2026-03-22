@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useCallback, useTransition, useRef, useEffect } from 'react'
+import { useState, useCallback, useTransition, useRef } from 'react'
 import type { ForecastWithVariety } from '@/lib/types'
 import type { RealisedData } from '@/app/[orgSlug]/(dashboard)/previsionnel/actions'
 import {
@@ -9,6 +9,7 @@ import {
   ETAT_PLANTE_COLORS,
   type EtatPlanteValue,
 } from '@/lib/constants/etat-plante'
+import { PARTIE_PLANTE_LABELS, type PartiePlante } from '@/lib/types'
 import {
   fetchForecasts,
   fetchForecastYears,
@@ -23,6 +24,7 @@ import { normalize } from '@/lib/utils/normalize'
 
 const PREVISIONNEL_EXPORT_COLUMNS: ExportColumn[] = [
   { key: 'varieties', label: 'Variété', format: (v) => (v as { nom_vernaculaire?: string } | null)?.nom_vernaculaire ?? '' },
+  { key: 'partie_plante', label: 'Partie', format: (v) => v ? PARTIE_PLANTE_LABELS[v as PartiePlante] ?? String(v) : 'Toutes' },
   { key: 'etat_plante', label: 'État' },
   { key: 'quantite_prevue_g', label: 'Objectif (g)' },
   { key: '_realise_g', label: 'Réalisé (g)' },
@@ -55,18 +57,36 @@ function progressColor(pct: number): string {
   return '#EF4444'
 }
 
-/** Récupère le réalisé pour un forecast selon son état */
+/** Récupère le réalisé pour un forecast selon son état et sa partie de plante */
 function getRealisedForForecast(
   forecast: ForecastWithVariety,
   realisedData: RealisedData,
 ): number {
+  const partie = forecast.partie_plante ?? null
+
   if (forecast.etat_plante === 'frais') {
-    return realisedData.cueilliParVariete[forecast.variety_id] ?? 0
+    if (partie) {
+      // Partie précisée : match exact
+      return realisedData.cueilliParVarietePartie[`${forecast.variety_id}:${partie}`] ?? 0
+    }
+    // Pas de partie : sommer toutes les parties (rétro-compat)
+    return Object.entries(realisedData.cueilliParVarietePartie)
+      .filter(([k]) => k.startsWith(`${forecast.variety_id}:`))
+      .reduce((sum, [, v]) => sum + v, 0)
   }
+
   if (forecast.etat_plante) {
-    const key = `${forecast.variety_id}:${forecast.etat_plante}`
-    return realisedData.stockParVarieteEtat[key] ?? 0
+    if (partie) {
+      const key = `${forecast.variety_id}:${partie}:${forecast.etat_plante}`
+      return realisedData.stockParVarietePartieEtat[key] ?? 0
+    }
+    // Pas de partie : sommer toutes les parties pour cet état
+    const suffix = `:${forecast.etat_plante}`
+    return Object.entries(realisedData.stockParVarietePartieEtat)
+      .filter(([k]) => k.startsWith(`${forecast.variety_id}:`) && k.endsWith(suffix))
+      .reduce((sum, [, v]) => sum + v, 0)
   }
+
   return 0
 }
 
@@ -79,6 +99,7 @@ type VarietyOption = {
   nom_vernaculaire: string
   nom_latin: string | null
   famille: string | null
+  parties_utilisees: PartiePlante[]
 }
 
 type Props = {
@@ -135,7 +156,7 @@ export default function PrevisionnelClient({
   const fraisForecasts = filtered.filter(f => f.etat_plante === 'frais')
   const totalPrevuFrais = fraisForecasts.reduce((sum, f) => sum + (f.quantite_prevue_g ?? 0), 0)
   const totalRealiseFrais = fraisForecasts.reduce(
-    (sum, f) => sum + (realisedData.cueilliParVariete[f.variety_id] ?? 0),
+    (sum, f) => sum + getRealisedForForecast(f, realisedData),
     0,
   )
 
@@ -293,6 +314,7 @@ export default function PrevisionnelClient({
           <thead>
             <tr className="bg-gray-50 border-b border-gray-200">
               <th className="text-left px-4 py-2.5 font-medium text-gray-600">Variété</th>
+              <th className="text-left px-3 py-2.5 font-medium text-gray-600">Partie</th>
               <th className="text-left px-3 py-2.5 font-medium text-gray-600">État</th>
               <th className="text-right px-3 py-2.5 font-medium text-gray-600">Objectif (g)</th>
               <th className="text-right px-3 py-2.5 font-medium text-gray-600">Réalisé</th>
@@ -303,7 +325,7 @@ export default function PrevisionnelClient({
           <tbody>
             {filtered.length === 0 && (
               <tr>
-                <td colSpan={6} className="px-4 py-8 text-center text-gray-400">
+                <td colSpan={7} className="px-4 py-8 text-center text-gray-400">
                   {forecasts.length === 0
                     ? 'Aucun objectif défini pour cette année. Ajoutez un objectif pour commencer.'
                     : 'Aucun résultat pour cette recherche.'}
@@ -311,9 +333,9 @@ export default function PrevisionnelClient({
               </tr>
             )}
             {filtered.map((f, idx) => {
-              // Déterminer si c'est la première ligne de cette variété (pour afficher le nom)
+              // Déterminer si c'est la première ligne de cette variété+partie (pour afficher le nom)
               const prevForecast = idx > 0 ? filtered[idx - 1] : null
-              const isFirstOfVariety = !prevForecast || prevForecast.variety_id !== f.variety_id
+              const isFirstOfVariety = !prevForecast || prevForecast.variety_id !== f.variety_id || prevForecast.partie_plante !== f.partie_plante
 
               return (
                 <ForecastRow
@@ -352,8 +374,7 @@ export default function PrevisionnelClient({
           <AddForecastForm
             varieties={allVarieties}
             existingForecasts={forecasts}
-            year={selectedYear}
-            onAdd={async (varietyId, etatPlante, qty) => {
+            onAdd={async (varietyId, etatPlante, partiePlante: PartiePlante | null, qty) => {
               const variety = allVarieties.find(v => v.id === varietyId)
               if (!variety) return { error: 'Variété introuvable' }
 
@@ -362,6 +383,7 @@ export default function PrevisionnelClient({
                 annee: selectedYear,
                 quantite_prevue_g: qty,
                 etat_plante: etatPlante,
+                partie_plante: partiePlante,
               })
 
               if ('error' in result) return result
@@ -373,7 +395,7 @@ export default function PrevisionnelClient({
                 annee: selectedYear,
                 variety_id: varietyId,
                 etat_plante: etatPlante,
-                partie_plante: null,
+                partie_plante: partiePlante,
                 quantite_prevue_g: qty,
                 commentaire: null,
                 created_by: null,
@@ -388,7 +410,7 @@ export default function PrevisionnelClient({
               }
               setForecasts(prev => {
                 const updated = [...prev, newForecast]
-                // Retrier par variété puis état
+                // Retrier par variété puis partie puis état
                 const etatOrder: Record<string, number> = {
                   frais: 0, tronconnee: 1, sechee: 2,
                   tronconnee_sechee: 3, sechee_triee: 4, tronconnee_sechee_triee: 5,
@@ -400,6 +422,9 @@ export default function PrevisionnelClient({
                   const nomA = a.varieties?.nom_vernaculaire ?? ''
                   const nomB = b.varieties?.nom_vernaculaire ?? ''
                   if (nomA !== nomB) return nomA.localeCompare(nomB, 'fr')
+                  const partA = a.partie_plante ?? ''
+                  const partB = b.partie_plante ?? ''
+                  if (partA !== partB) return partA.localeCompare(partB, 'fr')
                   return (etatOrder[a.etat_plante ?? ''] ?? 99) - (etatOrder[b.etat_plante ?? ''] ?? 99)
                 })
                 return updated
@@ -467,6 +492,19 @@ function EtatBadge({ etat }: { etat: string }) {
     <span
       className="inline-flex items-center text-xs font-medium px-2 py-0.5 rounded-full"
       style={{ backgroundColor: `${color}18`, color, border: `1px solid ${color}40` }}
+    >
+      {label}
+    </span>
+  )
+}
+
+/** Badge partie de plante */
+function PartieBadge({ partie }: { partie: string }) {
+  const label = PARTIE_PLANTE_LABELS[partie as PartiePlante] ?? partie
+  return (
+    <span
+      className="inline-flex items-center text-xs font-medium px-2 py-0.5 rounded-full"
+      style={{ backgroundColor: '#8B5CF618', color: '#8B5CF6', border: '1px solid #8B5CF640' }}
     >
       {label}
     </span>
@@ -595,6 +633,15 @@ function ForecastRow({
           )}
         </td>
 
+        {/* Partie */}
+        <td className="px-3 py-2.5">
+          {forecast.partie_plante ? (
+            <PartieBadge partie={forecast.partie_plante} />
+          ) : (
+            <span className="text-xs text-gray-400 italic">Toutes</span>
+          )}
+        </td>
+
         {/* État */}
         <td className="px-3 py-2.5">
           {forecast.etat_plante ? (
@@ -698,7 +745,7 @@ function ForecastRow({
       {/* Ligne commentaire */}
       {showComment && (
         <tr className="border-b border-gray-100 bg-gray-50/30">
-          <td colSpan={6} className="px-4 py-2">
+          <td colSpan={7} className="px-4 py-2">
             <input
               type="text"
               placeholder="Commentaire..."
@@ -716,21 +763,20 @@ function ForecastRow({
   )
 }
 
-/** Formulaire d'ajout d'objectif (variété + état + quantité) */
+/** Formulaire d'ajout d'objectif (variété + partie + état + quantité) */
 function AddForecastForm({
   varieties,
   existingForecasts,
-  year: _year,
   onAdd,
   onClose,
 }: {
   varieties: VarietyOption[]
   existingForecasts: ForecastWithVariety[]
-  year: number
-  onAdd: (varietyId: string, etatPlante: EtatPlanteValue, qty: number) => Promise<{ error?: string; success?: boolean }>
+  onAdd: (varietyId: string, etatPlante: EtatPlanteValue, partiePlante: PartiePlante | null, qty: number) => Promise<{ error?: string; success?: boolean }>
   onClose: () => void
 }) {
   const [selectedVariety, setSelectedVariety] = useState('')
+  const [selectedPartie, setSelectedPartie] = useState<PartiePlante | null>(null)
   const [selectedEtat, setSelectedEtat] = useState<EtatPlanteValue>('frais')
   const [qty, setQty] = useState('')
   const [varietySearch, setVarietySearch] = useState('')
@@ -742,12 +788,16 @@ function AddForecastForm({
     normalize(v.nom_vernaculaire).includes(normalizedSearch),
   )
 
+  // Parties disponibles pour la variété sélectionnée
+  const selectedVarietyObj = varieties.find(v => v.id === selectedVariety)
+  const availableParties = selectedVarietyObj?.parties_utilisees ?? []
+
   // Bug fix #2 : réinitialiser la sélection si la variété choisie n'est plus dans la liste filtrée
-  useEffect(() => {
-    if (selectedVariety && !filteredVarieties.some(v => v.id === selectedVariety)) {
-      setSelectedVariety('')
-    }
-  }, [filteredVarieties, selectedVariety])
+  const varietyStillVisible = !selectedVariety || filteredVarieties.some(v => v.id === selectedVariety)
+  if (!varietyStillVisible) {
+    setSelectedVariety('')
+    setSelectedPartie(null)
+  }
 
   // Grouper par famille
   const grouped = new Map<string, VarietyOption[]>()
@@ -757,9 +807,11 @@ function AddForecastForm({
     grouped.get(key)!.push(v)
   }
 
-  // Vérifier si le couple variété × état existe déjà
+  // Vérifier si le triplet variété × partie × état existe déjà
   const isDuplicate = existingForecasts.some(
-    f => f.variety_id === selectedVariety && f.etat_plante === selectedEtat,
+    f => f.variety_id === selectedVariety
+      && f.etat_plante === selectedEtat
+      && f.partie_plante === selectedPartie,
   )
 
   const handleSubmit = async () => {
@@ -767,8 +819,12 @@ function AddForecastForm({
       setError('Sélectionnez une variété')
       return
     }
+    if (availableParties.length > 1 && !selectedPartie) {
+      setError('Sélectionnez une partie de plante')
+      return
+    }
     if (isDuplicate) {
-      setError('Cet objectif existe déjà pour cette variété et cet état')
+      setError('Cet objectif existe déjà pour cette variété, partie et état')
       return
     }
     const numQty = parseFloat(qty)
@@ -779,7 +835,7 @@ function AddForecastForm({
 
     setSaving(true)
     setError(null)
-    const result = await onAdd(selectedVariety, selectedEtat, numQty)
+    const result = await onAdd(selectedVariety, selectedEtat, selectedPartie, numQty)
     setSaving(false)
 
     if (result.error) {
@@ -789,6 +845,7 @@ function AddForecastForm({
 
     // Réinitialiser le formulaire (garder ouvert pour ajouts multiples)
     setSelectedVariety('')
+    setSelectedPartie(null)
     setSelectedEtat('frais')
     setQty('')
     setError(null)
@@ -820,7 +877,15 @@ function AddForecastForm({
         <select
           className="w-full text-sm border border-gray-300 rounded-md px-2.5 py-1.5"
           value={selectedVariety}
-          onChange={e => { setSelectedVariety(e.target.value); setError(null) }}
+          onChange={e => {
+            const vid = e.target.value
+            setSelectedVariety(vid)
+            // Auto-sélectionner la partie si une seule disponible
+            const v = varieties.find(x => x.id === vid)
+            const parts = v?.parties_utilisees ?? []
+            setSelectedPartie(parts.length === 1 ? parts[0] : null)
+            setError(null)
+          }}
           size={8}
         >
           <option value="" disabled>
@@ -840,12 +905,41 @@ function AddForecastForm({
             ))}
         </select>
         {/* Feedback visuel : variété sélectionnée */}
-        {selectedVariety && (
+        {selectedVarietyObj && (
           <p className="text-xs text-green-600 mt-1">
-            ✓ {varieties.find(v => v.id === selectedVariety)?.nom_vernaculaire}
+            ✓ {selectedVarietyObj.nom_vernaculaire}
           </p>
         )}
       </div>
+
+      {/* Partie de plante — affiché uniquement si la variété a plusieurs parties */}
+      {selectedVariety && availableParties.length > 1 && (
+        <div className="mb-3">
+          <label className="block text-xs font-medium text-gray-500 mb-1">Partie de plante</label>
+          <select
+            className="w-full text-sm border border-gray-300 rounded-md px-2.5 py-1.5"
+            value={selectedPartie ?? ''}
+            onChange={e => { setSelectedPartie((e.target.value || null) as PartiePlante | null); setError(null) }}
+          >
+            <option value="">— Choisir une partie —</option>
+            {availableParties.map(p => (
+              <option key={p} value={p}>
+                {PARTIE_PLANTE_LABELS[p] ?? p}
+              </option>
+            ))}
+          </select>
+        </div>
+      )}
+
+      {/* Info : partie auto-sélectionnée */}
+      {selectedVariety && availableParties.length === 1 && (
+        <div className="mb-3">
+          <label className="block text-xs font-medium text-gray-500 mb-1">Partie de plante</label>
+          <p className="text-sm text-gray-600">
+            {PARTIE_PLANTE_LABELS[availableParties[0]] ?? availableParties[0]} <span className="text-xs text-gray-400">(seule partie)</span>
+          </p>
+        </div>
+      )}
 
       {/* État plante */}
       <div className="mb-3">
@@ -881,7 +975,7 @@ function AddForecastForm({
       {/* Avertissement doublon */}
       {isDuplicate && selectedVariety && (
         <p className="text-xs text-amber-600 mb-2">
-          Cet objectif existe déjà pour cette variété et cet état.
+          Cet objectif existe déjà pour cette variété, partie et état.
         </p>
       )}
 
@@ -895,7 +989,7 @@ function AddForecastForm({
         <button
           className="text-sm px-4 py-1.5 rounded-md text-white disabled:opacity-50"
           style={{ backgroundColor: 'var(--color-primary)' }}
-          disabled={saving || !selectedVariety || isDuplicate}
+          disabled={saving || !selectedVariety || isDuplicate || (availableParties.length > 1 && !selectedPartie)}
           onClick={handleSubmit}
         >
           {saving ? 'Enregistrement...' : 'Ajouter'}

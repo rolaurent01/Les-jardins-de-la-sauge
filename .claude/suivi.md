@@ -2,6 +2,27 @@
 
 ---
 
+## [2026-03-22] — Prévisionnel : ajout dimension partie de plante
+
+**Type :** `feat`
+**Objectif :** Le prévisionnel ne tenait compte que de la variété et de l'état, pas de la partie de plante. Le stock étant en 3 dimensions (variété × partie × état), la comparaison prévisionnel/réalisé était faussée.
+
+**Fichiers créés :**
+- `supabase/migrations/034_backfill_forecast_partie_plante.sql` — backfill partie_plante sur forecasts existants (variétés mono-partie)
+
+**Fichiers modifiés :**
+- `src/app/[orgSlug]/(dashboard)/previsionnel/actions.ts` — fetchRealisedData agrège par variété×partie×état, fetchVarietiesForForecast retourne parties_utilisees, tri inclut partie_plante
+- `src/components/previsionnel/PrevisionnelClient.tsx` — colonne Partie dans le tableau, badge PartieBadge, formulaire d'ajout avec sélecteur partie, getRealisedForForecast supporte les 3 dimensions, export CSV inclut Partie, détection doublon inclut partie
+
+**Détails :**
+- Clés d'agrégation : `variety_id:partie_plante` (cueilli) et `variety_id:partie_plante:etat_plante` (stock)
+- Rétro-compatibilité : si partie_plante est NULL, somme toutes les parties
+- Auto-sélection si variété mono-partie, dropdown si multi-parties
+- Pas de nouvelle migration de schéma nécessaire (colonne existait déjà)
+- Fix lint : supprimé useEffect problématique (set-state-in-effect), import useEffect inutile, prop year inutile, eslint-disable orphelin
+
+---
+
 ## [2026-03-21] — Auto-remplissage variété depuis les plantings du rang
 
 **Type :** `feat`

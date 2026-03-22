@@ -5,16 +5,16 @@ import { revalidatePath } from 'next/cache'
 import { getContext } from '@/lib/context'
 import { buildPath } from '@/lib/utils/path'
 import { forecastSchema } from '@/lib/validation/previsionnel'
-import type { ActionResult, ForecastWithVariety } from '@/lib/types'
+import type { ActionResult, ForecastWithVariety, PartiePlante } from '@/lib/types'
 import { mapSupabaseError } from '@/lib/utils/error-messages'
 
 // ---- Types retour ----
 
 export type RealisedData = {
-  /** Total cueilli (g) par variety_id — source : harvests */
-  cueilliParVariete: Record<string, number>
-  /** Stock (g) par clé "variety_id:etat_plante" — source : v_stock */
-  stockParVarieteEtat: Record<string, number>
+  /** Total cueilli (g) par clé "variety_id:partie_plante" — source : harvests */
+  cueilliParVarietePartie: Record<string, number>
+  /** Stock (g) par clé "variety_id:partie_plante:etat_plante" — source : v_stock */
+  stockParVarietePartieEtat: Record<string, number>
 }
 
 // ---- Requêtes ----
@@ -47,6 +47,9 @@ export async function fetchForecasts(annee: number): Promise<ForecastWithVariety
     const nomA = a.varieties?.nom_vernaculaire ?? ''
     const nomB = b.varieties?.nom_vernaculaire ?? ''
     if (nomA !== nomB) return nomA.localeCompare(nomB, 'fr')
+    const partA = a.partie_plante ?? ''
+    const partB = b.partie_plante ?? ''
+    if (partA !== partB) return partA.localeCompare(partB, 'fr')
     return (etatOrder[a.etat_plante ?? ''] ?? 99) - (etatOrder[b.etat_plante ?? ''] ?? 99)
   })
 
@@ -74,14 +77,14 @@ export async function fetchForecastYears(): Promise<number[]> {
 
 /** Récupère les variétés non masquées pour cette ferme (pour le select "Ajouter") */
 export async function fetchVarietiesForForecast(): Promise<
-  { id: string; nom_vernaculaire: string; nom_latin: string | null; famille: string | null }[]
+  { id: string; nom_vernaculaire: string; nom_latin: string | null; famille: string | null; parties_utilisees: PartiePlante[] }[]
 > {
   const supabase = await createClient()
   const { farmId } = await getContext()
 
   const { data, error } = await supabase
     .from('varieties')
-    .select('id, nom_vernaculaire, nom_latin, famille')
+    .select('id, nom_vernaculaire, nom_latin, famille, parties_utilisees')
     .is('deleted_at', null)
     .is('merged_into_id', null)
     .order('famille', { ascending: true })
@@ -117,35 +120,38 @@ export async function fetchRealisedData(annee: number): Promise<RealisedData> {
   const [harvestsResult, stockResult] = await Promise.all([
     supabase
       .from('harvests')
-      .select('variety_id, poids_g')
+      .select('variety_id, partie_plante, poids_g')
       .eq('farm_id', farmId)
       .gte('date', startDate)
       .lte('date', endDate)
       .is('deleted_at', null),
     supabase
       .from('v_stock')
-      .select('variety_id, etat_plante, stock_g')
+      .select('variety_id, partie_plante, etat_plante, stock_g')
       .eq('farm_id', farmId),
   ])
 
   if (harvestsResult.error) throw new Error(`Erreur chargement récoltes : ${harvestsResult.error.message}`)
   if (stockResult.error) throw new Error(`Erreur chargement stock : ${stockResult.error.message}`)
 
-  // Agréger le cueilli par variété
-  const cueilliParVariete: Record<string, number> = {}
+  // Agréger le cueilli par variété × partie
+  const cueilliParVarietePartie: Record<string, number> = {}
   for (const h of harvestsResult.data ?? []) {
-    cueilliParVariete[h.variety_id] = (cueilliParVariete[h.variety_id] ?? 0) + (h.poids_g ?? 0)
+    const partie = h.partie_plante ?? 'plante_entiere'
+    const key = `${h.variety_id}:${partie}`
+    cueilliParVarietePartie[key] = (cueilliParVarietePartie[key] ?? 0) + (h.poids_g ?? 0)
   }
 
-  // Agréger le stock par variété × état
-  const stockParVarieteEtat: Record<string, number> = {}
+  // Agréger le stock par variété × partie × état
+  const stockParVarietePartieEtat: Record<string, number> = {}
   for (const s of stockResult.data ?? []) {
     if (!s.etat_plante) continue
-    const key = `${s.variety_id}:${s.etat_plante}`
-    stockParVarieteEtat[key] = (stockParVarieteEtat[key] ?? 0) + (s.stock_g ?? 0)
+    const partie = s.partie_plante ?? 'plante_entiere'
+    const key = `${s.variety_id}:${partie}:${s.etat_plante}`
+    stockParVarietePartieEtat[key] = (stockParVarietePartieEtat[key] ?? 0) + (s.stock_g ?? 0)
   }
 
-  return { cueilliParVariete, stockParVarieteEtat }
+  return { cueilliParVarietePartie, stockParVarietePartieEtat }
 }
 
 // ---- Actions ----
@@ -169,7 +175,6 @@ export async function upsertForecast(
   const supabase = await createClient()
   const { userId, farmId, orgSlug } = await getContext()
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const { data: forecast, error } = await supabase
     .from('forecasts')
     .upsert(
