@@ -283,10 +283,12 @@ async function dispatchProductionLot({ farm_id, user_id, uuid_client, payload }:
     }
   }
 
-  // DDM = date + 24 mois
-  const ddm = new Date(dateProd)
-  ddm.setMonth(ddm.getMonth() + 24)
-  const ddmStr = ddm.toISOString().split('T')[0]
+  // DDM — fournie par le payload (mobile) ou calculée par défaut (+24 mois)
+  const ddmStr = (payload.ddm as string) || (() => {
+    const d = new Date(dateProd)
+    d.setMonth(d.getMonth() + 24)
+    return d.toISOString().split('T')[0]
+  })()
 
   // Préparer les ingrédients au format JSONB
   // Mobile simplifié : pas d'ingrédients dans le payload → charger depuis la recette

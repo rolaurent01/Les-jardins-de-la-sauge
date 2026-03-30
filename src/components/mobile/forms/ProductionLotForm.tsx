@@ -14,12 +14,20 @@ import DateYearWarning from '@/components/shared/DateYearWarning'
 import type { ProductionMode } from '@/lib/types'
 import { MODE_LABELS, MODE_DESCRIPTIONS } from '@/components/produits/types'
 
+function defaultDdm(dateProduction: string): string {
+  const d = new Date(dateProduction)
+  d.setMonth(d.getMonth() + 24)
+  return d.toISOString().split('T')[0]
+}
+
 function initialState() {
+  const date_production = todayISO()
   return {
     mode: 'produit' as ProductionMode,
     recipe_id: '',
     nb_unites: '',
-    date_production: todayISO(),
+    date_production,
+    ddm: defaultDdm(date_production),
     temps_min: '',
     commentaire: '',
   }
@@ -65,6 +73,7 @@ export default function ProductionLotForm({ orgSlug }: ProductionLotFormProps) {
       recipe_id: form.recipe_id,
       nb_unites: form.nb_unites ? parseInt(form.nb_unites, 10) : null,
       date_production: form.date_production,
+      ddm: form.ddm,
       temps_min: form.temps_min ? parseInt(form.temps_min, 10) : null,
       commentaire: form.commentaire || null,
     }
@@ -175,10 +184,23 @@ export default function ProductionLotForm({ orgSlug }: ProductionLotFormProps) {
         required
         type="date"
         value={form.date_production}
-        onChange={(v) => set('date_production', v)}
+        onChange={(v) => {
+          const d = new Date(v)
+          d.setMonth(d.getMonth() + 24)
+          setForm((prev) => ({ ...prev, date_production: v, ddm: d.toISOString().split('T')[0] }))
+        }}
         error={errors.date_production}
       />
       <DateYearWarning date={form.date_production} />
+
+      <MobileInput
+        label="DDM (Date de Durabilité Minimale)"
+        required
+        type="date"
+        value={form.ddm}
+        onChange={(v) => set('ddm', v)}
+        error={errors.ddm}
+      />
 
       <MobileTimerInput
         label="Temps"
