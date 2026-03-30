@@ -35,6 +35,7 @@ export type WizardState = {
   poids_total_g: number | null
   temps_min: number | null
   commentaire: string
+  ddm: string
   ingredients: WizardIngredient[]
 }
 
@@ -48,17 +49,25 @@ type Props = {
   onSuccess: () => void
 }
 
+function defaultDdm(dateProduction: string): string {
+  const d = new Date(dateProduction)
+  d.setMonth(d.getMonth() + 24)
+  return d.toISOString().split('T')[0]
+}
+
 function initialState(): WizardState {
+  const date_production = new Date().toISOString().split('T')[0]
   return {
     step: 1,
     mode: 'produit',
     recipe_id: '',
     recipe: null,
-    date_production: new Date().toISOString().split('T')[0],
+    date_production,
     nb_unites: null,
     poids_total_g: null,
     temps_min: null,
     commentaire: '',
+    ddm: defaultDdm(date_production),
     ingredients: [],
   }
 }
@@ -191,6 +200,7 @@ export default function ProductionWizard({ recipes, categories, stockLevels, onC
               categories={categories}
               onPrev={() => goTo(3)}
               onSuccess={onSuccess}
+              onChange={updateState}
             />
           )}
         </div>

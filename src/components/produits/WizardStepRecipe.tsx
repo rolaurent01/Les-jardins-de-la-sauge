@@ -170,7 +170,11 @@ export default function WizardStepRecipe({ state, recipes, categories, onChange,
             type="date"
             value={state.date_production}
             max={today()}
-            onChange={e => onChange({ date_production: e.target.value })}
+            onChange={e => {
+              const d = new Date(e.target.value)
+              d.setMonth(d.getMonth() + 24)
+              onChange({ date_production: e.target.value, ddm: d.toISOString().split('T')[0] })
+            }}
             style={inputStyle}
             onFocus={focusStyle}
             onBlur={blurStyle}

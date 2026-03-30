@@ -113,7 +113,10 @@ export default function WizardStepIngredients({ state, onChange, onPrev, onNext 
   const allHaveState = state.ingredients.every(
     i => i.variety_id == null || (i.etat_plante != null && i.etat_plante !== ''),
   )
-  const canNext = hasIngredients && allHaveState &&
+  const allExternalHaveFournisseur = state.ingredients.every(
+    i => i.external_material_id == null || (i.fournisseur != null && i.fournisseur !== ''),
+  )
+  const canNext = hasIngredients && allHaveState && allExternalHaveFournisseur &&
     (isModeProduit ? totalIsOk : totalPoids > 0)
 
   return (

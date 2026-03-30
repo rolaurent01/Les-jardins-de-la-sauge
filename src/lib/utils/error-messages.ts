@@ -41,7 +41,12 @@ export function mapSupabaseError(
     return "Vous n'avez pas les droits pour cette opération."
   }
 
-  // Stock insuffisant (RPCs) — message déjà en FR
+  // Exceptions levées par nos RPCs (RAISE EXCEPTION, code P0001) — messages déjà en FR
+  if (code === 'P0001') {
+    if (msg) return msg
+  }
+
+  // Stock insuffisant (RPCs) — message déjà en FR (fallback si code différent)
   if (msg.includes('Stock insuffisant') || msg.includes('stock insuffisant')) {
     return msg
   }

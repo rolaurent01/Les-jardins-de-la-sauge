@@ -119,10 +119,12 @@ export async function createProductionLot(
     }
   }
 
-  // Calculer la DDM (date + 24 mois par defaut)
-  const ddm = new Date(dateProd)
-  ddm.setMonth(ddm.getMonth() + 24)
-  const ddmStr = ddm.toISOString().split('T')[0]
+  // DDM — fournie par le formulaire (editee par l'utilisateur a l'etape confirmation)
+  const ddmStr = (formData.get('ddm') as string) || (() => {
+    const d = new Date(dateProd)
+    d.setMonth(d.getMonth() + 24)
+    return d.toISOString().split('T')[0]
+  })()
 
   // Preparer les ingredients au format JSONB pour la RPC
   const ingredientsJsonb = parsed.data.ingredients.map(ing => ({
@@ -152,7 +154,10 @@ export async function createProductionLot(
     p_ingredients: ingredientsJsonb,
   })
 
-  if (error) return { error: mapSupabaseError(error) }
+  if (error) {
+    console.error('[createProductionLot] RPC error:', JSON.stringify(error))
+    return { error: mapSupabaseError(error) }
+  }
 
   revalidatePath(buildPath(orgSlug, '/produits/production'))
   return { success: true, data: { id: lotId as string, numero_lot: numeroLot } }

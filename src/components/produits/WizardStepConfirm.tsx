@@ -13,9 +13,10 @@ type Props = {
   categories: ProductCategory[]
   onPrev: () => void
   onSuccess: () => void
+  onChange: (patch: Partial<WizardState>) => void
 }
 
-export default function WizardStepConfirm({ state, categories, onPrev, onSuccess }: Props) {
+export default function WizardStepConfirm({ state, categories, onPrev, onSuccess, onChange }: Props) {
   const [isPending, startTransition] = useTransition()
   const [error, setError] = useState<string | null>(null)
   const [successLot, setSuccessLot] = useState<string | null>(null)
@@ -26,10 +27,8 @@ export default function WizardStepConfirm({ state, categories, onPrev, onSuccess
   const dateProd = new Date(state.date_production)
   const numeroLotPreview = generateProductionLotNumber(code, dateProd)
 
-  // DDM preview
-  const ddmDate = new Date(dateProd)
-  ddmDate.setMonth(ddmDate.getMonth() + 24)
-  const ddmStr = ddmDate.toISOString().split('T')[0]
+  // DDM — provient du state (éditable par l'utilisateur)
+  const ddmStr = state.ddm
 
   // Categorie
   const category = categories.find(c => c.id === state.recipe?.category_id)
@@ -44,6 +43,7 @@ export default function WizardStepConfirm({ state, categories, onPrev, onSuccess
     fd.set('recipe_id', state.recipe_id)
     fd.set('mode', state.mode)
     fd.set('date_production', state.date_production)
+    fd.set('ddm', state.ddm)
     if (state.nb_unites != null) fd.set('nb_unites', String(state.nb_unites))
     if (state.poids_total_g != null) fd.set('poids_total_g', String(state.poids_total_g))
     if (state.temps_min != null) fd.set('temps_min', String(state.temps_min))
@@ -105,7 +105,25 @@ export default function WizardStepConfirm({ state, categories, onPrev, onSuccess
         <Row label="Mode" value={MODE_LABELS[state.mode]} />
         <Row label="N° lot (preview)" value={numeroLotPreview} mono />
         <Row label="Date production" value={formatDate(state.date_production)} />
-        <Row label="DDM" value={formatDate(ddmStr)} />
+        {/* DDM éditable */}
+        <div className="flex justify-between items-center text-sm">
+          <span style={{ color: '#6B7B6C' }}>DDM</span>
+          <input
+            type="date"
+            value={ddmStr}
+            min={state.date_production}
+            onChange={e => onChange({ ddm: e.target.value })}
+            style={{
+              padding: '2px 6px',
+              fontSize: '13px',
+              borderRadius: '6px',
+              border: '1px solid #D8E0D9',
+              backgroundColor: '#FAF5E9',
+              color: '#2C3E2D',
+              fontWeight: 500,
+            }}
+          />
+        </div>
         <Row
           label="Unites"
           value={state.nb_unites != null ? String(state.nb_unites) : 'A conditionner'}
