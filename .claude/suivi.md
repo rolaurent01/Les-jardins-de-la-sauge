@@ -2,6 +2,33 @@
 
 ---
 
+## [2026-03-30] — Fix création lot production : DDM éditable + erreurs RPC visibles
+
+**Type :** `fix`
+**Commits :** `178819f`, `a7c1199`
+**Fichiers concernés :**
+- `src/lib/utils/error-messages.ts` (pass-through messages RPC code P0001)
+- `src/app/[orgSlug]/(dashboard)/produits/production/actions.ts` (DDM depuis FormData + console.error)
+- `src/components/produits/ProductionWizard.tsx` (ddm dans WizardState + defaultDdm)
+- `src/components/produits/WizardStepRecipe.tsx` (recalcul DDM au changement de date)
+- `src/components/produits/WizardStepConfirm.tsx` (champ DDM éditable + passage onChange)
+- `src/components/produits/WizardStepIngredients.tsx` (canNext bloque si fournisseur manquant)
+- `src/components/mobile/forms/ProductionLotForm.tsx` (champ DDM mobile)
+- `src/lib/sync/dispatch.ts` (DDM depuis payload en priorité)
+
+### Description
+Deux bugs signalés sur la création de lot vinaigre :
+1. Erreur générique "Une erreur est survenue" masquait le vrai message d'erreur RPC
+2. DDM hardcodée à +24 mois sans possibilité de la modifier
+
+**Fix erreur** : `mapSupabaseError` passe maintenant directement les messages des exceptions RPC (code PostgreSQL `P0001`) au lieu du fallback générique. `console.error` ajouté dans l'action pour visibilité dans les logs Vercel.
+
+**Fix DDM** : champ date éditable ajouté à l'étape Confirmation (desktop) et dans le formulaire mobile. Pré-rempli à `date_production + 24 mois`, recalculé automatiquement si la date change. La valeur utilisateur est transmise au backend (plus de recalcul côté serveur).
+
+**Fix UX** : le bouton "Suivant" de l'étape Composition bloque maintenant si une matière externe n'a pas de fournisseur renseigné (évite une erreur Zod silencieuse à l'étape 4).
+
+---
+
 ## [2026-03-22] — Filtre par année sur la vue Suivi des semis
 
 **Type :** `feat`
