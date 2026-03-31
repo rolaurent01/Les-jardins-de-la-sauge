@@ -156,7 +156,12 @@ export async function createProductionLot(
 
   if (error) {
     console.error('[createProductionLot] RPC error:', JSON.stringify(error))
-    return { error: mapSupabaseError(error) }
+    const mapped = mapSupabaseError(error)
+    // Si fallback generique, inclure le message brut pour diagnostic
+    if (mapped.includes('Veuillez réessayer')) {
+      return { error: `Erreur : ${error.message || error.code || 'inconnue'} (code: ${error.code ?? '?'})` }
+    }
+    return { error: mapped }
   }
 
   revalidatePath(buildPath(orgSlug, '/produits/production'))
