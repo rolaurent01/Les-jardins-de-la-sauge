@@ -61,6 +61,8 @@ export function mapSupabaseError(
     return 'Erreur de connexion. Vérifiez votre réseau et réessayez.'
   }
 
-  // Fallback : ne JAMAIS exposer le message brut
+  // Fallback : inclure le message brut pour diagnostic (appli interne, 2-3 utilisateurs)
+  if (msg) return `Erreur : ${msg}`
+
   return 'Une erreur est survenue. Veuillez réessayer.'
 }

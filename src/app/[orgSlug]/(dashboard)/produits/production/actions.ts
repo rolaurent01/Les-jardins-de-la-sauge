@@ -154,15 +154,7 @@ export async function createProductionLot(
     p_ingredients: ingredientsJsonb,
   })
 
-  if (error) {
-    console.error('[createProductionLot] RPC error:', JSON.stringify(error))
-    const mapped = mapSupabaseError(error)
-    // Si fallback generique, inclure le message brut pour diagnostic
-    if (mapped.includes('Veuillez réessayer')) {
-      return { error: `Erreur : ${error.message || error.code || 'inconnue'} (code: ${error.code ?? '?'})` }
-    }
-    return { error: mapped }
-  }
+  if (error) return { error: mapSupabaseError(error) }
 
   revalidatePath(buildPath(orgSlug, '/produits/production'))
   return { success: true, data: { id: lotId as string, numero_lot: numeroLot } }
