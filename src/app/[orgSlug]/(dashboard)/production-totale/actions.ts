@@ -152,16 +152,29 @@ export async function fetchAvailableYears(): Promise<number[]> {
   const { farmId } = await getContext()
   const supabase = createAdminClient()
 
+  // Ne retenir que les années ayant au moins un volume de production > 0
+  // (exclut les lignes qui n'ont que du temps culture venant des plantings)
   const { data, error } = await supabase
     .from('production_summary')
-    .select('annee')
+    .select('annee, total_cueilli_g, total_tronconnee_g, total_sechee_g, total_triee_g, total_utilise_production_g, total_vendu_direct_g, total_achete_g')
     .eq('farm_id', farmId)
 
   if (error) throw new Error(`Erreur années : ${error.message}`)
 
   const currentYear = new Date().getFullYear()
-  const yearsSet = new Set<number>((data ?? []).map(d => d.annee))
-  yearsSet.add(currentYear)
+  const yearsSet = new Set<number>([currentYear])
+
+  for (const row of data ?? []) {
+    const hasVolume =
+      Number(row.total_cueilli_g) > 0 ||
+      Number(row.total_tronconnee_g) > 0 ||
+      Number(row.total_sechee_g) > 0 ||
+      Number(row.total_triee_g) > 0 ||
+      Number(row.total_utilise_production_g) > 0 ||
+      Number(row.total_vendu_direct_g) > 0 ||
+      Number(row.total_achete_g) > 0
+    if (hasVolume) yearsSet.add(row.annee)
+  }
 
   return Array.from(yearsSet).sort((a, b) => a - b)
 }
