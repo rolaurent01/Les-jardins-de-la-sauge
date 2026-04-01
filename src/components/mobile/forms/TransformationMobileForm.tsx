@@ -8,7 +8,7 @@ import MobileSearchSelect from '@/components/mobile/fields/MobileSearchSelect'
 import MobileInput from '@/components/mobile/fields/MobileInput'
 import MobileTimerInput from '@/components/mobile/fields/MobileTimerInput'
 import MobileTextarea from '@/components/mobile/fields/MobileTextarea'
-import { useCachedVarieties } from '@/hooks/useCachedData'
+import { useCachedVarieties, useCachedStock } from '@/hooks/useCachedData'
 import type { ZodSchema } from 'zod'
 import { todayISO } from '@/lib/utils/date'
 import { PARTIE_PLANTE_OPTIONS } from '@/lib/constants/partie-plante'
@@ -42,6 +42,8 @@ interface TransformationMobileFormProps {
    * Utilisé quand etatPlanteConfig est null (tronçonnage).
    */
   getImplicitEtatPlante?: (type: TypeEntreeSortie) => string
+  /** États plante acceptés en entrée pour filtrer le stock dispo */
+  stockEntreeEtats?: string[]
 }
 
 function initialState() {
@@ -69,9 +71,11 @@ export default function TransformationMobileForm({
   backCategory,
   etatPlanteConfig,
   getImplicitEtatPlante,
+  stockEntreeEtats,
 }: TransformationMobileFormProps) {
   const { addEntry, farmId } = useMobileSync()
   const { varieties, isLoading: varietiesLoading } = useCachedVarieties()
+  const { stock } = useCachedStock()
 
   const [form, setForm] = useState(initialState)
   const [errors, setErrors] = useState<Record<string, string>>({})
@@ -97,6 +101,21 @@ export default function TransformationMobileForm({
     if (!etatPlanteConfig) return []
     return etatPlanteConfig[form.type]
   }, [etatPlanteConfig, form.type])
+
+  // Stock disponible pour le type "entree" (filtré par variété + partie_plante + état)
+  const stockDispo = useMemo(() => {
+    if (form.type !== 'entree' || !form.variety_id || !form.partie_plante || !stockEntreeEtats?.length) return null
+    // Si état sélectionné, filtrer dessus ; sinon sur tous les états acceptés
+    const etats = form.etat_plante ? [form.etat_plante] : stockEntreeEtats
+    return stock
+      .filter(s =>
+        s.variety_id === form.variety_id &&
+        s.partie_plante === form.partie_plante &&
+        etats.includes(s.etat_plante) &&
+        s.stock_g > 0
+      )
+      .reduce((sum, s) => sum + s.stock_g, 0)
+  }, [stock, form.type, form.variety_id, form.partie_plante, form.etat_plante, stockEntreeEtats])
 
   const handleSubmit = async () => {
     setGlobalError(null)
@@ -235,6 +254,20 @@ export default function TransformationMobileForm({
           options={etatOptions}
           error={errors.etat_plante}
         />
+      )}
+
+      {/* Stock disponible (uniquement en entrée) */}
+      {stockDispo !== null && (
+        <div
+          className="rounded-xl px-3 py-2.5 text-xs"
+          style={{
+            backgroundColor: stockDispo > 0 ? '#F0F4F0' : '#FEF3C7',
+            border: `1px solid ${stockDispo > 0 ? '#E0E6E0' : '#F59E0B44'}`,
+            color: stockDispo > 0 ? '#6B7B6C' : '#92400E',
+          }}
+        >
+          Stock dispo : {stockDispo >= 1000 ? `${(stockDispo / 1000).toFixed(1)} kg` : `${Math.round(stockDispo)} g`}
+        </div>
       )}
 
       <MobileInput

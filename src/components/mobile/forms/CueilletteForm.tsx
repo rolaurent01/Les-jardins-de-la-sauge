@@ -204,6 +204,7 @@ export default function CueilletteForm({ orgSlug }: CueilletteFormProps) {
           value={form.row_id}
           onChange={handleRowChange}
           error={errors.row_id}
+          filter="planted"
         />
       ) : (
         <MobileInput

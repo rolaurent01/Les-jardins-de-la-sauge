@@ -52,6 +52,12 @@ export default function ArrachageSlideOver({
     return map
   }, [rowPlantings])
 
+  // Rangs plantés uniquement
+  const plantedRows = useMemo(() =>
+    rows.filter(r => varietiesByRow.has(r.id)),
+    [rows, varietiesByRow],
+  )
+
   // ---- Label enrichi pour les options de rang ----
   const rowLabel = useMemo(() => {
     const map = new Map<string, string>()
@@ -59,7 +65,7 @@ export default function ArrachageSlideOver({
       const varieties = varietiesByRow.get(row.id)
       const suffix = varieties?.length
         ? ` (${varieties.map(v => v.nom_vernaculaire).join(', ')})`
-        : ' (vide)'
+        : ''
       map.set(row.id, `Rang ${row.numero}${suffix}`)
     }
     return map
@@ -132,7 +138,16 @@ export default function ArrachageSlideOver({
     })
   }
 
-  const rowGroups = groupRowsByParcel(rows)
+  // En mode édition, inclure le rang actuel même s'il n'est plus planté
+  const visibleRows = useMemo(() => {
+    if (!isEdit) return plantedRows
+    const editRowId = uprooting?.row_id
+    if (!editRowId || plantedRows.some(r => r.id === editRowId)) return plantedRows
+    const editRow = rows.find(r => r.id === editRowId)
+    return editRow ? [...plantedRows, editRow] : plantedRows
+  }, [isEdit, plantedRows, uprooting, rows])
+
+  const rowGroups = groupRowsByParcel(visibleRows)
 
   // Resume informatif des plantations actives
   const plantingSummary = hasRowVarieties
@@ -217,13 +232,6 @@ export default function ArrachageSlideOver({
                 ))}
               </select>
             </Field>
-
-            {/* Avertissement : aucune variete active */}
-            {hasNoVarieties && (
-              <WarningBanner>
-                Aucune variete active sur ce rang — rien a arracher.
-              </WarningBanner>
-            )}
 
             {/* Resume informatif des plantations actives */}
             {plantingSummary && (

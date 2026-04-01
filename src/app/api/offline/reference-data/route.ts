@@ -50,7 +50,7 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
   }
 
   // Charger toutes les données de référence en parallèle
-  const [varieties, sites, parcels, rows, plantings, recipes, seedLots, seedlings, externalMaterials] =
+  const [varieties, sites, parcels, rows, plantings, recipes, seedLots, seedlings, externalMaterials, stock] =
     await Promise.all([
       loadVarieties(admin, farmId),
       loadSites(admin, farmId),
@@ -61,6 +61,7 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
       loadSeedLots(admin, farmId),
       loadSeedlings(admin, farmId),
       loadExternalMaterials(admin, farmId),
+      loadStock(admin, farmId),
     ])
 
   const response: ReferenceDataResponse = {
@@ -73,6 +74,7 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
     seedLots,
     seedlings,
     externalMaterials,
+    stock,
     timestamp: new Date().toISOString(),
   }
 
@@ -298,4 +300,26 @@ async function loadExternalMaterials(admin: any, farmId: string) {
 
   if (error) throw new Error(`Erreur chargement matériaux : ${error.message}`)
   return data ?? []
+}
+
+/**
+ * Stock agrégé depuis v_stock — snapshot pour le cache offline.
+ * Génère un id composite pour la clé primaire Dexie.
+ */
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+async function loadStock(admin: any, farmId: string) {
+  const { data, error } = await admin
+    .from('v_stock')
+    .select('variety_id, partie_plante, etat_plante, stock_g')
+    .eq('farm_id', farmId)
+
+  if (error) throw new Error(`Erreur chargement stock : ${error.message}`)
+
+  return (data ?? []).map((row: { variety_id: string; partie_plante: string; etat_plante: string; stock_g: number }) => ({
+    id: `${row.variety_id}_${row.partie_plante}_${row.etat_plante}`,
+    variety_id: row.variety_id,
+    partie_plante: row.partie_plante,
+    etat_plante: row.etat_plante,
+    stock_g: Number(row.stock_g),
+  }))
 }

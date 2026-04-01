@@ -81,8 +81,6 @@ export default function ArrachageForm({ orgSlug }: ArrachageFormProps) {
   const rowVars = form.row_id ? (varietiesByRow.get(form.row_id) ?? []) : []
   const hasRowVarieties = rowVars.length > 0
   const autoVariety = rowVars.length === 1 ? rowVars[0] : null
-  const hasNoVarieties = form.row_id && rowVars.length === 0
-
   // Options filtrées par rang
   const varietyOptions = useMemo(() => {
     if (hasRowVarieties) {
@@ -162,17 +160,8 @@ export default function ArrachageForm({ orgSlug }: ArrachageFormProps) {
         value={form.row_id}
         onChange={handleRowChange}
         error={errors.row_id}
+        filter="planted"
       />
-
-      {/* Rang vide */}
-      {hasNoVarieties && (
-        <div
-          className="rounded-xl px-3 py-2.5 text-xs"
-          style={{ backgroundColor: '#FEF3C7', border: '1px solid #F59E0B44', color: '#92400E' }}
-        >
-          Aucune variété active sur ce rang — rien à arracher.
-        </div>
-      )}
 
       {/* 1 variete : lecture seule */}
       {autoVariety && (

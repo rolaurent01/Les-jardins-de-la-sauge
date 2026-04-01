@@ -4,10 +4,15 @@ import { useMemo } from 'react'
 import MobileSelect, { type OptionGroup } from './MobileSelect'
 import { useCachedRows, useCachedPlantings } from '@/hooks/useCachedData'
 
+/** Filtre sur l'état de plantation du rang */
+export type RowFilter = 'all' | 'planted' | 'unplanted'
+
 interface MobileRowSelectProps {
   value: string
   onChange: (value: string) => void
   error?: string | null
+  /** Filtrer les rangs affichés (défaut : 'all') */
+  filter?: RowFilter
 }
 
 /**
@@ -15,7 +20,7 @@ interface MobileRowSelectProps {
  * Affiche les variétés actives entre parenthèses : "Rang 3 (Lavande vraie)"
  * Utilise les données du cache IndexedDB (sites, parcelles, rangs, plantings).
  */
-export default function MobileRowSelect({ value, onChange, error }: MobileRowSelectProps) {
+export default function MobileRowSelect({ value, onChange, error, filter = 'all' }: MobileRowSelectProps) {
   const { rows, parcels, sites, isLoading } = useCachedRows()
   const { plantings } = useCachedPlantings()
 
@@ -35,9 +40,17 @@ export default function MobileRowSelect({ value, onChange, error }: MobileRowSel
       varietiesByRow.set(p.row_id, names)
     }
 
+    // Filtrer les rangs selon l'état de plantation
+    const filteredRows = filter === 'all'
+      ? rows
+      : rows.filter(row => {
+          const isPlanted = varietiesByRow.has(row.id)
+          return filter === 'planted' ? isPlanted : !isPlanted
+        })
+
     // Grouper les rangs par parcelle
-    const byParcel = new Map<string, typeof rows>()
-    for (const row of rows) {
+    const byParcel = new Map<string, typeof filteredRows>()
+    for (const row of filteredRows) {
       const key = row.parcel_id
       if (!byParcel.has(key)) byParcel.set(key, [])
       byParcel.get(key)!.push(row)
@@ -62,7 +75,14 @@ export default function MobileRowSelect({ value, onChange, error }: MobileRowSel
         group: groupLabel,
         options: sorted.map((r) => {
           const names = varietiesByRow.get(r.id)
-          const suffix = names?.length ? ` (${names.join(', ')})` : ' (vide)'
+          let suffix: string
+          if (names?.length) {
+            suffix = ` (${names.join(', ')})`
+          } else if (r.longueur_m) {
+            suffix = ` (vide — ${r.longueur_m} m)`
+          } else {
+            suffix = ' (vide)'
+          }
           return {
             value: r.id,
             label: `Rang ${r.numero}${suffix}`,
@@ -75,7 +95,7 @@ export default function MobileRowSelect({ value, onChange, error }: MobileRowSel
     groups.sort((a, b) => a.group.localeCompare(b.group))
 
     return groups
-  }, [rows, parcels, sites, plantings])
+  }, [rows, parcels, sites, plantings, filter])
 
   return (
     <MobileSelect

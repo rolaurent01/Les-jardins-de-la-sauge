@@ -12,6 +12,7 @@ import {
   type CachedSeedLot,
   type CachedSeedling,
   type CachedExternalMaterial,
+  type CachedStock,
 } from '@/lib/offline/db'
 
 /**
@@ -102,5 +103,14 @@ export function useCachedExternalMaterials() {
   return {
     materials: (materials ?? []) as CachedExternalMaterial[],
     isLoading: materials === undefined,
+  }
+}
+
+/** Cache du stock agrégé (snapshot v_stock) — pour afficher le stock dispo dans les transformations */
+export function useCachedStock() {
+  const stock = useLiveQuery(() => offlineDb.stock.toArray())
+  return {
+    stock: (stock ?? []) as CachedStock[],
+    isLoading: stock === undefined,
   }
 }

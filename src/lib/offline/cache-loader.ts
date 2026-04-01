@@ -38,6 +38,7 @@ export async function loadReferenceData(farmId: string): Promise<void> {
       offlineDb.seedLots,
       offlineDb.seedlings,
       offlineDb.externalMaterials,
+      offlineDb.stock,
     ],
     async () => {
       await offlineDb.varieties.bulkAdd(data.varieties)
@@ -49,6 +50,7 @@ export async function loadReferenceData(farmId: string): Promise<void> {
       await offlineDb.seedLots.bulkAdd(data.seedLots)
       if (data.seedlings) await offlineDb.seedlings.bulkAdd(data.seedlings)
       await offlineDb.externalMaterials.bulkAdd(data.externalMaterials)
+      if (data.stock) await offlineDb.stock.bulkAdd(data.stock)
     }
   )
 
@@ -84,6 +86,7 @@ export async function clearReferenceCache(): Promise<void> {
       offlineDb.seedLots,
       offlineDb.seedlings,
       offlineDb.externalMaterials,
+      offlineDb.stock,
     ],
     async () => {
       await offlineDb.varieties.clear()
@@ -95,6 +98,7 @@ export async function clearReferenceCache(): Promise<void> {
       await offlineDb.seedLots.clear()
       await offlineDb.seedlings.clear()
       await offlineDb.externalMaterials.clear()
+      await offlineDb.stock.clear()
     }
   )
 }

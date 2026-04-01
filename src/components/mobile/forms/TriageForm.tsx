@@ -26,6 +26,7 @@ export default function TriageForm({ orgSlug }: TriageFormProps) {
           { value: 'tronconnee_sechee', label: 'Tronçonnée séchée' },
         ],
       }}
+      stockEntreeEtats={['sechee', 'tronconnee_sechee']}
     />
   )
 }

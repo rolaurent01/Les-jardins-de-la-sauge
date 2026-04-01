@@ -29,6 +29,7 @@ export default function SechageForm({ orgSlug }: SechageFormProps) {
           { value: 'tronconnee_sechee', label: 'Tronçonnée séchée' },
         ],
       }}
+      stockEntreeEtats={['frais', 'tronconnee']}
     />
   )
 }

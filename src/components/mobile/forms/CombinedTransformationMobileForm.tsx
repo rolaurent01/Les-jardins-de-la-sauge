@@ -8,7 +8,7 @@ import MobileSearchSelect from '@/components/mobile/fields/MobileSearchSelect'
 import MobileInput from '@/components/mobile/fields/MobileInput'
 import MobileTimerInput from '@/components/mobile/fields/MobileTimerInput'
 import MobileTextarea from '@/components/mobile/fields/MobileTextarea'
-import { useCachedVarieties } from '@/hooks/useCachedData'
+import { useCachedVarieties, useCachedStock } from '@/hooks/useCachedData'
 import type { ZodSchema } from 'zod'
 import { todayISO } from '@/lib/utils/date'
 import { PARTIE_PLANTE_OPTIONS } from '@/lib/constants/partie-plante'
@@ -30,6 +30,8 @@ interface CombinedTransformationMobileFormProps {
   etatPlanteConfig?: EtatPlanteEntreeConfig | null
   /** Pre-remplir poids sortie = poids entree (tronconnage) */
   autoSyncPoidsSortie?: boolean
+  /** États plante acceptés en entrée pour filtrer le stock dispo (ex: ['frais'] pour tronçonnage) */
+  stockEntreeEtats?: string[]
 }
 
 function initialState() {
@@ -53,9 +55,11 @@ export default function CombinedTransformationMobileForm({
   backCategory,
   etatPlanteConfig,
   autoSyncPoidsSortie = false,
+  stockEntreeEtats,
 }: CombinedTransformationMobileFormProps) {
   const { addEntry, farmId } = useMobileSync()
   const { varieties, isLoading: varietiesLoading } = useCachedVarieties()
+  const { stock } = useCachedStock()
 
   const [form, setForm] = useState(initialState)
   const [errors, setErrors] = useState<Record<string, string>>({})
@@ -88,6 +92,24 @@ export default function CombinedTransformationMobileForm({
     set('poids_sortie_g', value)
     setSortieManuallyEdited(true)
   }
+
+  // Stock disponible filtré par variété + partie_plante + états acceptés
+  const stockDispo = useMemo(() => {
+    if (!form.variety_id || !form.partie_plante || !stockEntreeEtats?.length) return null
+    // Si etatPlanteConfig, on filtre sur l'état sélectionné ; sinon sur tous les états acceptés
+    const etats = etatPlanteConfig && form.etat_plante
+      ? [form.etat_plante]
+      : stockEntreeEtats
+    const total = stock
+      .filter(s =>
+        s.variety_id === form.variety_id &&
+        s.partie_plante === form.partie_plante &&
+        etats.includes(s.etat_plante) &&
+        s.stock_g > 0
+      )
+      .reduce((sum, s) => sum + s.stock_g, 0)
+    return total
+  }, [stock, form.variety_id, form.partie_plante, form.etat_plante, stockEntreeEtats, etatPlanteConfig])
 
   // Calcul dechet
   const poidsEntreeNum = parseFloat(form.poids_entree_g) || 0
@@ -195,6 +217,20 @@ export default function CombinedTransformationMobileForm({
           options={etatPlanteConfig.entree}
           error={errors.etat_plante}
         />
+      )}
+
+      {/* Stock disponible */}
+      {stockDispo !== null && (
+        <div
+          className="rounded-xl px-3 py-2.5 text-xs"
+          style={{
+            backgroundColor: stockDispo > 0 ? '#F0F4F0' : '#FEF3C7',
+            border: `1px solid ${stockDispo > 0 ? '#E0E6E0' : '#F59E0B44'}`,
+            color: stockDispo > 0 ? '#6B7B6C' : '#92400E',
+          }}
+        >
+          Stock dispo : {stockDispo >= 1000 ? `${(stockDispo / 1000).toFixed(1)} kg` : `${Math.round(stockDispo)} g`}
+        </div>
       )}
 
       <MobileInput

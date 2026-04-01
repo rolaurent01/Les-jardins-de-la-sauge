@@ -2,6 +2,39 @@
 
 ---
 
+## [2026-04-01] — UX : filtrage rangs (plante/non-plante) + stock dispo transformations
+
+**Type :** `feature`
+**Fichiers concernes :**
+- `src/components/mobile/fields/MobileRowSelect.tsx` (prop `filter: 'planted' | 'unplanted' | 'all'`, label dimensions pour rangs vides)
+- `src/components/mobile/forms/PlantationForm.tsx` (filter='unplanted')
+- `src/components/mobile/forms/SuiviRangForm.tsx` (filter='planted', suppression dead code rang vide)
+- `src/components/mobile/forms/CueilletteForm.tsx` (filter='planted')
+- `src/components/mobile/forms/ArrachageForm.tsx` (filter='planted', suppression dead code rang vide)
+- `src/lib/offline/db.ts` (interface CachedStock, table stock en v4, ajout au ReferenceDataResponse)
+- `src/hooks/useCachedData.ts` (hook useCachedStock)
+- `src/lib/offline/cache-loader.ts` (chargement + purge du cache stock)
+- `src/app/api/offline/reference-data/route.ts` (loadStock depuis v_stock)
+- `src/components/mobile/forms/CombinedTransformationMobileForm.tsx` (prop stockEntreeEtats, affichage stock dispo)
+- `src/components/mobile/forms/TransformationMobileForm.tsx` (prop stockEntreeEtats, affichage stock dispo en mode entree)
+- `src/components/mobile/forms/TronconnageForm.tsx` (stockEntreeEtats=['frais'])
+- `src/components/mobile/forms/SechageForm.tsx` (stockEntreeEtats=['frais','tronconnee'])
+- `src/components/mobile/forms/TriageForm.tsx` (stockEntreeEtats=['sechee','tronconnee_sechee'])
+- `src/components/parcelles/PlantationsClient.tsx` (useMemo unplantedRows, passage au SlideOver en creation)
+- `src/components/parcelles/SuiviRangSlideOver.tsx` (filtrage rangs plantes, suppression warning rang vide)
+- `src/components/parcelles/CueilletteSlideOver.tsx` (filtrage rangs plantes, suppression warning rang vide)
+- `src/components/parcelles/ArrachageSlideOver.tsx` (filtrage rangs plantes, suppression warning rang vide)
+
+**Details :**
+- Mobile + Desktop : Plantation ne montre que les rangs non plantes ; Suivi rang, Cueillette, Arrachage ne montrent que les rangs plantes
+- Rangs plantes affichent les varietes actives entre parentheses
+- Cache offline IndexedDB v4 : snapshot du stock (v_stock) charge avec les reference-data
+- Formulaires de transformation : affichage "Stock dispo : X g" apres selection variete + partie_plante + etat
+- En mode edition desktop, le rang actuel reste visible meme s'il ne correspond plus au filtre
+- Build OK, TypeScript OK
+
+---
+
 ## [2026-04-01] — Ajustements stock : date pre-remplie selon annee filtree + infobulle
 
 **Type :** `feature`

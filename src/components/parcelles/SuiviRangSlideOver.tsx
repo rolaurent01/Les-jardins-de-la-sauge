@@ -59,6 +59,12 @@ export default function SuiviRangSlideOver({
     return map
   }, [rowPlantings])
 
+  // Rangs plantés uniquement (hors édition : garder le rang actuel)
+  const plantedRows = useMemo(() =>
+    rows.filter(r => varietiesByRow.has(r.id)),
+    [rows, varietiesByRow],
+  )
+
   // ---- Label enrichi pour les options de rang ----
   const rowLabel = useMemo(() => {
     const map = new Map<string, string>()
@@ -66,7 +72,7 @@ export default function SuiviRangSlideOver({
       const varieties = varietiesByRow.get(row.id)
       const suffix = varieties?.length
         ? ` (${varieties.map(v => v.nom_vernaculaire).join(', ')})`
-        : ' (vide)'
+        : ''
       map.set(row.id, `Rang ${row.numero}${suffix}`)
     }
     return map
@@ -138,7 +144,16 @@ export default function SuiviRangSlideOver({
     })
   }
 
-  const rowGroups = groupRowsByParcel(rows)
+  // En mode édition, inclure le rang actuel même s'il n'est plus planté
+  const visibleRows = useMemo(() => {
+    if (!isEdit) return plantedRows
+    const editRowId = rowCare?.row_id
+    if (!editRowId || plantedRows.some(r => r.id === editRowId)) return plantedRows
+    const editRow = rows.find(r => r.id === editRowId)
+    return editRow ? [...plantedRows, editRow] : plantedRows
+  }, [isEdit, plantedRows, rowCare, rows])
+
+  const rowGroups = groupRowsByParcel(visibleRows)
 
   // Source du select variete
   const varietyOptions = hasRowVarieties ? rowVarieties : catalogVarieties
@@ -221,13 +236,6 @@ export default function SuiviRangSlideOver({
                 ))}
               </select>
             </Field>
-
-            {/* Rang vide : pas de champ variete */}
-            {hasNoVarieties && (
-              <div className="text-xs px-3 py-2 rounded-lg" style={{ backgroundColor: '#F5F2ED', color: '#6B7B6C' }}>
-                Aucune variete active sur ce rang — le soin sera enregistre sans variete.
-              </div>
-            )}
 
             {/* Bandeau multi-varietes */}
             {hasMultipleVarieties && (

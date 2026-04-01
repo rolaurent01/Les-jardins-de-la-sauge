@@ -20,6 +20,7 @@ export default function TronconnageForm({ orgSlug }: TronconnageFormProps) {
       schema={cuttingCombinedSchema}
       backCategory="transfo"
       autoSyncPoidsSortie
+      stockEntreeEtats={['frais']}
     />
   )
 }

@@ -90,8 +90,6 @@ export default function SuiviRangForm({ orgSlug }: SuiviRangFormProps) {
   const rowVars = form.row_id ? (varietiesByRow.get(form.row_id) ?? []) : []
   const hasRowVarieties = rowVars.length > 0
   const autoVariety = rowVars.length === 1 ? rowVars[0] : null
-  const hasNoVarieties = form.row_id && rowVars.length === 0
-
   // Options de varietes : filtrees par rang si possible, sinon catalogue complet
   const varietyOptions = useMemo(() => {
     if (hasRowVarieties) {
@@ -165,17 +163,8 @@ export default function SuiviRangForm({ orgSlug }: SuiviRangFormProps) {
         value={form.row_id}
         onChange={handleRowChange}
         error={errors.row_id}
+        filter="planted"
       />
-
-      {/* Rang vide : info sans champ variete */}
-      {hasNoVarieties && (
-        <div
-          className="rounded-xl px-3 py-2.5 text-xs"
-          style={{ backgroundColor: '#F5F2ED', border: '1px solid #E8E3DB', color: '#6B7B6C' }}
-        >
-          Aucune variété active sur ce rang — le soin sera enregistré sans variété.
-        </div>
-      )}
 
       {/* 1 variete : lecture seule */}
       {autoVariety && (
