@@ -363,6 +363,7 @@ export default function AjustementsClient({ adjustments: initialAdjustments, var
         stockLevels={stockLevels}
         onSubmit={handleSave}
         onSuccess={handleSaveSuccess}
+        defaultYear={yearFilter}
       />
     </div>
   )

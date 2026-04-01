@@ -28,6 +28,7 @@ type Props = {
   stockLevels: StockLevel[]
   onSubmit: (fd: FormData) => Promise<ActionResult>
   onSuccess: () => void
+  defaultYear?: number | null
 }
 
 export default function AjustementSlideOver({
@@ -40,6 +41,7 @@ export default function AjustementSlideOver({
   stockLevels,
   onSubmit,
   onSuccess,
+  defaultYear,
 }: Props) {
   const [isPending, startTransition] = useTransition()
   const [error, setError] = useState<string | null>(null)
@@ -51,7 +53,16 @@ export default function AjustementSlideOver({
   const [selectedEtat, setSelectedEtat] = useState<string>(item?.etat_plante ?? '')
   const [poidsValue, setPoidsValue] = useState<string>(item?.poids_g?.toString() ?? '')
   const [allVarieties, setAllVarieties] = useState(catalogVarieties)
-  const [date, setDate] = useState(item?.date ?? '')
+  const [date, setDate] = useState(() => {
+    if (item?.date) return item.date
+    const today = new Date().toISOString().split('T')[0]
+    if (defaultYear) {
+      const currentYear = new Date().getFullYear()
+      if (defaultYear === currentYear) return today
+      return `${defaultYear}-01-01`
+    }
+    return today
+  })
 
   const { parts, loading: loadingParts, autoPart } = useVarietyParts(
     selectedVarietyId || null,
@@ -70,11 +81,21 @@ export default function AjustementSlideOver({
     setSelectedPartie(item?.partie_plante ?? '')
     setSelectedEtat(item?.etat_plante ?? '')
     setPoidsValue(item?.poids_g?.toString() ?? '')
-    setDate(item?.date ?? '')
+    if (item?.date) {
+      setDate(item.date)
+    } else {
+      const today = new Date().toISOString().split('T')[0]
+      if (defaultYear) {
+        const currentYear = new Date().getFullYear()
+        setDate(defaultYear === currentYear ? today : `${defaultYear}-01-01`)
+      } else {
+        setDate(today)
+      }
+    }
     setError(null)
     prevAutoPartRef.current = null
     setAllVarieties(catalogVarieties)
-  }, [item, catalogVarieties])
+  }, [item, catalogVarieties, defaultYear])
 
   useEffect(() => {
     function onKey(e: KeyboardEvent) {
@@ -346,6 +367,10 @@ export default function AjustementSlideOver({
                 onBlur={blurStyle}
               />
               <DateYearWarning date={date} />
+              <p className="text-xs mt-1 flex items-center gap-1" style={{ color: '#6B7B6C' }}>
+                <span style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', width: 14, height: 14, borderRadius: '50%', border: '1px solid #9CA89D', fontSize: 10, fontWeight: 600, color: '#9CA89D', flexShrink: 0 }}>i</span>
+                L&apos;annee de la date determine l&apos;annee de rattachement du stock
+              </p>
             </Field>
 
             {/* Poids */}

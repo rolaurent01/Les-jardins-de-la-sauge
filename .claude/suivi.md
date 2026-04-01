@@ -2,6 +2,20 @@
 
 ---
 
+## [2026-04-01] — Ajustements stock : date pre-remplie selon annee filtree + infobulle
+
+**Type :** `feature`
+**Fichiers concernes :**
+- `src/components/affinage-stock/AjustementsClient.tsx` (passage de `yearFilter` au SlideOver)
+- `src/components/affinage-stock/AjustementSlideOver.tsx` (prop `defaultYear`, pre-remplissage date, infobulle annee)
+
+**Details :**
+- En creation, la date est pre-remplie : aujourd'hui si pas de filtre ou filtre = annee courante, sinon 01/01 de l'annee filtree
+- Ajout d'une infobulle sous le champ date : "L'annee de la date determine l'annee de rattachement du stock"
+- Aucun changement de schema SQL (l'annee est deduite de la date, coherent avec context.md)
+
+---
+
 ## [2026-03-30] — Fix création lot production : DDM éditable + erreurs RPC visibles
 
 **Type :** `fix`
