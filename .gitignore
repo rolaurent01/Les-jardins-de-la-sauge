@@ -44,3 +44,6 @@ next-env.d.ts
 # Ajouté par précaution au cas où un build génère ces fichiers
 public/sw.js
 public/sw.js.map
+
+# supabase temp
+supabase/.temp/
