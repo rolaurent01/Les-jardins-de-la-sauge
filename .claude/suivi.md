@@ -2,6 +2,30 @@
 
 ---
 
+## [2026-04-01 22:00] — Module Boutures (multiplications végétatives)
+
+**Type :** `feature`
+**Fichiers concernés :** `supabase/migrations/040_cuttings.sql`, `src/lib/types.ts`, `src/lib/validation/boutures.ts`, `src/lib/utils/cutting-statut.ts`, `src/lib/utils/cutting-stats.ts`, `src/lib/utils/boutures-parsers.ts`, `src/app/[orgSlug]/(dashboard)/semis/boutures/actions.ts`, `src/app/[orgSlug]/(dashboard)/semis/boutures/page.tsx`, `src/components/semis/BouturesClient.tsx`, `src/components/semis/BoutureSlideOver.tsx`, `src/app/[orgSlug]/(mobile)/m/saisie/semis/bouture/page.tsx`, `src/components/mobile/forms/BoutureForm.tsx`, `src/components/Sidebar.tsx`, `src/app/[orgSlug]/(mobile)/m/saisie/semis/page.tsx`, `src/app/[orgSlug]/(dashboard)/parcelles/plantations/actions.ts`, `src/lib/validation/parcelles.ts`, `src/lib/utils/parcelles-parsers.ts`, `src/lib/offline/db.ts`, `src/lib/offline/cutting-cache.ts`, `src/app/api/offline/reference-data/route.ts`, `src/tests/boutures/cutting-statut.test.ts`, `src/tests/boutures/cutting-stats.test.ts`
+
+### Description
+Ajout du module complet de boutures (multiplications végétatives) dans la section Semis. Permet de tracer rhizomes, boutures, marcottes, éclats de pied, drageons et éclats de racine depuis la récupération du matériel végétal jusqu'à la plantation en rang.
+
+### Détails techniques
+- **Table SQL `boutures`** (migration 040) : table dédiée avec statut calculé en logique applicative, support plaque alvéolée → godet ou godet direct
+- **Colonne `bouture_id`** ajoutée sur `plantings` avec contrainte d'exclusion mutuelle (`seedling_id` et `bouture_id` ne peuvent pas coexister)
+- **Types TS** : `Bouture`, `BoutureWithRelations`, `CuttingStatut`, `TypeMultiplication` (nommé `Bouture` pour éviter le conflit avec le type `Cutting` du tronçonnage)
+- **Validation Zod** : schéma `cuttingSchema` avec validation conditionnelle (plaques → trous par plaque obligatoire)
+- **Statuts** : `bouture` → `repiquage` → `pret` → `en_plantation` → `epuise` (pas de statut `leve`)
+- **Stats de perte** : 2 flux (plaque → godet et direct godet), calculs purs testés
+- **Desktop** : page listing avec filtres (année, statut, recherche), slide-over formulaire progressif, timeline visuelle, export CSV
+- **Mobile** : page formulaire complet avec toggle plaque/godet, validation Zod partagée, sync offline
+- **Sidebar** : entrée "Boutures" ajoutée sous 🌱 Semis
+- **Intégration plantation** : `fetchCuttingsForSelect()`, validation `plants_restants`, recalcul statut bouture lors de création/modification/archivage de plantation
+- **Offline** : IndexedDB v5 avec store `boutures`, cache optimiste, reference-data enrichi
+- **Tests** : 17 tests Vitest (statut + stats de perte)
+
+---
+
 ## [2026-04-01] — UX : filtrage rangs (plante/non-plante) + stock dispo transformations
 
 **Type :** `feature`

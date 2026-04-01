@@ -7,7 +7,8 @@ import { getContext } from '@/lib/context'
 import { buildPath } from '@/lib/utils/path'
 import { parsePlantingForm } from '@/lib/utils/parcelles-parsers'
 import { recalculateSeedlingStatut } from '@/app/[orgSlug]/(dashboard)/semis/suivi/actions'
-import type { ActionResult, Planting, PlantingWithRelations, Seedling, Variety } from '@/lib/types'
+import { recalculateCuttingStatut } from '@/app/[orgSlug]/(dashboard)/semis/boutures/actions'
+import type { ActionResult, Bouture, Planting, PlantingWithRelations, Seedling, Variety } from '@/lib/types'
 import { mapSupabaseError } from '@/lib/utils/error-messages'
 
 // ---- Types locaux ----
@@ -17,6 +18,14 @@ export type SeedlingForSelect = Pick<Seedling, 'id' | 'processus' | 'statut' | '
   variety_id: string | null
   varieties: Pick<Variety, 'id' | 'nom_vernaculaire'> | null
   seed_lots: { id: string; lot_interne: string; fournisseur: string | null } | null
+  plants_plantes: number
+  plants_restants: number | null
+}
+
+/** Bouture enrichie avec plants_restants pour le sélecteur */
+export type CuttingForSelect = Pick<Bouture, 'id' | 'type_multiplication' | 'statut' | 'nb_plants_obtenus' | 'date_bouturage'> & {
+  variety_id: string | null
+  varieties: Pick<Variety, 'id' | 'nom_vernaculaire'> | null
   plants_plantes: number
   plants_restants: number | null
 }
@@ -49,7 +58,7 @@ export async function fetchPlantings(): Promise<PlantingWithRelations[]> {
   const { data, error } = await supabase
     .from('plantings')
     .select(
-      '*, varieties(id, nom_vernaculaire), rows(id, numero, longueur_m, largeur_m, parcels(id, nom, code, sites(id, nom))), seedlings(id, processus, statut, numero_caisse)',
+      '*, varieties(id, nom_vernaculaire), rows(id, numero, longueur_m, largeur_m, parcels(id, nom, code, sites(id, nom))), seedlings(id, processus, statut, numero_caisse), boutures(id, type_multiplication, statut)',
     )
     .eq('farm_id', farmId)
     .is('deleted_at', null)
@@ -106,6 +115,53 @@ export async function fetchSeedlingsForSelect(): Promise<SeedlingForSelect[]> {
       ? Math.max(0, s.nb_plants_obtenus - plantsPlantes)
       : null
     return { ...s, plants_plantes: plantsPlantes, plants_restants: plantsRestants }
+  })
+}
+
+/** Récupère les boutures enrichies avec plants_restants pour le sélecteur du formulaire plantation */
+export async function fetchCuttingsForSelect(): Promise<CuttingForSelect[]> {
+  const supabase = await createClient()
+  const admin = createAdminClient()
+  const { farmId } = await getContext()
+
+  const { data, error } = await supabase
+    .from('boutures')
+    .select('id, type_multiplication, statut, nb_plants_obtenus, date_bouturage, variety_id, varieties(id, nom_vernaculaire)')
+    .eq('farm_id', farmId)
+    .is('deleted_at', null)
+    .order('date_bouturage', { ascending: false })
+
+  if (error) throw new Error(`Erreur lors du chargement des boutures : ${error.message}`)
+
+  const cuttings = (data ?? []) as unknown as (Pick<Bouture, 'id' | 'type_multiplication' | 'statut' | 'nb_plants_obtenus' | 'date_bouturage'> & {
+    variety_id: string | null
+    varieties: Pick<Variety, 'id' | 'nom_vernaculaire'> | null
+  })[]
+
+  const cuttingIds = cuttings.map(c => c.id)
+  let plantingsByCutting: Record<string, number> = {}
+
+  if (cuttingIds.length > 0) {
+    const { data: plantings } = await admin
+      .from('plantings')
+      .select('bouture_id, nb_plants')
+      .in('bouture_id', cuttingIds)
+      .eq('actif', true)
+      .is('deleted_at', null)
+
+    for (const p of (plantings ?? []) as { bouture_id: string; nb_plants: number | null }[]) {
+      if (p.bouture_id) {
+        plantingsByCutting[p.bouture_id] = (plantingsByCutting[p.bouture_id] ?? 0) + (p.nb_plants ?? 0)
+      }
+    }
+  }
+
+  return cuttings.map(c => {
+    const plantsPlantes = plantingsByCutting[c.id] ?? 0
+    const plantsRestants = c.nb_plants_obtenus != null
+      ? Math.max(0, c.nb_plants_obtenus - plantsPlantes)
+      : null
+    return { ...c, plants_plantes: plantsPlantes, plants_restants: plantsRestants }
   })
 }
 
@@ -192,6 +248,7 @@ export async function createPlanting(formData: FormData): Promise<ActionResult<P
   const { userId, farmId, orgSlug } = await getContext()
 
   const seedlingId = parsed.data.seedling_id as string | null
+  const cuttingId = parsed.data.bouture_id as string | null
 
   // Validation plants_restants si on plante depuis un semis
   if (seedlingId && parsed.data.nb_plants != null) {
@@ -202,7 +259,6 @@ export async function createPlanting(formData: FormData): Promise<ActionResult<P
       .single()
 
     if (seedling?.nb_plants_obtenus != null) {
-      // Calculer les plants déjà plantés
       const { data: existingPlantings } = await admin
         .from('plantings')
         .select('nb_plants')
@@ -217,6 +273,33 @@ export async function createPlanting(formData: FormData): Promise<ActionResult<P
 
       if (parsed.data.nb_plants > plantsRestants) {
         return { error: `Ce semis n'a que ${plantsRestants} plant${plantsRestants > 1 ? 's' : ''} disponible${plantsRestants > 1 ? 's' : ''}.` }
+      }
+    }
+  }
+
+  // Validation plants_restants si on plante depuis une bouture
+  if (cuttingId && parsed.data.nb_plants != null) {
+    const { data: cutting } = await admin
+      .from('boutures')
+      .select('nb_plants_obtenus')
+      .eq('id', cuttingId)
+      .single()
+
+    if (cutting?.nb_plants_obtenus != null) {
+      const { data: existingPlantings } = await admin
+        .from('plantings')
+        .select('nb_plants')
+        .eq('bouture_id', cuttingId)
+        .eq('actif', true)
+        .is('deleted_at', null)
+
+      const alreadyPlanted = (existingPlantings ?? []).reduce(
+        (sum, p) => sum + ((p.nb_plants as number) ?? 0), 0,
+      )
+      const plantsRestants = cutting.nb_plants_obtenus - alreadyPlanted
+
+      if (parsed.data.nb_plants > plantsRestants) {
+        return { error: `Cette bouture n'a que ${plantsRestants} plant${plantsRestants > 1 ? 's' : ''} disponible${plantsRestants > 1 ? 's' : ''}.` }
       }
     }
   }
@@ -244,13 +327,17 @@ export async function createPlanting(formData: FormData): Promise<ActionResult<P
 
   if (error) return { error: mapSupabaseError(error) }
 
-  // Mettre à jour le statut du seedling si on a planté depuis un semis
+  // Mettre à jour le statut du seedling/cutting si on a planté depuis un semis ou une bouture
   if (seedlingId) {
     await recalculateSeedlingStatut(seedlingId)
+  }
+  if (cuttingId) {
+    await recalculateCuttingStatut(cuttingId)
   }
 
   revalidatePath(buildPath(orgSlug, '/parcelles/plantations'))
   revalidatePath(buildPath(orgSlug, '/semis/suivi'))
+  revalidatePath(buildPath(orgSlug, '/semis/boutures'))
   return { success: true, data: data as Planting }
 }
 
@@ -266,14 +353,15 @@ export async function updatePlanting(
   const admin = createAdminClient()
   const { userId, farmId, orgSlug } = await getContext()
 
-  // Récupérer l'ancien seedling_id pour recalculer son statut si nécessaire
+  // Récupérer l'ancien seedling_id/bouture_id pour recalculer le statut si nécessaire
   const { data: oldPlanting } = await admin
     .from('plantings')
-    .select('seedling_id, nb_plants')
+    .select('seedling_id, bouture_id, nb_plants')
     .eq('id', id)
     .single()
 
   const newSeedlingId = parsed.data.seedling_id as string | null
+  const newCuttingId = parsed.data.bouture_id as string | null
 
   // Validation plants_restants pour le nouveau seedling
   if (newSeedlingId && parsed.data.nb_plants != null) {
@@ -291,7 +379,6 @@ export async function updatePlanting(
         .eq('actif', true)
         .is('deleted_at', null)
 
-      // Exclure la plantation en cours d'édition du total
       const alreadyPlanted = (existingPlantings ?? [])
         .filter(p => (p.id as string) !== id)
         .reduce((sum, p) => sum + ((p.nb_plants as number) ?? 0), 0)
@@ -299,6 +386,33 @@ export async function updatePlanting(
 
       if (parsed.data.nb_plants > plantsRestants) {
         return { error: `Ce semis n'a que ${plantsRestants} plant${plantsRestants > 1 ? 's' : ''} disponible${plantsRestants > 1 ? 's' : ''}.` }
+      }
+    }
+  }
+
+  // Validation plants_restants pour la nouvelle bouture
+  if (newCuttingId && parsed.data.nb_plants != null) {
+    const { data: cutting } = await admin
+      .from('boutures')
+      .select('nb_plants_obtenus')
+      .eq('id', newCuttingId)
+      .single()
+
+    if (cutting?.nb_plants_obtenus != null) {
+      const { data: existingPlantings } = await admin
+        .from('plantings')
+        .select('id, nb_plants')
+        .eq('bouture_id', newCuttingId)
+        .eq('actif', true)
+        .is('deleted_at', null)
+
+      const alreadyPlanted = (existingPlantings ?? [])
+        .filter(p => (p.id as string) !== id)
+        .reduce((sum, p) => sum + ((p.nb_plants as number) ?? 0), 0)
+      const plantsRestants = cutting.nb_plants_obtenus - alreadyPlanted
+
+      if (parsed.data.nb_plants > plantsRestants) {
+        return { error: `Cette bouture n'a que ${plantsRestants} plant${plantsRestants > 1 ? 's' : ''} disponible${plantsRestants > 1 ? 's' : ''}.` }
       }
     }
   }
@@ -318,13 +432,22 @@ export async function updatePlanting(
   if (oldSeedlingId && oldSeedlingId !== newSeedlingId) {
     await recalculateSeedlingStatut(oldSeedlingId)
   }
-  // Recalculer le statut du nouveau seedling
   if (newSeedlingId) {
     await recalculateSeedlingStatut(newSeedlingId)
   }
 
+  // Recalculer le statut de l'ancienne bouture si changée
+  const oldCuttingId = (oldPlanting?.bouture_id as string | null) ?? null
+  if (oldCuttingId && oldCuttingId !== newCuttingId) {
+    await recalculateCuttingStatut(oldCuttingId)
+  }
+  if (newCuttingId) {
+    await recalculateCuttingStatut(newCuttingId)
+  }
+
   revalidatePath(buildPath(orgSlug, '/parcelles/plantations'))
   revalidatePath(buildPath(orgSlug, '/semis/suivi'))
+  revalidatePath(buildPath(orgSlug, '/semis/boutures'))
   return { success: true, data: data as Planting }
 }
 
@@ -334,10 +457,10 @@ export async function archivePlanting(id: string): Promise<ActionResult> {
   const admin = createAdminClient()
   const { userId, farmId, orgSlug } = await getContext()
 
-  // Récupérer le seedling_id avant l'archivage
+  // Récupérer le seedling_id/bouture_id avant l'archivage
   const { data: planting } = await admin
     .from('plantings')
-    .select('seedling_id')
+    .select('seedling_id, bouture_id')
     .eq('id', id)
     .single()
 
@@ -349,14 +472,19 @@ export async function archivePlanting(id: string): Promise<ActionResult> {
 
   if (error) return { error: mapSupabaseError(error) }
 
-  // Recalculer le statut du seedling lié
+  // Recalculer le statut du seedling/cutting lié
   const seedlingId = (planting?.seedling_id as string | null) ?? null
   if (seedlingId) {
     await recalculateSeedlingStatut(seedlingId)
   }
+  const cuttingId = (planting?.bouture_id as string | null) ?? null
+  if (cuttingId) {
+    await recalculateCuttingStatut(cuttingId)
+  }
 
   revalidatePath(buildPath(orgSlug, '/parcelles/plantations'))
   revalidatePath(buildPath(orgSlug, '/semis/suivi'))
+  revalidatePath(buildPath(orgSlug, '/semis/boutures'))
   return { success: true }
 }
 
@@ -366,10 +494,10 @@ export async function restorePlanting(id: string): Promise<ActionResult> {
   const admin = createAdminClient()
   const { userId, farmId, orgSlug } = await getContext()
 
-  // Récupérer le seedling_id
+  // Récupérer le seedling_id/bouture_id
   const { data: planting } = await admin
     .from('plantings')
-    .select('seedling_id')
+    .select('seedling_id, bouture_id')
     .eq('id', id)
     .single()
 
@@ -381,13 +509,18 @@ export async function restorePlanting(id: string): Promise<ActionResult> {
 
   if (error) return { error: mapSupabaseError(error) }
 
-  // Recalculer le statut du seedling lié
+  // Recalculer le statut du seedling/cutting lié
   const seedlingId = (planting?.seedling_id as string | null) ?? null
   if (seedlingId) {
     await recalculateSeedlingStatut(seedlingId)
   }
+  const cuttingId = (planting?.bouture_id as string | null) ?? null
+  if (cuttingId) {
+    await recalculateCuttingStatut(cuttingId)
+  }
 
   revalidatePath(buildPath(orgSlug, '/parcelles/plantations'))
   revalidatePath(buildPath(orgSlug, '/semis/suivi'))
+  revalidatePath(buildPath(orgSlug, '/semis/boutures'))
   return { success: true }
 }

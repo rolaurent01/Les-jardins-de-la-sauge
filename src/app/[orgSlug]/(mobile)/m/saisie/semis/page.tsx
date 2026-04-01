@@ -5,6 +5,7 @@ const SEMIS_ACTIONS = [
   { id: 'sachet', label: 'Sachet de graines', emoji: '🌰' },
   { id: 'suivi-semis', label: 'Suivi semis', emoji: '🌱' },
   { id: 'avancement', label: 'Avancement', emoji: '📋' },
+  { id: 'bouture', label: 'Bouture', emoji: '🌿' },
 ]
 
 /**

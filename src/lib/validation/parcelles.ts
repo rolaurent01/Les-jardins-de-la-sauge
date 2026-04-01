@@ -86,6 +86,7 @@ export const plantingSchema = z
       'semis_direct',
     ]),
     seedling_id: z.string().uuid('Semis invalide').optional().nullable(),
+    bouture_id: z.string().uuid('Bouture invalide').optional().nullable(),
     fournisseur: z.string().max(200).optional().nullable(),
     lune: z.enum(['montante', 'descendante']).optional().nullable(),
     espacement_cm: positiveInt.optional().nullable(),
@@ -96,17 +97,13 @@ export const plantingSchema = z
     commentaire: z.string().max(1000).optional().nullable(),
   })
   .superRefine((data, ctx) => {
-    // Validation conditionnelle : seedling_id et fournisseur sont mutuellement exclusifs
-    if (data.seedling_id && data.fournisseur) {
+    // Validation conditionnelle : seedling_id, bouture_id et fournisseur sont mutuellement exclusifs
+    const sources = [data.seedling_id, data.bouture_id, data.fournisseur].filter(Boolean)
+    if (sources.length > 1) {
       ctx.addIssue({
         code: z.ZodIssueCode.custom,
         path: ['seedling_id'],
-        message: 'seedling_id et fournisseur ne peuvent pas être renseignés simultanément',
-      })
-      ctx.addIssue({
-        code: z.ZodIssueCode.custom,
-        path: ['fournisseur'],
-        message: 'seedling_id et fournisseur ne peuvent pas être renseignés simultanément',
+        message: 'Une seule source possible : semis, bouture ou fournisseur',
       })
     }
   })

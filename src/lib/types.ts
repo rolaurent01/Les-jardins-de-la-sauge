@@ -228,6 +228,79 @@ export type SeedlingWithRelations = Seedling & {
   seed_lots: Pick<SeedLot, 'id' | 'lot_interne' | 'fournisseur'> | null
 }
 
+// ---- Module Boutures (Multiplications végétatives) ----
+
+/** Types de multiplication végétative */
+export type TypeMultiplication =
+  | 'rhizome'
+  | 'bouture'
+  | 'marcotte'
+  | 'eclat_pied'
+  | 'drageon'
+  | 'eclat_racine'
+
+/** Labels FR pour les types de multiplication */
+export const TYPE_MULTIPLICATION_LABELS: Record<TypeMultiplication, string> = {
+  rhizome:       'Rhizome',
+  bouture:       'Bouture',
+  marcotte:      'Marcotte',
+  eclat_pied:    'Éclat de pied',
+  drageon:       'Drageon',
+  eclat_racine:  'Éclat de racine',
+}
+
+/** Statut du cycle de vie d'une bouture (migration 040) */
+export type CuttingStatut = 'bouture' | 'repiquage' | 'pret' | 'en_plantation' | 'epuise'
+
+/** Labels FR pour les statuts de bouture */
+export const CUTTING_STATUT_LABELS: Record<CuttingStatut, string> = {
+  bouture:        'Bouturé',
+  repiquage:      'En rempotage',
+  pret:           'Prêt à planter',
+  en_plantation:  'En plantation',
+  epuise:         'Épuisé',
+}
+
+/** Bouture / multiplication végétative — table boutures (SQL: cuttings renommé) */
+export type Bouture = {
+  id: string
+  farm_id: string
+  uuid_client: string | null
+  variety_id: string | null
+  type_multiplication: TypeMultiplication
+  origine: string | null
+  certif_ab: boolean
+  statut: CuttingStatut
+
+  // ===== PHASE 1 : PLAQUE ALVÉOLÉE (null si direct godet) =====
+  nb_plaques: number | null
+  nb_trous_par_plaque: number | null
+  nb_mortes_plaque: number | null
+  date_mise_en_plaque: string | null
+  temps_bouturage_min: number | null
+
+  // ===== PHASE 2 : GODET =====
+  nb_godets: number | null
+  nb_mortes_godet: number | null
+  date_rempotage: string | null
+  temps_rempotage_min: number | null
+
+  // ===== RÉSULTAT =====
+  nb_plants_obtenus: number | null
+  nb_donnees: number | null
+  date_bouturage: string
+  commentaire: string | null
+  deleted_at: string | null
+  created_by: string | null
+  updated_by: string | null
+  created_at: string
+}
+
+/** Bouture avec la variété jointe (pour affichage en liste) */
+export type BoutureWithRelations = Bouture & {
+  varieties: Pick<Variety, 'id' | 'nom_vernaculaire' | 'nom_latin'> | null
+}
+
 // ---- Module Parcelles ----
 
 // ---- Travail de sol ----
@@ -290,6 +363,7 @@ export type Planting = {
   row_id: string | null
   variety_id: string | null
   seedling_id: string | null
+  bouture_id: string | null
   fournisseur: string | null
   annee: number
   date_plantation: string
@@ -320,6 +394,7 @@ export type PlantingWithRelations = Planting & {
       })
     | null
   seedlings: Pick<Seedling, 'id' | 'processus' | 'statut' | 'numero_caisse'> | null
+  boutures: Pick<Bouture, 'id' | 'type_multiplication' | 'statut'> | null
 }
 
 // ---- Suivi de rang ----

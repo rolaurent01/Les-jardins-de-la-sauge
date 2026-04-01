@@ -50,7 +50,7 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
   }
 
   // Charger toutes les données de référence en parallèle
-  const [varieties, sites, parcels, rows, plantings, recipes, seedLots, seedlings, externalMaterials, stock] =
+  const [varieties, sites, parcels, rows, plantings, recipes, seedLots, seedlings, boutures, externalMaterials, stock] =
     await Promise.all([
       loadVarieties(admin, farmId),
       loadSites(admin, farmId),
@@ -60,6 +60,7 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
       loadRecipes(admin, farmId),
       loadSeedLots(admin, farmId),
       loadSeedlings(admin, farmId),
+      loadCuttings(admin, farmId),
       loadExternalMaterials(admin, farmId),
       loadStock(admin, farmId),
     ])
@@ -73,6 +74,7 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
     recipes,
     seedLots,
     seedlings,
+    boutures,
     externalMaterials,
     stock,
     timestamp: new Date().toISOString(),
@@ -264,6 +266,65 @@ async function loadSeedlings(admin: any, farmId: string) {
       variety_name: s.varieties?.nom_vernaculaire ?? null,
       seed_lot_id: s.seed_lot_id,
       seed_lot_interne: s.seed_lots?.lot_interne ?? null,
+      plants_plantes: plantsPlantes,
+      plants_restants: plantsRestants,
+    }
+  })
+}
+
+/**
+ * Boutures enrichies avec plants_restants.
+ */
+async function loadCuttings(admin: any, farmId: string) {
+  const { data: cuttingsData, error } = await admin
+    .from('boutures')
+    .select('id, type_multiplication, statut, nb_plants_obtenus, date_bouturage, variety_id, origine, varieties(nom_vernaculaire)')
+    .eq('farm_id', farmId)
+    .is('deleted_at', null)
+    .order('date_bouturage', { ascending: false })
+
+  if (error) throw new Error(`Erreur chargement boutures : ${error.message}`)
+
+  const rows = (cuttingsData ?? []) as Array<{
+    id: string; type_multiplication: string; statut: string
+    nb_plants_obtenus: number | null; date_bouturage: string
+    variety_id: string | null; origine: string | null
+    varieties: { nom_vernaculaire: string } | null
+  }>
+
+  // Charger les plants plantés en batch
+  const ids = rows.map(c => c.id)
+  let plantingsByCutting: Record<string, number> = {}
+
+  if (ids.length > 0) {
+    const { data: plantings } = await admin
+      .from('plantings')
+      .select('bouture_id, nb_plants')
+      .in('bouture_id', ids)
+      .eq('actif', true)
+      .is('deleted_at', null)
+
+    for (const p of (plantings ?? []) as { bouture_id: string; nb_plants: number | null }[]) {
+      if (p.bouture_id) {
+        plantingsByCutting[p.bouture_id] = (plantingsByCutting[p.bouture_id] ?? 0) + (p.nb_plants ?? 0)
+      }
+    }
+  }
+
+  return rows.map(c => {
+    const plantsPlantes = plantingsByCutting[c.id] ?? 0
+    const plantsRestants = c.nb_plants_obtenus != null
+      ? Math.max(0, c.nb_plants_obtenus - plantsPlantes)
+      : null
+    return {
+      id: c.id,
+      type_multiplication: c.type_multiplication,
+      statut: c.statut,
+      nb_plants_obtenus: c.nb_plants_obtenus,
+      date_bouturage: c.date_bouturage,
+      variety_id: c.variety_id,
+      variety_name: c.varieties?.nom_vernaculaire ?? null,
+      origine: c.origine,
       plants_plantes: plantsPlantes,
       plants_restants: plantsRestants,
     }

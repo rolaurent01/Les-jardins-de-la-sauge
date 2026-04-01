@@ -100,6 +100,20 @@ export interface CachedSeedling {
   plants_restants: number | null
 }
 
+/** Cache boutures enrichies pour le sélecteur plantation mobile */
+export interface CachedCutting {
+  id: string
+  type_multiplication: string
+  statut: string
+  nb_plants_obtenus: number | null
+  date_bouturage: string
+  variety_id: string | null
+  variety_name: string | null
+  origine: string | null
+  plants_plantes: number
+  plants_restants: number | null
+}
+
 /** Cache du stock agrégé (snapshot de v_stock) pour affichage offline */
 export interface CachedStock {
   /** Clé composite variety_id + partie_plante + etat_plante */
@@ -134,6 +148,7 @@ export interface ReferenceDataResponse {
   recipes: CachedRecipe[]
   seedLots: CachedSeedLot[]
   seedlings: CachedSeedling[]
+  boutures: CachedCutting[]
   externalMaterials: CachedExternalMaterial[]
   stock: CachedStock[]
   timestamp: string // ISO
@@ -151,6 +166,7 @@ class OfflineDatabase extends Dexie {
   recipes!: Table<CachedRecipe>
   seedLots!: Table<CachedSeedLot>
   seedlings!: Table<CachedSeedling>
+  boutures!: Table<CachedCutting>
   externalMaterials!: Table<CachedExternalMaterial>
   stock!: Table<CachedStock>
   syncQueue!: Table<SyncQueueEntry>
@@ -203,6 +219,21 @@ class OfflineDatabase extends Dexie {
       recipes: 'id',
       seedLots: 'id, variety_id',
       seedlings: 'id, variety_id, statut',
+      externalMaterials: 'id',
+      stock: 'id, variety_id, etat_plante',
+      syncQueue: '++id, uuid_client, status, farm_id, created_at',
+    })
+    this.version(5).stores({
+      context: 'key',
+      varieties: 'id, nom_vernaculaire',
+      sites: 'id',
+      parcels: 'id, site_id',
+      rows: 'id, parcel_id',
+      plantings: 'id, row_id, variety_id',
+      recipes: 'id',
+      seedLots: 'id, variety_id',
+      seedlings: 'id, variety_id, statut',
+      boutures: 'id, variety_id, statut',
       externalMaterials: 'id',
       stock: 'id, variety_id, etat_plante',
       syncQueue: '++id, uuid_client, status, farm_id, created_at',

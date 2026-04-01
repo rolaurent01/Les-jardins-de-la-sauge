@@ -127,6 +127,7 @@ const NAV: NavSection[] = [
     children: [
       { label: 'Sachets de graines', href: '/semis/sachets' },
       { label: 'Suivi semis',        href: '/semis/suivi'   },
+      { label: 'Boutures',           href: '/semis/boutures'},
     ],
   },
   {
