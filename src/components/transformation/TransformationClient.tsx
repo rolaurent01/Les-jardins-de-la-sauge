@@ -14,6 +14,7 @@ import type {
 } from './types'
 import { ETAT_PLANTE_LABELS } from './types'
 import type { StockEntry } from '@/app/[orgSlug]/(dashboard)/stock/vue-stock/actions'
+import type { DryingInProgress } from '@/app/[orgSlug]/(dashboard)/transformation/sechage/actions'
 import TransformationSlideOver from './TransformationSlideOver'
 import CombinedTransformationSlideOver from './CombinedTransformationSlideOver'
 import ExportButton from '@/components/shared/ExportButton'
@@ -63,6 +64,7 @@ type Props = {
   items: TransformationItem[]
   varieties: Pick<Variety, 'id' | 'nom_vernaculaire'>[]
   stockEntries?: StockEntry[]
+  dryingInProgress?: DryingInProgress[]
   actions: TransformationActions
 }
 
@@ -122,7 +124,7 @@ function groupPairedItems(items: TransformationItem[]): CombinedTransformationRo
   return rows
 }
 
-export default function TransformationClient({ config, items: initialItems, varieties, stockEntries = [], actions }: Props) {
+export default function TransformationClient({ config, items: initialItems, varieties, stockEntries = [], dryingInProgress = [], actions }: Props) {
   const router = useRouter()
   const [, startTransition] = useTransition()
 
@@ -577,6 +579,7 @@ export default function TransformationClient({ config, items: initialItems, vari
           item={editingItem}
           varieties={varieties}
           stockEntries={stockEntries}
+          dryingInProgress={dryingInProgress}
           onSubmit={handleSave}
           onSuccess={handleSaveSuccess}
         />

@@ -50,7 +50,7 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
   }
 
   // Charger toutes les données de référence en parallèle
-  const [varieties, sites, parcels, rows, plantings, recipes, seedLots, seedlings, boutures, externalMaterials, stock] =
+  const [varieties, sites, parcels, rows, plantings, recipes, seedLots, seedlings, boutures, externalMaterials, stock, dryingInProgress] =
     await Promise.all([
       loadVarieties(admin, farmId),
       loadSites(admin, farmId),
@@ -63,6 +63,7 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
       loadCuttings(admin, farmId),
       loadExternalMaterials(admin, farmId),
       loadStock(admin, farmId),
+      loadDryingInProgress(admin, farmId),
     ])
 
   const response: ReferenceDataResponse = {
@@ -77,6 +78,7 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
     boutures,
     externalMaterials,
     stock,
+    dryingInProgress,
     timestamp: new Date().toISOString(),
   }
 
@@ -383,4 +385,51 @@ async function loadStock(admin: any, farmId: string) {
     etat_plante: row.etat_plante,
     stock_g: Number(row.stock_g),
   }))
+}
+
+/**
+ * Séchage en cours : entrées séchage non encore sorties,
+ * agrégé par variété × partie × état d'entrée.
+ */
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+async function loadDryingInProgress(admin: any, farmId: string) {
+  const { data, error } = await admin
+    .from('dryings')
+    .select('variety_id, partie_plante, etat_plante, type, poids_g')
+    .eq('farm_id', farmId)
+
+  if (error) throw new Error(`Erreur chargement séchage en cours : ${error.message}`)
+  if (!data || data.length === 0) return []
+
+  /** Mapping sortie → entrée pour normaliser les états */
+  const sortieToEntree: Record<string, string> = {
+    sechee: 'frais',
+    tronconnee_sechee: 'tronconnee',
+  }
+
+  // Agréger par (variety_id, partie_plante, etat_entree)
+  const map = new Map<string, number>()
+  for (const d of data as { variety_id: string; partie_plante: string; etat_plante: string; type: string; poids_g: number }[]) {
+    const etatEntree = d.type === 'entree'
+      ? d.etat_plante
+      : (sortieToEntree[d.etat_plante] ?? d.etat_plante)
+
+    const key = `${d.variety_id}::${d.partie_plante}::${etatEntree}`
+    const current = map.get(key) ?? 0
+    const delta = d.type === 'entree' ? Number(d.poids_g) : -Number(d.poids_g)
+    map.set(key, current + delta)
+  }
+
+  return [...map.entries()]
+    .filter(([, v]) => v > 0)
+    .map(([key, enSechageG]) => {
+      const [variety_id, partie_plante, etat_plante_entree] = key.split('::')
+      return {
+        id: `${variety_id}_${partie_plante}_${etat_plante_entree}_drying`,
+        variety_id,
+        partie_plante,
+        etat_plante_entree,
+        en_sechage_g: Math.round(enSechageG * 100) / 100,
+      }
+    })
 }

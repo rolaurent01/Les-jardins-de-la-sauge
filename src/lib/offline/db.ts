@@ -124,6 +124,18 @@ export interface CachedStock {
   stock_g: number
 }
 
+/** Cache séchage en cours (entrées séchage non encore sorties) */
+export interface CachedDryingInProgress {
+  /** Clé composite variety_id + partie_plante + etat_plante_entree */
+  id: string
+  variety_id: string
+  partie_plante: string
+  /** État d'entrée (frais ou tronconnee) */
+  etat_plante_entree: string
+  /** Poids restant en séchage (g) */
+  en_sechage_g: number
+}
+
 /** File d'attente de sync (structure créée ici, logique en A6.4) */
 export interface SyncQueueEntry {
   id?: number // auto-increment Dexie
@@ -151,6 +163,7 @@ export interface ReferenceDataResponse {
   boutures: CachedCutting[]
   externalMaterials: CachedExternalMaterial[]
   stock: CachedStock[]
+  dryingInProgress: CachedDryingInProgress[]
   timestamp: string // ISO
 }
 
@@ -169,6 +182,7 @@ class OfflineDatabase extends Dexie {
   boutures!: Table<CachedCutting>
   externalMaterials!: Table<CachedExternalMaterial>
   stock!: Table<CachedStock>
+  dryingInProgress!: Table<CachedDryingInProgress>
   syncQueue!: Table<SyncQueueEntry>
 
   constructor() {
@@ -236,6 +250,22 @@ class OfflineDatabase extends Dexie {
       boutures: 'id, variety_id, statut',
       externalMaterials: 'id',
       stock: 'id, variety_id, etat_plante',
+      syncQueue: '++id, uuid_client, status, farm_id, created_at',
+    })
+    this.version(6).stores({
+      context: 'key',
+      varieties: 'id, nom_vernaculaire',
+      sites: 'id',
+      parcels: 'id, site_id',
+      rows: 'id, parcel_id',
+      plantings: 'id, row_id, variety_id',
+      recipes: 'id',
+      seedLots: 'id, variety_id',
+      seedlings: 'id, variety_id, statut',
+      boutures: 'id, variety_id, statut',
+      externalMaterials: 'id',
+      stock: 'id, variety_id, etat_plante',
+      dryingInProgress: 'id, variety_id',
       syncQueue: '++id, uuid_client, status, farm_id, created_at',
     })
   }

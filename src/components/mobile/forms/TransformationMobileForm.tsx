@@ -3,15 +3,13 @@
 import { useState, useCallback, useMemo } from 'react'
 import { useMobileSync } from '@/components/mobile/MobileSyncContext'
 import MobileFormLayout from '@/components/mobile/MobileFormLayout'
-import MobileSelect from '@/components/mobile/fields/MobileSelect'
 import MobileSearchSelect from '@/components/mobile/fields/MobileSearchSelect'
 import MobileInput from '@/components/mobile/fields/MobileInput'
 import MobileTimerInput from '@/components/mobile/fields/MobileTimerInput'
 import MobileTextarea from '@/components/mobile/fields/MobileTextarea'
-import { useCachedVarieties, useCachedStock } from '@/hooks/useCachedData'
+import { useCachedVarieties, useCachedStock, useCachedDryingInProgress } from '@/hooks/useCachedData'
 import type { ZodSchema } from 'zod'
 import { todayISO } from '@/lib/utils/date'
-import { PARTIE_PLANTE_OPTIONS } from '@/lib/constants/partie-plante'
 import { PARTIE_PLANTE_LABELS } from '@/lib/types'
 import { ETAT_PLANTE_LABELS } from '@/lib/constants/etat-plante'
 import type { PartiePlante } from '@/lib/types'
@@ -37,15 +35,15 @@ interface TransformationMobileFormProps {
   stockEntreeEtats?: string[]
 }
 
-/** Clé composite pour identifier une ligne de stock */
-function stockKeyOf(s: { variety_id: string; partie_plante: string; etat_plante: string }): string {
-  return `${s.variety_id}::${s.partie_plante}::${s.etat_plante}`
+/** Clé composite */
+function compositeKeyOf(s: { variety_id: string; partie_plante: string; etat: string }): string {
+  return `${s.variety_id}::${s.partie_plante}::${s.etat}`
 }
 
-function parseStockKey(key: string): { variety_id: string; partie_plante: string; etat_plante: string } | null {
+function parseCompositeKey(key: string): { variety_id: string; partie_plante: string; etat: string } | null {
   const parts = key.split('::')
   if (parts.length !== 3) return null
-  return { variety_id: parts[0], partie_plante: parts[1], etat_plante: parts[2] }
+  return { variety_id: parts[0], partie_plante: parts[1], etat: parts[2] }
 }
 
 function formatStockG(g: number): string {
@@ -53,10 +51,16 @@ function formatStockG(g: number): string {
   return `${Math.round(g)} g`
 }
 
+/** Déduit l'état de sortie séchage depuis l'état d'entrée */
+const ENTREE_TO_SORTIE_ETAT: Record<string, string> = {
+  frais: 'sechee',
+  tronconnee: 'tronconnee_sechee',
+}
+
 function initialState() {
   return {
     type: 'entree' as TypeEntreeSortie,
-    stock_key: '',
+    picker_key: '',
     variety_id: '',
     partie_plante: '',
     date: todayISO(),
@@ -78,8 +82,9 @@ export default function TransformationMobileForm({
   stockEntreeEtats,
 }: TransformationMobileFormProps) {
   const { addEntry, farmId } = useMobileSync()
-  const { varieties, isLoading: varietiesLoading } = useCachedVarieties()
+  const { varieties } = useCachedVarieties()
   const { stock } = useCachedStock()
+  const { dryingInProgress } = useCachedDryingInProgress()
 
   const [form, setForm] = useState(initialState)
   const [errors, setErrors] = useState<Record<string, string>>({})
@@ -88,6 +93,7 @@ export default function TransformationMobileForm({
   const [globalError, setGlobalError] = useState<string | null>(null)
 
   const isEntree = form.type === 'entree'
+  const isSortieWithDrying = !isEntree && dryingInProgress.length > 0
 
   const set = useCallback(
     <K extends keyof ReturnType<typeof initialState>>(key: K, value: ReturnType<typeof initialState>[K]) => {
@@ -102,14 +108,14 @@ export default function TransformationMobileForm({
     [],
   )
 
-  // Map variétés par id pour lookup rapide
+  // Map variétés par id
   const varietyMap = useMemo(() => {
     const m = new Map<string, string>()
     for (const v of varieties) m.set(v.id, v.nom_vernaculaire)
     return m
   }, [varieties])
 
-  // Options du sélecteur stock (entrée uniquement)
+  // Options du sélecteur stock (entrée)
   const stockOptions = useMemo(() => {
     if (!isEntree || !stockEntreeEtats?.length) return []
     return stock
@@ -120,32 +126,59 @@ export default function TransformationMobileForm({
         return na.localeCompare(nb, 'fr', { sensitivity: 'base' })
       })
       .map(s => ({
-        value: stockKeyOf(s),
+        value: compositeKeyOf({ variety_id: s.variety_id, partie_plante: s.partie_plante, etat: s.etat_plante }),
         label: varietyMap.get(s.variety_id) ?? 'Inconnue',
         sublabel: `${PARTIE_PLANTE_LABELS[s.partie_plante as PartiePlante] ?? s.partie_plante} — ${ETAT_PLANTE_LABELS[s.etat_plante] ?? s.etat_plante} — ${formatStockG(s.stock_g)}`,
       }))
   }, [isEntree, stock, stockEntreeEtats, varietyMap])
 
-  // Stock dispo pour la ligne sélectionnée (entrée)
-  const stockDispo = useMemo(() => {
-    if (!isEntree || !form.stock_key) return null
-    const entry = stock.find(s => stockKeyOf(s) === form.stock_key)
-    return entry?.stock_g ?? null
-  }, [isEntree, stock, form.stock_key])
+  // Options du sélecteur "en séchage" (sortie)
+  const dryingOptions = useMemo(() => {
+    if (!isSortieWithDrying) return []
+    return dryingInProgress
+      .filter(d => d.en_sechage_g > 0)
+      .sort((a, b) => {
+        const na = varietyMap.get(a.variety_id) ?? ''
+        const nb = varietyMap.get(b.variety_id) ?? ''
+        return na.localeCompare(nb, 'fr', { sensitivity: 'base' })
+      })
+      .map(d => ({
+        value: compositeKeyOf({ variety_id: d.variety_id, partie_plante: d.partie_plante, etat: d.etat_plante_entree }),
+        label: varietyMap.get(d.variety_id) ?? 'Inconnue',
+        sublabel: `${PARTIE_PLANTE_LABELS[d.partie_plante as PartiePlante] ?? d.partie_plante} — ${ETAT_PLANTE_LABELS[d.etat_plante_entree] ?? d.etat_plante_entree} — ${formatStockG(d.en_sechage_g)} en séchage`,
+      }))
+  }, [isSortieWithDrying, dryingInProgress, varietyMap])
 
-  /** Options d'état plante pour sortie */
-  const etatSortieOptions = useMemo(() => {
-    if (!etatPlanteConfig) return []
-    return etatPlanteConfig.sortie
-  }, [etatPlanteConfig])
+  // Stock/séchage dispo pour la ligne sélectionnée
+  const selectedDispo = useMemo(() => {
+    if (!form.picker_key) return null
+    if (isEntree) {
+      const entry = stock.find(s =>
+        compositeKeyOf({ variety_id: s.variety_id, partie_plante: s.partie_plante, etat: s.etat_plante }) === form.picker_key
+      )
+      return entry?.stock_g ?? null
+    }
+    if (isSortieWithDrying) {
+      const entry = dryingInProgress.find(d =>
+        compositeKeyOf({ variety_id: d.variety_id, partie_plante: d.partie_plante, etat: d.etat_plante_entree }) === form.picker_key
+      )
+      return entry?.en_sechage_g ?? null
+    }
+    return null
+  }, [form.picker_key, isEntree, isSortieWithDrying, stock, dryingInProgress])
 
-  function handleStockSelect(key: string) {
-    set('stock_key', key)
-    const parsed = parseStockKey(key)
+  function handlePickerSelect(key: string) {
+    set('picker_key', key)
+    const parsed = parseCompositeKey(key)
     if (parsed) {
       set('variety_id', parsed.variety_id)
       set('partie_plante', parsed.partie_plante)
-      set('etat_plante', parsed.etat_plante)
+      if (isEntree) {
+        set('etat_plante', parsed.etat)
+      } else {
+        // Sortie : déduire l'état de sortie depuis l'état d'entrée
+        set('etat_plante', ENTREE_TO_SORTIE_ETAT[parsed.etat] ?? parsed.etat)
+      }
     } else {
       set('variety_id', '')
       set('partie_plante', '')
@@ -155,8 +188,7 @@ export default function TransformationMobileForm({
 
   function handleTypeChange(type: TypeEntreeSortie) {
     set('type', type)
-    // Reset les champs liés au type
-    set('stock_key', '')
+    set('picker_key', '')
     set('variety_id', '')
     set('partie_plante', '')
     set('etat_plante', '')
@@ -218,12 +250,6 @@ export default function TransformationMobileForm({
 
   const backHref = `/${orgSlug}/m/saisie/${backCategory}`
 
-  const varietyOptions = varieties.map((v) => ({
-    value: v.id,
-    label: v.nom_vernaculaire,
-    sublabel: v.nom_latin ?? undefined,
-  }))
-
   return (
     <MobileFormLayout
       title={title}
@@ -265,68 +291,61 @@ export default function TransformationMobileForm({
       {/* ============================================================ */}
       {/* MODE ENTREE : Sélecteur stock source                         */}
       {/* ============================================================ */}
-      {isEntree ? (
+      {isEntree && (
         <>
           <MobileSearchSelect
             label="Stock source"
             required
-            value={form.stock_key}
-            onChange={handleStockSelect}
+            value={form.picker_key}
+            onChange={handlePickerSelect}
             options={stockOptions}
             placeholder={stockOptions.length === 0 ? 'Aucun stock disponible' : 'Choisir dans le stock'}
             searchPlaceholder="Rechercher une variété..."
             error={errors.variety_id || errors.partie_plante || errors.etat_plante}
           />
 
-          {/* Stock disponible */}
-          {stockDispo !== null && (
+          {selectedDispo !== null && (
             <div
               className="rounded-xl px-3 py-2.5 text-xs"
               style={{
-                backgroundColor: stockDispo > 0 ? '#F0F4F0' : '#FEF3C7',
-                border: `1px solid ${stockDispo > 0 ? '#E0E6E0' : '#F59E0B44'}`,
-                color: stockDispo > 0 ? '#6B7B6C' : '#92400E',
+                backgroundColor: selectedDispo > 0 ? '#F0F4F0' : '#FEF3C7',
+                border: `1px solid ${selectedDispo > 0 ? '#E0E6E0' : '#F59E0B44'}`,
+                color: selectedDispo > 0 ? '#6B7B6C' : '#92400E',
               }}
             >
-              Stock dispo : {formatStockG(stockDispo)}
+              Stock dispo : {formatStockG(selectedDispo)}
             </div>
           )}
         </>
-      ) : (
-        /* ============================================================ */
-        /* MODE SORTIE : Sélecteurs classiques                          */
-        /* ============================================================ */
+      )}
+
+      {/* ============================================================ */}
+      {/* MODE SORTIE + séchage en cours                               */}
+      {/* ============================================================ */}
+      {isSortieWithDrying && (
         <>
           <MobileSearchSelect
-            label="Variété"
+            label="En cours de séchage"
             required
-            value={form.variety_id}
-            onChange={(v) => set('variety_id', v)}
-            options={varietyOptions}
-            placeholder={varietiesLoading ? 'Chargement…' : 'Sélectionner une variété'}
+            value={form.picker_key}
+            onChange={handlePickerSelect}
+            options={dryingOptions}
+            placeholder={dryingOptions.length === 0 ? 'Rien en séchage' : 'Choisir dans le séchoir'}
             searchPlaceholder="Rechercher une variété..."
-            error={errors.variety_id}
+            error={errors.variety_id || errors.partie_plante || errors.etat_plante}
           />
 
-          <MobileSelect
-            label="Partie plante"
-            required
-            value={form.partie_plante}
-            onChange={(v) => set('partie_plante', v)}
-            options={PARTIE_PLANTE_OPTIONS}
-            error={errors.partie_plante}
-          />
-
-          {/* État plante sortie */}
-          {etatPlanteConfig && (
-            <MobileSelect
-              label="État plante"
-              required
-              value={form.etat_plante}
-              onChange={(v) => set('etat_plante', v)}
-              options={etatSortieOptions}
-              error={errors.etat_plante}
-            />
+          {selectedDispo !== null && (
+            <div
+              className="rounded-xl px-3 py-2.5 text-xs"
+              style={{
+                backgroundColor: '#EDE9FE',
+                border: '1px solid #C4B5FD44',
+                color: '#5B21B6',
+              }}
+            >
+              En séchage : {formatStockG(selectedDispo)} — sortira en {ETAT_PLANTE_LABELS[form.etat_plante] ?? form.etat_plante}
+            </div>
           )}
         </>
       )}

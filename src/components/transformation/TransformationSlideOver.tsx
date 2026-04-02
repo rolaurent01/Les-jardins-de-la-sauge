@@ -1,31 +1,37 @@
 'use client'
 
-import { useState, useTransition, useEffect, useRef, useMemo } from 'react'
+import { useState, useTransition, useEffect, useMemo } from 'react'
 import { Field } from '@/components/ui/Field'
-import type { Variety, PartiePlante, ActionResult, TransformationType } from '@/lib/types'
-import { PARTIES_PLANTE, PARTIE_PLANTE_LABELS } from '@/lib/types'
-import { useVarietyParts } from '@/hooks/useVarietyParts'
-import QuickAddVariety from '@/components/varieties/QuickAddVariety'
+import type { PartiePlante, ActionResult, TransformationType } from '@/lib/types'
+import { PARTIE_PLANTE_LABELS } from '@/lib/types'
+import type { Variety } from '@/lib/types'
 import type { TransformationModuleConfig, TransformationItem } from './types'
 import { ETAT_PLANTE_LABELS } from './types'
 import type { StockEntry } from '@/app/[orgSlug]/(dashboard)/stock/vue-stock/actions'
+import type { DryingInProgress } from '@/app/[orgSlug]/(dashboard)/transformation/sechage/actions'
 import { inputStyle, focusStyle, blurStyle } from '@/lib/ui/form-styles'
 import DateYearWarning from '@/components/shared/DateYearWarning'
 
-/** Clé composite pour identifier une ligne de stock */
-function stockKeyOf(s: { variety_id: string; partie_plante: string; etat_plante: string }): string {
-  return `${s.variety_id}::${s.partie_plante}::${s.etat_plante}`
+/** Clé composite pour identifier une ligne de stock / séchage en cours */
+function compositeKey(s: { variety_id: string; partie_plante: string; etat: string }): string {
+  return `${s.variety_id}::${s.partie_plante}::${s.etat}`
 }
 
-function parseStockKey(key: string): { variety_id: string; partie_plante: string; etat_plante: string } | null {
+function parseCompositeKey(key: string): { variety_id: string; partie_plante: string; etat: string } | null {
   const parts = key.split('::')
   if (parts.length !== 3) return null
-  return { variety_id: parts[0], partie_plante: parts[1], etat_plante: parts[2] }
+  return { variety_id: parts[0], partie_plante: parts[1], etat: parts[2] }
 }
 
 function formatStockG(g: number): string {
   if (g >= 1000) return `${(g / 1000).toFixed(1)} kg`
   return `${Math.round(g)} g`
+}
+
+/** Déduit l'état de sortie séchage depuis l'état d'entrée */
+const ENTREE_TO_SORTIE_ETAT: Record<string, string> = {
+  frais: 'sechee',
+  tronconnee: 'tronconnee_sechee',
 }
 
 type Props = {
@@ -36,6 +42,7 @@ type Props = {
   item: TransformationItem | null
   varieties: Pick<Variety, 'id' | 'nom_vernaculaire'>[]
   stockEntries?: StockEntry[]
+  dryingInProgress?: DryingInProgress[]
   onSubmit: (fd: FormData) => Promise<ActionResult>
   onSuccess: () => void
 }
@@ -48,6 +55,7 @@ export default function TransformationSlideOver({
   item,
   varieties: catalogVarieties,
   stockEntries = [],
+  dryingInProgress = [],
   onSubmit,
   onSuccess,
 }: Props) {
@@ -56,6 +64,7 @@ export default function TransformationSlideOver({
 
   const isEdit = item !== null
   const isEntree = type === 'entree'
+  const isSortieWithDrying = !isEntree && dryingInProgress.length > 0
 
   // ---- State commune ----
   const [selectedVarietyId, setSelectedVarietyId] = useState(item?.variety_id ?? '')
@@ -63,30 +72,29 @@ export default function TransformationSlideOver({
   const [selectedEtat, setSelectedEtat] = useState<string>(item?.etat_plante ?? '')
   const [date, setDate] = useState(item?.date ?? '')
 
-  // ---- State stock picker (entrée uniquement) ----
-  const [selectedStockKey, setSelectedStockKey] = useState('')
+  // ---- State sélecteur (entrée stock / sortie séchage en cours) ----
+  const [selectedPickerKey, setSelectedPickerKey] = useState('')
 
-  // ---- State sortie (mode classique) ----
-  const [allVarieties, setAllVarieties] = useState(catalogVarieties)
-
-  // ---- Hook logique adaptative partie_plante (sortie uniquement) ----
-  const { parts, loading: loadingParts, autoPart } = useVarietyParts(
-    !isEntree ? (selectedVarietyId || null) : null,
-  )
-  const prevAutoPartRef = useRef<string | null>(null)
-  useEffect(() => {
-    if (!isEntree && autoPart && autoPart !== prevAutoPartRef.current) {
-      setSelectedPartie(autoPart)
-      prevAutoPartRef.current = autoPart
-    }
-  }, [autoPart, isEntree])
+  // Map variétés par id
+  const varietyMap = useMemo(() => {
+    const m = new Map<string, string>()
+    for (const v of catalogVarieties) m.set(v.id, v.nom_vernaculaire)
+    return m
+  }, [catalogVarieties])
 
   // Stock dispo pour la ligne sélectionnée (entrée)
   const selectedStockDispo = useMemo(() => {
-    if (!isEntree || !selectedStockKey) return null
-    const entry = stockEntries.find(s => stockKeyOf(s) === selectedStockKey)
+    if (!isEntree || !selectedPickerKey) return null
+    const entry = stockEntries.find(s => compositeKey({ variety_id: s.variety_id, partie_plante: s.partie_plante, etat: s.etat_plante }) === selectedPickerKey)
     return entry?.stock_g ?? null
-  }, [isEntree, selectedStockKey, stockEntries])
+  }, [isEntree, selectedPickerKey, stockEntries])
+
+  // Stock en séchage pour la ligne sélectionnée (sortie)
+  const selectedDryingDispo = useMemo(() => {
+    if (!isSortieWithDrying || !selectedPickerKey) return null
+    const entry = dryingInProgress.find(d => compositeKey({ variety_id: d.variety_id, partie_plante: d.partie_plante, etat: d.etat_plante_entree }) === selectedPickerKey)
+    return entry?.en_sechage_g ?? null
+  }, [isSortieWithDrying, selectedPickerKey, dryingInProgress])
 
   // Resync à l'ouverture/changement d'item
   useEffect(() => {
@@ -95,20 +103,30 @@ export default function TransformationSlideOver({
     setSelectedEtat(item?.etat_plante ?? '')
     setDate(item?.date ?? '')
     setError(null)
-    prevAutoPartRef.current = null
-    setAllVarieties(catalogVarieties)
 
-    // Pre-fill stock key en mode édition entrée
-    if (item && type === 'entree' && item.etat_plante) {
-      setSelectedStockKey(stockKeyOf({
-        variety_id: item.variety_id,
-        partie_plante: item.partie_plante,
-        etat_plante: item.etat_plante,
-      }))
+    // Pre-fill picker key en mode édition
+    if (item && item.etat_plante) {
+      if (type === 'entree') {
+        setSelectedPickerKey(compositeKey({
+          variety_id: item.variety_id,
+          partie_plante: item.partie_plante,
+          etat: item.etat_plante,
+        }))
+      } else if (dryingInProgress.length > 0) {
+        // Pour sortie séchage, déduire l'état d'entrée depuis l'état de sortie
+        const entreeEtat = Object.entries(ENTREE_TO_SORTIE_ETAT).find(([, v]) => v === item.etat_plante)?.[0]
+        if (entreeEtat) {
+          setSelectedPickerKey(compositeKey({
+            variety_id: item.variety_id,
+            partie_plante: item.partie_plante,
+            etat: entreeEtat,
+          }))
+        }
+      }
     } else {
-      setSelectedStockKey('')
+      setSelectedPickerKey('')
     }
-  }, [item, catalogVarieties, type])
+  }, [item, type, dryingInProgress.length])
 
   // Fermeture Escape
   useEffect(() => {
@@ -119,14 +137,14 @@ export default function TransformationSlideOver({
     return () => window.removeEventListener('keydown', onKey)
   }, [open, isPending, onClose])
 
-  // ---- Handlers stock picker (entrée) ----
+  // ---- Handler sélection stock (entrée) ----
   function handleStockSelect(key: string) {
-    setSelectedStockKey(key)
-    const parsed = parseStockKey(key)
+    setSelectedPickerKey(key)
+    const parsed = parseCompositeKey(key)
     if (parsed) {
       setSelectedVarietyId(parsed.variety_id)
       setSelectedPartie(parsed.partie_plante)
-      setSelectedEtat(parsed.etat_plante)
+      setSelectedEtat(parsed.etat)
     } else {
       setSelectedVarietyId('')
       setSelectedPartie('')
@@ -134,16 +152,21 @@ export default function TransformationSlideOver({
     }
   }
 
-  // ---- Handlers mode sortie (classique) ----
-  function handleVarietyChange(varietyId: string) {
-    setSelectedVarietyId(varietyId)
-    setSelectedPartie('')
-    prevAutoPartRef.current = null
+  // ---- Handler sélection séchage en cours (sortie) ----
+  function handleDryingSelect(key: string) {
+    setSelectedPickerKey(key)
+    const parsed = parseCompositeKey(key)
+    if (parsed) {
+      setSelectedVarietyId(parsed.variety_id)
+      setSelectedPartie(parsed.partie_plante)
+      // Déduire l'état de sortie depuis l'état d'entrée
+      setSelectedEtat(ENTREE_TO_SORTIE_ETAT[parsed.etat] ?? parsed.etat)
+    } else {
+      setSelectedVarietyId('')
+      setSelectedPartie('')
+      setSelectedEtat('')
+    }
   }
-
-  const partieOptions: PartiePlante[] = parts.length > 0 ? parts : [...PARTIES_PLANTE]
-  const etatOptions = type === 'entree' ? config.etatsEntree : config.etatsSortie
-  const hasEtatSelector = etatOptions !== null
 
   const titleLabel = isEdit
     ? `Modifier ${config.titreSingulier}`
@@ -158,7 +181,7 @@ export default function TransformationSlideOver({
     fd.set('variety_id', selectedVarietyId)
     fd.set('partie_plante', selectedPartie)
 
-    if (hasEtatSelector) {
+    if (config.etatsEntree !== null || config.etatsSortie !== null) {
       fd.set('etat_plante', selectedEtat)
     }
 
@@ -246,13 +269,13 @@ export default function TransformationSlideOver({
             {/* ============================================================ */}
             {/* MODE ENTREE : Sélecteur stock source                         */}
             {/* ============================================================ */}
-            {isEntree ? (
+            {isEntree && (
               <>
                 <Field label="Stock source" required>
                   <select
                     name="_stock_key"
                     required
-                    value={selectedStockKey}
+                    value={selectedPickerKey}
                     onChange={e => handleStockSelect(e.target.value)}
                     disabled={isPending}
                     style={inputStyle}
@@ -260,11 +283,14 @@ export default function TransformationSlideOver({
                     onBlur={blurStyle}
                   >
                     <option value="">— Choisir dans le stock</option>
-                    {stockEntries.map(s => (
-                      <option key={stockKeyOf(s)} value={stockKeyOf(s)}>
-                        {s.nom_vernaculaire} — {PARTIE_PLANTE_LABELS[s.partie_plante as PartiePlante] ?? s.partie_plante} — {ETAT_PLANTE_LABELS[s.etat_plante] ?? s.etat_plante} ({formatStockG(s.stock_g)})
-                      </option>
-                    ))}
+                    {stockEntries.map(s => {
+                      const key = compositeKey({ variety_id: s.variety_id, partie_plante: s.partie_plante, etat: s.etat_plante })
+                      return (
+                        <option key={key} value={key}>
+                          {s.nom_vernaculaire} — {PARTIE_PLANTE_LABELS[s.partie_plante as PartiePlante] ?? s.partie_plante} — {ETAT_PLANTE_LABELS[s.etat_plante] ?? s.etat_plante} ({formatStockG(s.stock_g)})
+                        </option>
+                      )
+                    })}
                   </select>
                   {stockEntries.length === 0 && (
                     <p className="text-xs mt-1" style={{ color: '#BC6C25' }}>
@@ -273,119 +299,57 @@ export default function TransformationSlideOver({
                   )}
                 </Field>
 
-                {/* Stock dispo (rappel visuel) */}
                 {selectedStockDispo !== null && (
                   <div
                     className="px-3 py-2 rounded-lg text-xs"
-                    style={{
-                      backgroundColor: '#F0F4F0',
-                      border: '1px solid #E0E6E0',
-                      color: '#6B7B6C',
-                    }}
+                    style={{ backgroundColor: '#F0F4F0', border: '1px solid #E0E6E0', color: '#6B7B6C' }}
                   >
                     Stock disponible : {formatStockG(selectedStockDispo)}
                   </div>
                 )}
               </>
-            ) : (
-              /* ============================================================ */
-              /* MODE SORTIE : Sélecteurs classiques variété/partie/état      */
-              /* ============================================================ */
+            )}
+
+            {/* ============================================================ */}
+            {/* MODE SORTIE + séchage en cours : Sélecteur "en séchage"      */}
+            {/* ============================================================ */}
+            {isSortieWithDrying && (
               <>
-                {/* Variete */}
-                <Field label="Variete" required>
-                  <div className="flex items-center gap-2 mb-1.5">
-                    <QuickAddVariety
-                      existingVarieties={allVarieties as Variety[]}
-                      onCreated={(newVar) => {
-                        setAllVarieties(prev => [...prev, { id: newVar.id, nom_vernaculaire: newVar.nom_vernaculaire }])
-                        setSelectedVarietyId(newVar.id)
-                        setSelectedPartie('')
-                        prevAutoPartRef.current = null
-                      }}
-                    />
-                  </div>
+                <Field label="En cours de sechage" required>
                   <select
-                    name="variety_id"
+                    name="_drying_key"
                     required
-                    value={selectedVarietyId}
-                    onChange={e => handleVarietyChange(e.target.value)}
+                    value={selectedPickerKey}
+                    onChange={e => handleDryingSelect(e.target.value)}
                     disabled={isPending}
                     style={inputStyle}
                     onFocus={focusStyle}
                     onBlur={blurStyle}
                   >
-                    <option value="">— Selectionner une variete</option>
-                    {allVarieties.map(v => (
-                      <option key={v.id} value={v.id}>
-                        {v.nom_vernaculaire}
-                      </option>
-                    ))}
+                    <option value="">— Choisir dans le sechoir</option>
+                    {dryingInProgress.map(d => {
+                      const key = compositeKey({ variety_id: d.variety_id, partie_plante: d.partie_plante, etat: d.etat_plante_entree })
+                      return (
+                        <option key={key} value={key}>
+                          {d.nom_vernaculaire} — {PARTIE_PLANTE_LABELS[d.partie_plante as PartiePlante] ?? d.partie_plante} — {ETAT_PLANTE_LABELS[d.etat_plante_entree] ?? d.etat_plante_entree} ({formatStockG(d.en_sechage_g)})
+                        </option>
+                      )
+                    })}
                   </select>
-                </Field>
-
-                {/* Partie plante */}
-                <Field label="Partie de plante" required>
-                  {loadingParts && selectedVarietyId && (
-                    <div className="text-xs mb-1" style={{ color: '#9CA89D' }}>
-                      Chargement des parties…
-                    </div>
-                  )}
-                  {autoPart && selectedPartie === autoPart ? (
-                    <>
-                      <input type="hidden" name="partie_plante" value={autoPart} />
-                      <div
-                        className="px-3 py-2 rounded-lg text-sm"
-                        style={{ backgroundColor: '#F9F8F6', border: '1px solid #D8E0D9', color: '#2C3E2D' }}
-                      >
-                        {PARTIE_PLANTE_LABELS[autoPart as PartiePlante] ?? autoPart}
-                      </div>
-                      <p className="text-xs mt-1" style={{ color: '#6B7B6C' }}>
-                        Partie auto-selectionnee (seule partie pour cette variete)
-                      </p>
-                    </>
-                  ) : (
-                    <select
-                      name="partie_plante"
-                      required
-                      value={selectedPartie}
-                      onChange={e => setSelectedPartie(e.target.value)}
-                      disabled={isPending || loadingParts}
-                      style={inputStyle}
-                      onFocus={focusStyle}
-                      onBlur={blurStyle}
-                    >
-                      <option value="">— Selectionner une partie</option>
-                      {partieOptions.map(p => (
-                        <option key={p} value={p}>
-                          {PARTIE_PLANTE_LABELS[p]}
-                        </option>
-                      ))}
-                    </select>
+                  {dryingInProgress.length === 0 && (
+                    <p className="text-xs mt-1" style={{ color: '#BC6C25' }}>
+                      Rien en cours de sechage.
+                    </p>
                   )}
                 </Field>
 
-                {/* Etat plante (sortie sechage) */}
-                {hasEtatSelector && (
-                  <Field label="Etat de la plante" required>
-                    <select
-                      name="etat_plante"
-                      required
-                      value={selectedEtat}
-                      onChange={e => setSelectedEtat(e.target.value)}
-                      disabled={isPending}
-                      style={inputStyle}
-                      onFocus={focusStyle}
-                      onBlur={blurStyle}
-                    >
-                      <option value="">— Selectionner un etat</option>
-                      {etatOptions!.map(etat => (
-                        <option key={etat} value={etat}>
-                          {ETAT_PLANTE_LABELS[etat] ?? etat}
-                        </option>
-                      ))}
-                    </select>
-                  </Field>
+                {selectedDryingDispo !== null && (
+                  <div
+                    className="px-3 py-2 rounded-lg text-xs"
+                    style={{ backgroundColor: '#EDE9FE', border: '1px solid #C4B5FD44', color: '#5B21B6' }}
+                  >
+                    En sechage : {formatStockG(selectedDryingDispo)} — sortira en {ETAT_PLANTE_LABELS[selectedEtat] ?? selectedEtat}
+                  </div>
                 )}
               </>
             )}

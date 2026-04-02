@@ -13,6 +13,7 @@ import {
   type CachedSeedling,
   type CachedExternalMaterial,
   type CachedStock,
+  type CachedDryingInProgress,
 } from '@/lib/offline/db'
 
 /**
@@ -112,5 +113,14 @@ export function useCachedStock() {
   return {
     stock: (stock ?? []) as CachedStock[],
     isLoading: stock === undefined,
+  }
+}
+
+/** Cache du séchage en cours — pour la sortie séchage mobile */
+export function useCachedDryingInProgress() {
+  const data = useLiveQuery(() => offlineDb.dryingInProgress.toArray())
+  return {
+    dryingInProgress: (data ?? []) as CachedDryingInProgress[],
+    isLoading: data === undefined,
   }
 }

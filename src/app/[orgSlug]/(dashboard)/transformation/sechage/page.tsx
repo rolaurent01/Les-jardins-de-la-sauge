@@ -1,4 +1,4 @@
-import { fetchDryings, createDrying, updateDrying, deleteDrying } from './actions'
+import { fetchDryings, createDrying, updateDrying, deleteDrying, fetchDryingInProgress } from './actions'
 import { fetchVarietiesForSelect } from '@/app/[orgSlug]/(dashboard)/parcelles/shared-actions'
 import { fetchStockForTransformation } from '@/app/[orgSlug]/(dashboard)/stock/vue-stock/actions'
 import TransformationClient from '@/components/transformation/TransformationClient'
@@ -9,10 +9,11 @@ export const metadata = { title: 'Sechage — Carnet Culture' }
 
 export default async function SechagePage() {
   try {
-    const [items, varieties, stockEntries] = await Promise.all([
+    const [items, varieties, stockEntries, dryingInProgress] = await Promise.all([
       fetchDryings(),
       fetchVarietiesForSelect(),
       fetchStockForTransformation(['frais', 'tronconnee']),
+      fetchDryingInProgress(),
     ])
 
     return (
@@ -21,6 +22,7 @@ export default async function SechagePage() {
         items={items as unknown as TransformationItem[]}
         varieties={varieties}
         stockEntries={stockEntries}
+        dryingInProgress={dryingInProgress}
         actions={{ create: createDrying, update: updateDrying, delete: deleteDrying }}
       />
     )
