@@ -13,6 +13,7 @@ import type {
   CombinedTransformationRow,
 } from './types'
 import { ETAT_PLANTE_LABELS } from './types'
+import type { StockEntry } from '@/app/[orgSlug]/(dashboard)/stock/vue-stock/actions'
 import TransformationSlideOver from './TransformationSlideOver'
 import CombinedTransformationSlideOver from './CombinedTransformationSlideOver'
 import ExportButton from '@/components/shared/ExportButton'
@@ -61,6 +62,7 @@ type Props = {
   config: TransformationModuleConfig
   items: TransformationItem[]
   varieties: Pick<Variety, 'id' | 'nom_vernaculaire'>[]
+  stockEntries?: StockEntry[]
   actions: TransformationActions
 }
 
@@ -120,7 +122,7 @@ function groupPairedItems(items: TransformationItem[]): CombinedTransformationRo
   return rows
 }
 
-export default function TransformationClient({ config, items: initialItems, varieties, actions }: Props) {
+export default function TransformationClient({ config, items: initialItems, varieties, stockEntries = [], actions }: Props) {
   const router = useRouter()
   const [, startTransition] = useTransition()
 
@@ -574,6 +576,7 @@ export default function TransformationClient({ config, items: initialItems, vari
           type={slideOverType}
           item={editingItem}
           varieties={varieties}
+          stockEntries={stockEntries}
           onSubmit={handleSave}
           onSuccess={handleSaveSuccess}
         />
@@ -587,6 +590,7 @@ export default function TransformationClient({ config, items: initialItems, vari
           open={combinedSlideOverOpen}
           onClose={() => { setCombinedSlideOverOpen(false); setEditingCombinedRow(null) }}
           varieties={varieties}
+          stockEntries={stockEntries}
           onSubmit={actions.createCombined}
           onSubmitUpdate={actions.updateCombined}
           onSuccess={() => {

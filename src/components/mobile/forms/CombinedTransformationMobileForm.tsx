@@ -3,7 +3,6 @@
 import { useState, useCallback, useMemo } from 'react'
 import { useMobileSync } from '@/components/mobile/MobileSyncContext'
 import MobileFormLayout from '@/components/mobile/MobileFormLayout'
-import MobileSelect from '@/components/mobile/fields/MobileSelect'
 import MobileSearchSelect from '@/components/mobile/fields/MobileSearchSelect'
 import MobileInput from '@/components/mobile/fields/MobileInput'
 import MobileTimerInput from '@/components/mobile/fields/MobileTimerInput'
@@ -11,13 +10,10 @@ import MobileTextarea from '@/components/mobile/fields/MobileTextarea'
 import { useCachedVarieties, useCachedStock } from '@/hooks/useCachedData'
 import type { ZodSchema } from 'zod'
 import { todayISO } from '@/lib/utils/date'
-import { PARTIE_PLANTE_OPTIONS } from '@/lib/constants/partie-plante'
+import { PARTIE_PLANTE_LABELS } from '@/lib/types'
+import { ETAT_PLANTE_LABELS } from '@/lib/constants/etat-plante'
+import type { PartiePlante } from '@/lib/types'
 import DateYearWarning from '@/components/shared/DateYearWarning'
-
-/** Options d'etat plante entree pour le triage */
-interface EtatPlanteEntreeConfig {
-  entree: { value: string; label: string }[]
-}
 
 interface CombinedTransformationMobileFormProps {
   orgSlug: string
@@ -27,22 +23,39 @@ interface CombinedTransformationMobileFormProps {
   schema: ZodSchema
   backCategory: string
   /** Si fourni, affiche le selecteur d'etat plante (entree uniquement) */
-  etatPlanteConfig?: EtatPlanteEntreeConfig | null
+  etatPlanteConfig?: { entree: { value: string; label: string }[] } | null
   /** Pre-remplir poids sortie = poids entree (tronconnage) */
   autoSyncPoidsSortie?: boolean
-  /** États plante acceptés en entrée pour filtrer le stock dispo (ex: ['frais'] pour tronçonnage) */
+  /** États plante acceptés en entrée pour filtrer le stock dispo */
   stockEntreeEtats?: string[]
+}
+
+/** Clé composite pour identifier une ligne de stock */
+function stockKeyOf(s: { variety_id: string; partie_plante: string; etat_plante: string }): string {
+  return `${s.variety_id}::${s.partie_plante}::${s.etat_plante}`
+}
+
+function parseStockKey(key: string): { variety_id: string; partie_plante: string; etat_plante: string } | null {
+  const parts = key.split('::')
+  if (parts.length !== 3) return null
+  return { variety_id: parts[0], partie_plante: parts[1], etat_plante: parts[2] }
+}
+
+function formatStockG(g: number): string {
+  if (g >= 1000) return `${(g / 1000).toFixed(1)} kg`
+  return `${Math.round(g)} g`
 }
 
 function initialState() {
   return {
+    stock_key: '',
     variety_id: '',
     partie_plante: '',
+    etat_plante: '',
     date: todayISO(),
     poids_entree_g: '',
     poids_sortie_g: '',
     temps_min: '',
-    etat_plante: '',
     commentaire: '',
   }
 }
@@ -58,7 +71,7 @@ export default function CombinedTransformationMobileForm({
   stockEntreeEtats,
 }: CombinedTransformationMobileFormProps) {
   const { addEntry, farmId } = useMobileSync()
-  const { varieties, isLoading: varietiesLoading } = useCachedVarieties()
+  const { varieties } = useCachedVarieties()
   const { stock } = useCachedStock()
 
   const [form, setForm] = useState(initialState)
@@ -81,6 +94,51 @@ export default function CombinedTransformationMobileForm({
     [],
   )
 
+  // Map variétés par id pour lookup rapide
+  const varietyMap = useMemo(() => {
+    const m = new Map<string, string>()
+    for (const v of varieties) m.set(v.id, v.nom_vernaculaire)
+    return m
+  }, [varieties])
+
+  // Options du sélecteur stock : lignes de stock filtrées par états acceptés
+  const stockOptions = useMemo(() => {
+    if (!stockEntreeEtats?.length) return []
+    return stock
+      .filter(s => stockEntreeEtats.includes(s.etat_plante) && s.stock_g > 0)
+      .sort((a, b) => {
+        const na = varietyMap.get(a.variety_id) ?? ''
+        const nb = varietyMap.get(b.variety_id) ?? ''
+        return na.localeCompare(nb, 'fr', { sensitivity: 'base' })
+      })
+      .map(s => ({
+        value: stockKeyOf(s),
+        label: varietyMap.get(s.variety_id) ?? 'Inconnue',
+        sublabel: `${PARTIE_PLANTE_LABELS[s.partie_plante as PartiePlante] ?? s.partie_plante} — ${ETAT_PLANTE_LABELS[s.etat_plante] ?? s.etat_plante} — ${formatStockG(s.stock_g)}`,
+      }))
+  }, [stock, stockEntreeEtats, varietyMap])
+
+  // Stock dispo pour la ligne sélectionnée
+  const stockDispo = useMemo(() => {
+    if (!form.stock_key) return null
+    const entry = stock.find(s => stockKeyOf(s) === form.stock_key)
+    return entry?.stock_g ?? null
+  }, [stock, form.stock_key])
+
+  function handleStockSelect(key: string) {
+    set('stock_key', key)
+    const parsed = parseStockKey(key)
+    if (parsed) {
+      set('variety_id', parsed.variety_id)
+      set('partie_plante', parsed.partie_plante)
+      set('etat_plante', parsed.etat_plante)
+    } else {
+      set('variety_id', '')
+      set('partie_plante', '')
+      set('etat_plante', '')
+    }
+  }
+
   function handlePoidsEntreeChange(value: string) {
     set('poids_entree_g', value)
     if (autoSyncPoidsSortie && !sortieManuallyEdited) {
@@ -92,24 +150,6 @@ export default function CombinedTransformationMobileForm({
     set('poids_sortie_g', value)
     setSortieManuallyEdited(true)
   }
-
-  // Stock disponible filtré par variété + partie_plante + états acceptés
-  const stockDispo = useMemo(() => {
-    if (!form.variety_id || !form.partie_plante || !stockEntreeEtats?.length) return null
-    // Si etatPlanteConfig, on filtre sur l'état sélectionné ; sinon sur tous les états acceptés
-    const etats = etatPlanteConfig && form.etat_plante
-      ? [form.etat_plante]
-      : stockEntreeEtats
-    const total = stock
-      .filter(s =>
-        s.variety_id === form.variety_id &&
-        s.partie_plante === form.partie_plante &&
-        etats.includes(s.etat_plante) &&
-        s.stock_g > 0
-      )
-      .reduce((sum, s) => sum + s.stock_g, 0)
-    return total
-  }, [stock, form.variety_id, form.partie_plante, form.etat_plante, stockEntreeEtats, etatPlanteConfig])
 
   // Calcul dechet
   const poidsEntreeNum = parseFloat(form.poids_entree_g) || 0
@@ -171,12 +211,6 @@ export default function CombinedTransformationMobileForm({
 
   const backHref = `/${orgSlug}/m/saisie/${backCategory}`
 
-  const varietyOptions = varieties.map((v) => ({
-    value: v.id,
-    label: v.nom_vernaculaire,
-    sublabel: v.nom_latin ?? undefined,
-  }))
-
   return (
     <MobileFormLayout
       title={title}
@@ -187,37 +221,17 @@ export default function CombinedTransformationMobileForm({
       error={globalError}
       onReset={handleReset}
     >
+      {/* Sélecteur stock source */}
       <MobileSearchSelect
-        label="Variété"
+        label="Stock source"
         required
-        value={form.variety_id}
-        onChange={(v) => set('variety_id', v)}
-        options={varietyOptions}
-        placeholder={varietiesLoading ? 'Chargement…' : 'Sélectionner une variété'}
+        value={form.stock_key}
+        onChange={handleStockSelect}
+        options={stockOptions}
+        placeholder={stockOptions.length === 0 ? 'Aucun stock disponible' : 'Choisir dans le stock'}
         searchPlaceholder="Rechercher une variété..."
-        error={errors.variety_id}
+        error={errors.variety_id || errors.partie_plante}
       />
-
-      <MobileSelect
-        label="Partie plante"
-        required
-        value={form.partie_plante}
-        onChange={(v) => set('partie_plante', v)}
-        options={PARTIE_PLANTE_OPTIONS}
-        error={errors.partie_plante}
-      />
-
-      {/* Etat plante entree (triage uniquement) */}
-      {etatPlanteConfig && (
-        <MobileSelect
-          label="État plante"
-          required
-          value={form.etat_plante}
-          onChange={(v) => set('etat_plante', v)}
-          options={etatPlanteConfig.entree}
-          error={errors.etat_plante}
-        />
-      )}
 
       {/* Stock disponible */}
       {stockDispo !== null && (
@@ -229,7 +243,7 @@ export default function CombinedTransformationMobileForm({
             color: stockDispo > 0 ? '#6B7B6C' : '#92400E',
           }}
         >
-          Stock dispo : {stockDispo >= 1000 ? `${(stockDispo / 1000).toFixed(1)} kg` : `${Math.round(stockDispo)} g`}
+          Stock dispo : {formatStockG(stockDispo)}
         </div>
       )}
 
@@ -264,6 +278,20 @@ export default function CombinedTransformationMobileForm({
         suffix="g"
         error={errors.poids_sortie_g}
       />
+
+      {/* Warning si poids > stock */}
+      {stockDispo !== null && poidsEntreeNum > stockDispo && (
+        <div
+          className="rounded-xl px-3 py-2.5 text-xs"
+          style={{
+            backgroundColor: '#FEF3C7',
+            border: '1px solid #F59E0B44',
+            color: '#92400E',
+          }}
+        >
+          Le poids d&apos;entree ({poidsEntreeNum} g) depasse le stock ({formatStockG(stockDispo)}).
+        </div>
+      )}
 
       {/* Ligne dechet (triage) */}
       {!autoSyncPoidsSortie && dechet !== null && dechet >= 0 && (

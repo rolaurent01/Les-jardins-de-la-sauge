@@ -12,6 +12,9 @@ import { useCachedVarieties, useCachedStock } from '@/hooks/useCachedData'
 import type { ZodSchema } from 'zod'
 import { todayISO } from '@/lib/utils/date'
 import { PARTIE_PLANTE_OPTIONS } from '@/lib/constants/partie-plante'
+import { PARTIE_PLANTE_LABELS } from '@/lib/types'
+import { ETAT_PLANTE_LABELS } from '@/lib/constants/etat-plante'
+import type { PartiePlante } from '@/lib/types'
 import DateYearWarning from '@/components/shared/DateYearWarning'
 
 type TypeEntreeSortie = 'entree' | 'sortie'
@@ -24,31 +27,36 @@ interface EtatPlanteConfig {
 
 interface TransformationMobileFormProps {
   orgSlug: string
-  /** Titre affiché dans le header */
   title: string
-  /** Table cible pour le sync (cuttings, dryings, sortings) */
   tableCible: 'cuttings' | 'dryings' | 'sortings'
-  /** Schéma Zod pour validation */
   schema: ZodSchema
-  /** Catégorie parente dans l'URL */
   backCategory: string
-  /**
-   * Si null, l'état plante est implicite (pas de sélecteur).
-   * Sinon, affiche un sélecteur conditionnel au type.
-   */
   etatPlanteConfig: EtatPlanteConfig | null
-  /**
-   * Fonction qui retourne l'état plante implicite selon le type.
-   * Utilisé quand etatPlanteConfig est null (tronçonnage).
-   */
   getImplicitEtatPlante?: (type: TypeEntreeSortie) => string
   /** États plante acceptés en entrée pour filtrer le stock dispo */
   stockEntreeEtats?: string[]
 }
 
+/** Clé composite pour identifier une ligne de stock */
+function stockKeyOf(s: { variety_id: string; partie_plante: string; etat_plante: string }): string {
+  return `${s.variety_id}::${s.partie_plante}::${s.etat_plante}`
+}
+
+function parseStockKey(key: string): { variety_id: string; partie_plante: string; etat_plante: string } | null {
+  const parts = key.split('::')
+  if (parts.length !== 3) return null
+  return { variety_id: parts[0], partie_plante: parts[1], etat_plante: parts[2] }
+}
+
+function formatStockG(g: number): string {
+  if (g >= 1000) return `${(g / 1000).toFixed(1)} kg`
+  return `${Math.round(g)} g`
+}
+
 function initialState() {
   return {
     type: 'entree' as TypeEntreeSortie,
+    stock_key: '',
     variety_id: '',
     partie_plante: '',
     date: todayISO(),
@@ -59,10 +67,6 @@ function initialState() {
   }
 }
 
-/**
- * Formulaire mobile partagé pour les 3 modules Transformation.
- * Paramétré par config (table, schéma, états plante).
- */
 export default function TransformationMobileForm({
   orgSlug,
   title,
@@ -83,6 +87,8 @@ export default function TransformationMobileForm({
   const [success, setSuccess] = useState(false)
   const [globalError, setGlobalError] = useState<string | null>(null)
 
+  const isEntree = form.type === 'entree'
+
   const set = useCallback(
     <K extends keyof ReturnType<typeof initialState>>(key: K, value: ReturnType<typeof initialState>[K]) => {
       setForm((prev) => ({ ...prev, [key]: value }))
@@ -96,31 +102,69 @@ export default function TransformationMobileForm({
     [],
   )
 
-  /** Options d'état plante pour le type sélectionné */
-  const etatOptions = useMemo(() => {
-    if (!etatPlanteConfig) return []
-    return etatPlanteConfig[form.type]
-  }, [etatPlanteConfig, form.type])
+  // Map variétés par id pour lookup rapide
+  const varietyMap = useMemo(() => {
+    const m = new Map<string, string>()
+    for (const v of varieties) m.set(v.id, v.nom_vernaculaire)
+    return m
+  }, [varieties])
 
-  // Stock disponible pour le type "entree" (filtré par variété + partie_plante + état)
-  const stockDispo = useMemo(() => {
-    if (form.type !== 'entree' || !form.variety_id || !form.partie_plante || !stockEntreeEtats?.length) return null
-    // Si état sélectionné, filtrer dessus ; sinon sur tous les états acceptés
-    const etats = form.etat_plante ? [form.etat_plante] : stockEntreeEtats
+  // Options du sélecteur stock (entrée uniquement)
+  const stockOptions = useMemo(() => {
+    if (!isEntree || !stockEntreeEtats?.length) return []
     return stock
-      .filter(s =>
-        s.variety_id === form.variety_id &&
-        s.partie_plante === form.partie_plante &&
-        etats.includes(s.etat_plante) &&
-        s.stock_g > 0
-      )
-      .reduce((sum, s) => sum + s.stock_g, 0)
-  }, [stock, form.type, form.variety_id, form.partie_plante, form.etat_plante, stockEntreeEtats])
+      .filter(s => stockEntreeEtats.includes(s.etat_plante) && s.stock_g > 0)
+      .sort((a, b) => {
+        const na = varietyMap.get(a.variety_id) ?? ''
+        const nb = varietyMap.get(b.variety_id) ?? ''
+        return na.localeCompare(nb, 'fr', { sensitivity: 'base' })
+      })
+      .map(s => ({
+        value: stockKeyOf(s),
+        label: varietyMap.get(s.variety_id) ?? 'Inconnue',
+        sublabel: `${PARTIE_PLANTE_LABELS[s.partie_plante as PartiePlante] ?? s.partie_plante} — ${ETAT_PLANTE_LABELS[s.etat_plante] ?? s.etat_plante} — ${formatStockG(s.stock_g)}`,
+      }))
+  }, [isEntree, stock, stockEntreeEtats, varietyMap])
+
+  // Stock dispo pour la ligne sélectionnée (entrée)
+  const stockDispo = useMemo(() => {
+    if (!isEntree || !form.stock_key) return null
+    const entry = stock.find(s => stockKeyOf(s) === form.stock_key)
+    return entry?.stock_g ?? null
+  }, [isEntree, stock, form.stock_key])
+
+  /** Options d'état plante pour sortie */
+  const etatSortieOptions = useMemo(() => {
+    if (!etatPlanteConfig) return []
+    return etatPlanteConfig.sortie
+  }, [etatPlanteConfig])
+
+  function handleStockSelect(key: string) {
+    set('stock_key', key)
+    const parsed = parseStockKey(key)
+    if (parsed) {
+      set('variety_id', parsed.variety_id)
+      set('partie_plante', parsed.partie_plante)
+      set('etat_plante', parsed.etat_plante)
+    } else {
+      set('variety_id', '')
+      set('partie_plante', '')
+      set('etat_plante', '')
+    }
+  }
+
+  function handleTypeChange(type: TypeEntreeSortie) {
+    set('type', type)
+    // Reset les champs liés au type
+    set('stock_key', '')
+    set('variety_id', '')
+    set('partie_plante', '')
+    set('etat_plante', '')
+  }
 
   const handleSubmit = async () => {
     setGlobalError(null)
 
-    // Construire le payload
     const basePayload = {
       variety_id: form.variety_id,
       partie_plante: form.partie_plante,
@@ -131,7 +175,6 @@ export default function TransformationMobileForm({
       commentaire: form.commentaire || null,
     }
 
-    // État plante : explicite (sélecteur) ou implicite (déduit du type)
     const payload = etatPlanteConfig
       ? { ...basePayload, etat_plante: form.etat_plante }
       : { ...basePayload }
@@ -147,7 +190,6 @@ export default function TransformationMobileForm({
       return
     }
 
-    // Pour tronçonnage : injecter l'état plante implicite dans le payload envoyé au sync
     const syncPayload = getImplicitEtatPlante
       ? { ...(result.data as Record<string, unknown>), etat_plante: getImplicitEtatPlante(form.type) }
       : (result.data as unknown as Record<string, unknown>)
@@ -205,11 +247,7 @@ export default function TransformationMobileForm({
             <button
               key={opt.value}
               type="button"
-              onClick={() => {
-                set('type', opt.value)
-                // Réinitialiser l'état plante quand le type change
-                set('etat_plante', '')
-              }}
+              onClick={() => handleTypeChange(opt.value)}
               className="flex-1 py-3 text-sm font-medium rounded-xl transition-colors"
               style={{
                 backgroundColor: form.type === opt.value ? 'var(--color-primary)' : '#fff',
@@ -224,50 +262,73 @@ export default function TransformationMobileForm({
         </div>
       </div>
 
-      <MobileSearchSelect
-        label="Variété"
-        required
-        value={form.variety_id}
-        onChange={(v) => set('variety_id', v)}
-        options={varietyOptions}
-        placeholder={varietiesLoading ? 'Chargement…' : 'Sélectionner une variété'}
-        searchPlaceholder="Rechercher une variété..."
-        error={errors.variety_id}
-      />
+      {/* ============================================================ */}
+      {/* MODE ENTREE : Sélecteur stock source                         */}
+      {/* ============================================================ */}
+      {isEntree ? (
+        <>
+          <MobileSearchSelect
+            label="Stock source"
+            required
+            value={form.stock_key}
+            onChange={handleStockSelect}
+            options={stockOptions}
+            placeholder={stockOptions.length === 0 ? 'Aucun stock disponible' : 'Choisir dans le stock'}
+            searchPlaceholder="Rechercher une variété..."
+            error={errors.variety_id || errors.partie_plante || errors.etat_plante}
+          />
 
-      <MobileSelect
-        label="Partie plante"
-        required
-        value={form.partie_plante}
-        onChange={(v) => set('partie_plante', v)}
-        options={PARTIE_PLANTE_OPTIONS}
-        error={errors.partie_plante}
-      />
+          {/* Stock disponible */}
+          {stockDispo !== null && (
+            <div
+              className="rounded-xl px-3 py-2.5 text-xs"
+              style={{
+                backgroundColor: stockDispo > 0 ? '#F0F4F0' : '#FEF3C7',
+                border: `1px solid ${stockDispo > 0 ? '#E0E6E0' : '#F59E0B44'}`,
+                color: stockDispo > 0 ? '#6B7B6C' : '#92400E',
+              }}
+            >
+              Stock dispo : {formatStockG(stockDispo)}
+            </div>
+          )}
+        </>
+      ) : (
+        /* ============================================================ */
+        /* MODE SORTIE : Sélecteurs classiques                          */
+        /* ============================================================ */
+        <>
+          <MobileSearchSelect
+            label="Variété"
+            required
+            value={form.variety_id}
+            onChange={(v) => set('variety_id', v)}
+            options={varietyOptions}
+            placeholder={varietiesLoading ? 'Chargement…' : 'Sélectionner une variété'}
+            searchPlaceholder="Rechercher une variété..."
+            error={errors.variety_id}
+          />
 
-      {/* État plante (conditionnel — séchage et triage uniquement) */}
-      {etatPlanteConfig && (
-        <MobileSelect
-          label="État plante"
-          required
-          value={form.etat_plante}
-          onChange={(v) => set('etat_plante', v)}
-          options={etatOptions}
-          error={errors.etat_plante}
-        />
-      )}
+          <MobileSelect
+            label="Partie plante"
+            required
+            value={form.partie_plante}
+            onChange={(v) => set('partie_plante', v)}
+            options={PARTIE_PLANTE_OPTIONS}
+            error={errors.partie_plante}
+          />
 
-      {/* Stock disponible (uniquement en entrée) */}
-      {stockDispo !== null && (
-        <div
-          className="rounded-xl px-3 py-2.5 text-xs"
-          style={{
-            backgroundColor: stockDispo > 0 ? '#F0F4F0' : '#FEF3C7',
-            border: `1px solid ${stockDispo > 0 ? '#E0E6E0' : '#F59E0B44'}`,
-            color: stockDispo > 0 ? '#6B7B6C' : '#92400E',
-          }}
-        >
-          Stock dispo : {stockDispo >= 1000 ? `${(stockDispo / 1000).toFixed(1)} kg` : `${Math.round(stockDispo)} g`}
-        </div>
+          {/* État plante sortie */}
+          {etatPlanteConfig && (
+            <MobileSelect
+              label="État plante"
+              required
+              value={form.etat_plante}
+              onChange={(v) => set('etat_plante', v)}
+              options={etatSortieOptions}
+              error={errors.etat_plante}
+            />
+          )}
+        </>
       )}
 
       <MobileInput

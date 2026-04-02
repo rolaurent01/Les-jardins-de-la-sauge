@@ -2,6 +2,30 @@
 
 ---
 
+## [2026-04-02] — UX : sélecteur "depuis le stock" pour les transformations
+
+**Type :** `feature`
+**Fichiers concernés :** `src/app/[orgSlug]/(dashboard)/stock/vue-stock/actions.ts`, `src/app/[orgSlug]/(dashboard)/transformation/tronconnage/page.tsx`, `src/app/[orgSlug]/(dashboard)/transformation/sechage/page.tsx`, `src/app/[orgSlug]/(dashboard)/transformation/triage/page.tsx`, `src/components/transformation/TransformationClient.tsx`, `src/components/transformation/CombinedTransformationSlideOver.tsx`, `src/components/transformation/TransformationSlideOver.tsx`, `src/components/mobile/forms/CombinedTransformationMobileForm.tsx`, `src/components/mobile/forms/TransformationMobileForm.tsx`
+
+### Description
+Remplacement des 3 sélecteurs séparés (variété + partie plante + état plante) par un sélecteur unique "Stock source" dans tous les formulaires de transformation. L'utilisateur choisit directement parmi les lignes de stock disponibles (variété × partie × état avec quantité affichée).
+
+### Détails techniques
+- **Nouvelle server action** `fetchStockForTransformation(etats)` : récupère les lignes de v_stock filtrées par états plante et stock > 0, enrichies avec infos variété
+- **Desktop (SlideOvers)** : sélecteur `<select>` unique montrant les lignes de stock formatées "Variété — Partie — État (stock g)"
+  - `CombinedTransformationSlideOver` (tronçonnage/triage) : stock picker remplace les 3 selects, QuickAddVariety supprimé
+  - `TransformationSlideOver` (séchage) : stock picker pour entrée uniquement, sortie garde les sélecteurs classiques (la sortie crée du stock, ne consomme pas)
+- **Mobile** : même logique via `MobileSearchSelect` avec recherche plein écran
+  - `CombinedTransformationMobileForm` : stock picker avec options construites depuis `useCachedStock()`
+  - `TransformationMobileForm` : stock picker pour entrée, sélecteurs classiques pour sortie
+- **Clé composite** `variety_id::partie_plante::etat_plante` pour identifier chaque ligne de stock
+- **Warning non-bloquant** si le poids saisi dépasse le stock disponible
+- **Filtres stock par module** : tronçonnage = `['frais']`, séchage entrée = `['frais', 'tronconnee']`, triage = `['sechee', 'tronconnee_sechee']`
+- **TransformationClient** accepte désormais `stockEntries` en prop et les forward aux SlideOvers
+- TypeScript compile sans erreur
+
+---
+
 ## [2026-04-01 22:00] — Module Boutures (multiplications végétatives)
 
 **Type :** `feature`

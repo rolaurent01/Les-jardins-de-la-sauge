@@ -130,6 +130,28 @@ export async function fetchStockYears(): Promise<number[]> {
 }
 
 /**
+ * Récupère les lignes de stock positif filtrées par états plante,
+ * enrichies avec infos variété. Utilisé par les formulaires transformation
+ * pour proposer un sélecteur "depuis le stock".
+ */
+export async function fetchStockForTransformation(etats: string[]): Promise<StockEntry[]> {
+  const { farmId } = await getContext()
+  const supabase = createAdminClient()
+
+  const { data, error } = await supabase
+    .from('v_stock')
+    .select('variety_id, partie_plante, etat_plante, stock_g')
+    .eq('farm_id', farmId)
+    .in('etat_plante', etats)
+    .gt('stock_g', 0)
+
+  if (error) throw new Error(`Erreur v_stock transformation : ${error.message}`)
+  if (!data || data.length === 0) return []
+
+  return enrichStockRows(supabase, data)
+}
+
+/**
  * Compare le stock total par variété avec farm_variety_settings.seuil_alerte_g.
  * Retourne les variétés dont le stock total est sous le seuil.
  */
