@@ -9,7 +9,7 @@ export const metadata = { title: 'Stock produits finis — Carnet Culture' }
 
 export default async function ProductStockPage() {
   try {
-    const [movements, summary, lots] = await Promise.all([
+    const [movements, summary, lotsAndConds] = await Promise.all([
       fetchProductStockMovements(),
       fetchProductStockSummary(),
       fetchProductionLotsForSelect(),
@@ -19,7 +19,7 @@ export default async function ProductStockPage() {
       <ProductStockClient
         initialMovements={movements}
         initialSummary={summary}
-        lots={lots}
+        lots={lotsAndConds}
       />
     )
   } catch (err) {

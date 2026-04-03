@@ -94,7 +94,7 @@ export default function ProductionClient({ initialLots, recipes, categories, sto
     if (!search.trim()) return true
     const q = normalize(search)
     return (
-      normalize(l.numero_lot).includes(q) ||
+      (l.numero_lot && normalize(l.numero_lot).includes(q)) ||
       (l.recipes?.nom && normalize(l.recipes.nom).includes(q))
     )
   })
@@ -291,7 +291,7 @@ export default function ProductionClient({ initialLots, recipes, categories, sto
                 const isPending = pendingId === l.id
                 const isConfirming = confirmArchiveId === l.id
                 const modeBadge = MODE_BADGE[l.mode as ProductionMode] ?? MODE_BADGE.produit
-                const needsConditionner = l.mode === 'melange' && l.nb_unites == null && !l.deleted_at
+                const canConditionner = l.mode === 'melange' && !l.deleted_at
 
                 return (
                   <tr
@@ -305,7 +305,7 @@ export default function ProductionClient({ initialLots, recipes, categories, sto
                     }}
                   >
                     <td className="px-4 py-3 font-mono font-medium" style={{ color: '#2C3E2D' }}>
-                      {l.numero_lot}
+                      {l.numero_lot ?? <span style={{ color: '#9CA89D', fontFamily: 'inherit', fontWeight: 400 }}>Vrac</span>}
                     </td>
                     <td className="px-4 py-3" style={{ color: '#2C3E2D' }}>
                       {l.recipes?.nom ?? <Dash />}
@@ -325,15 +325,17 @@ export default function ProductionClient({ initialLots, recipes, categories, sto
                       {formatDate(l.ddm)}
                     </td>
                     <td className="px-4 py-3" style={{ color: '#2C3E2D' }}>
-                      {l.nb_unites != null ? (
-                        l.nb_unites
-                      ) : (
+                      {l.mode === 'melange' ? (
                         <span
                           className="inline-block px-2 py-0.5 rounded-full text-xs font-medium"
-                          style={{ backgroundColor: '#FEF3C7', color: '#92400E' }}
+                          style={{ backgroundColor: '#F3F4F6', color: '#6B7280' }}
                         >
-                          A conditionner
+                          Voir conditionnements
                         </span>
+                      ) : l.nb_unites != null ? (
+                        l.nb_unites
+                      ) : (
+                        '—'
                       )}
                     </td>
                     <td className="px-4 py-3 whitespace-nowrap" style={{ color: '#2C3E2D' }}>
@@ -384,7 +386,7 @@ export default function ProductionClient({ initialLots, recipes, categories, sto
                             >
                               👁️
                             </button>
-                            {needsConditionner && (
+                            {canConditionner && (
                               <button
                                 onClick={() => setConditionnerLotId(l.id)}
                                 className="p-1.5 rounded-lg transition-colors"
@@ -443,6 +445,9 @@ export default function ProductionClient({ initialLots, recipes, categories, sto
         lot={detailLot}
         open={detailLot !== null}
         onClose={() => setDetailLot(null)}
+        onConditionner={detailLot?.mode === 'melange' ? () => {
+          setConditionnerLotId(detailLot.id)
+        } : undefined}
       />
     </div>
   )

@@ -719,7 +719,7 @@ export type ProductionLot = {
   id: string
   farm_id: string
   recipe_id: string | null
-  numero_lot: string
+  numero_lot: string | null
   mode: ProductionMode
   date_production: string
   ddm: string
@@ -755,11 +755,29 @@ export type ProductionLotIngredient = {
   external_materials?: { id: string; nom: string } | null
 }
 
+/** Conditionnement (mise en bouteille) — table conditionnements */
+export type Conditionnement = {
+  id: string
+  farm_id: string
+  production_lot_id: string
+  numero_lot: string
+  date_conditionnement: string
+  nb_unites: number
+  temps_min: number | null
+  ddm: string | null
+  commentaire: string | null
+  deleted_at: string | null
+  created_by: string | null
+  updated_by: string | null
+  created_at: string
+}
+
 /** Mouvement de stock produit fini — table product_stock_movements */
 export type ProductStockMovement = {
   id: string
   farm_id: string
   production_lot_id: string | null
+  conditionnement_id: string | null
   date: string
   type_mouvement: 'entree' | 'sortie'
   quantite: number
@@ -774,14 +792,20 @@ export type ProductStockMovement = {
 export type ProductStockMovementWithRelations = ProductStockMovement & {
   production_lots: {
     id: string
-    numero_lot: string
+    numero_lot: string | null
     recipes: { id: string; nom: string } | null
+  } | null
+  conditionnements: {
+    id: string
+    numero_lot: string
+    production_lot_id: string
   } | null
 }
 
-/** Resume du stock produit fini par lot */
+/** Resume du stock produit fini par lot ou conditionnement */
 export type ProductStockSummary = {
   production_lot_id: string
+  conditionnement_id: string | null
   numero_lot: string
   recipe_nom: string
   nb_unites_produites: number | null

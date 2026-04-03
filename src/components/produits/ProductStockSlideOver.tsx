@@ -9,6 +9,7 @@ type LotForSelect = {
   numero_lot: string
   nb_unites: number | null
   recipe_nom: string
+  type: 'lot' | 'conditionnement'
 }
 
 type Props = {
@@ -24,7 +25,7 @@ export default function ProductStockSlideOver({ open, lots, stockByLot, onClose,
   const [error, setError] = useState<string | null>(null)
 
   const [typeMouvement, setTypeMouvement] = useState<'entree' | 'sortie'>('entree')
-  const [lotId, setLotId] = useState('')
+  const [selectedId, setSelectedId] = useState('')
   const [date, setDate] = useState(() => new Date().toISOString().split('T')[0])
   const [quantite, setQuantite] = useState('')
   const [commentaire, setCommentaire] = useState('')
@@ -52,7 +53,7 @@ export default function ProductStockSlideOver({ open, lots, stockByLot, onClose,
   useEffect(() => {
     if (open) {
       setTypeMouvement('entree')
-      setLotId('')
+      setSelectedId('')
       setDate(new Date().toISOString().split('T')[0])
       setQuantite('')
       setCommentaire('')
@@ -60,7 +61,8 @@ export default function ProductStockSlideOver({ open, lots, stockByLot, onClose,
     }
   }, [open])
 
-  const currentStock = lotId ? (stockByLot.get(lotId) ?? 0) : null
+  const selectedItem = lots.find(l => l.id === selectedId)
+  const currentStock = selectedId ? (stockByLot.get(selectedId) ?? 0) : null
   const qteNum = parseInt(quantite, 10)
   const isStockInsuffisant = typeMouvement === 'sortie' && currentStock != null && !isNaN(qteNum) && qteNum > currentStock
 
@@ -69,7 +71,12 @@ export default function ProductStockSlideOver({ open, lots, stockByLot, onClose,
     setError(null)
 
     const fd = new FormData()
-    fd.set('production_lot_id', lotId)
+    // Selon le type de source, envoyer le bon champ
+    if (selectedItem?.type === 'conditionnement') {
+      fd.set('conditionnement_id', selectedId)
+    } else {
+      fd.set('production_lot_id', selectedId)
+    }
     fd.set('date', date)
     fd.set('type_mouvement', typeMouvement)
     fd.set('quantite', quantite)
@@ -84,6 +91,10 @@ export default function ProductStockSlideOver({ open, lots, stockByLot, onClose,
       }
     })
   }
+
+  // Grouper les lots par type pour un meilleur affichage
+  const lotsProduit = lots.filter(l => l.type === 'lot')
+  const lotsConditionne = lots.filter(l => l.type === 'conditionnement')
 
   return (
     <>
@@ -170,26 +181,39 @@ export default function ProductStockSlideOver({ open, lots, stockByLot, onClose,
               </div>
             </Field>
 
-            {/* Lot de production */}
-            <Field label="Lot de production" required>
+            {/* Lot ou conditionnement */}
+            <Field label="Lot / Conditionnement" required>
               <select
                 ref={firstFieldRef}
-                value={lotId}
-                onChange={e => setLotId(e.target.value)}
+                value={selectedId}
+                onChange={e => setSelectedId(e.target.value)}
                 className="w-full px-3 py-2 text-sm rounded-lg border outline-none"
                 style={{ backgroundColor: '#FFF', borderColor: '#D8E0D9', color: '#2C3E2D' }}
                 required
               >
-                <option value="">Selectionner un lot…</option>
-                {lots.map(l => (
-                  <option key={l.id} value={l.id}>
-                    {l.numero_lot} — {l.recipe_nom}
-                  </option>
-                ))}
+                <option value="">Selectionner…</option>
+                {lotsProduit.length > 0 && (
+                  <optgroup label="Lots (sachets)">
+                    {lotsProduit.map(l => (
+                      <option key={l.id} value={l.id}>
+                        {l.numero_lot} — {l.recipe_nom}
+                      </option>
+                    ))}
+                  </optgroup>
+                )}
+                {lotsConditionne.length > 0 && (
+                  <optgroup label="Mises en bouteille">
+                    {lotsConditionne.map(l => (
+                      <option key={l.id} value={l.id}>
+                        {l.numero_lot} — {l.recipe_nom}
+                      </option>
+                    ))}
+                  </optgroup>
+                )}
               </select>
               {currentStock != null && (
                 <p className="text-xs mt-1" style={{ color: '#6B7B6C' }}>
-                  Stock actuel : {currentStock} sachet{currentStock !== 1 ? 's' : ''}
+                  Stock actuel : {currentStock} {selectedItem?.type === 'conditionnement' ? 'bouteille' : 'sachet'}{currentStock !== 1 ? 's' : ''}
                 </p>
               )}
             </Field>
@@ -209,7 +233,7 @@ export default function ProductStockSlideOver({ open, lots, stockByLot, onClose,
             </Field>
 
             {/* Quantite */}
-            <Field label="Quantite (sachets)" required>
+            <Field label={`Quantite (${selectedItem?.type === 'conditionnement' ? 'bouteilles' : 'sachets'})`} required>
               <input
                 type="number"
                 value={quantite}
@@ -259,7 +283,7 @@ export default function ProductStockSlideOver({ open, lots, stockByLot, onClose,
             </button>
             <button
               type="submit"
-              disabled={isPending || !lotId}
+              disabled={isPending || !selectedId}
               className="px-4 py-2 rounded-lg text-sm font-medium transition-opacity disabled:opacity-40"
               style={{ backgroundColor: 'var(--color-primary)', color: '#F9F8F6' }}
             >

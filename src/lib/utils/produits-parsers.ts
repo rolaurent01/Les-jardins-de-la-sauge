@@ -8,6 +8,7 @@ import {
   recipeSchema,
   productionLotSchema,
   conditionnerSchema,
+  conditionnementSchema,
   productStockMovementSchema,
 } from '@/lib/validation/produits'
 
@@ -112,13 +113,37 @@ export function parseConditionnerForm(
   return { data: result.data }
 }
 
+// ---- Conditionnement (mise en bouteille — mode melange) ----
+
+export function parseConditionnementForm(
+  formData: FormData,
+): { data: { production_lot_id: string; date_conditionnement: string; nb_unites: number; temps_min: number | null; ddm: string; commentaire: string | null } } | { error: string } {
+  const raw = {
+    production_lot_id:    (formData.get('production_lot_id') as string) || '',
+    date_conditionnement: (formData.get('date_conditionnement') as string) || '',
+    nb_unites:            parseOptionalInt(formData, 'nb_unites') ?? 0,
+    temps_min:            parseOptionalInt(formData, 'temps_min'),
+    ddm:                  (formData.get('ddm') as string) || '',
+    commentaire:          (formData.get('commentaire') as string)?.trim() || null,
+  }
+
+  const result = conditionnementSchema.safeParse(raw)
+  if (!result.success) return { error: formatError(result.error) }
+
+  return { data: result.data as { production_lot_id: string; date_conditionnement: string; nb_unites: number; temps_min: number | null; ddm: string; commentaire: string | null } }
+}
+
 // ---- Mouvement de stock produit fini ----
 
 export function parseProductStockMovementForm(
   formData: FormData,
-): { data: ReturnType<typeof productStockMovementSchema.parse> } | { error: string } {
+): { data: { production_lot_id: string | null; conditionnement_id: string | null; date: string; type_mouvement: 'entree' | 'sortie'; quantite: number; commentaire: string | null } } | { error: string } {
+  const prodLotId = (formData.get('production_lot_id') as string) || null
+  const condId = (formData.get('conditionnement_id') as string) || null
+
   const raw = {
-    production_lot_id: (formData.get('production_lot_id') as string) || '',
+    production_lot_id: prodLotId || null,
+    conditionnement_id: condId || null,
     date:              (formData.get('date') as string) || '',
     type_mouvement:    (formData.get('type_mouvement') as string) || '',
     quantite:          parseOptionalInt(formData, 'quantite') ?? 0,
@@ -128,5 +153,5 @@ export function parseProductStockMovementForm(
   const result = productStockMovementSchema.safeParse(raw)
   if (!result.success) return { error: formatError(result.error) }
 
-  return { data: result.data }
+  return { data: result.data as { production_lot_id: string | null; conditionnement_id: string | null; date: string; type_mouvement: 'entree' | 'sortie'; quantite: number; commentaire: string | null } }
 }

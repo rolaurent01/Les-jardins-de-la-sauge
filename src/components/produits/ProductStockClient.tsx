@@ -11,7 +11,7 @@ import { normalize } from '@/lib/utils/normalize'
 import { Th } from '@/components/ui/Th'
 
 const PRODUCT_STOCK_EXPORT_COLUMNS: ExportColumn[] = [
-  { key: 'production_lots', label: 'N° Lot', format: (v) => (v as { numero_lot?: string } | null)?.numero_lot ?? '' },
+  { key: '_numero_lot', label: 'N° Lot' },
   { key: '_recipe_nom', label: 'Recette' },
   { key: 'type_mouvement', label: 'Type', format: (v) => v === 'entree' ? 'Entrée' : 'Sortie' },
   { key: 'date', label: 'Date' },
@@ -26,6 +26,7 @@ type LotForSelect = {
   numero_lot: string
   nb_unites: number | null
   recipe_nom: string
+  type: 'lot' | 'conditionnement'
 }
 
 type Props = {
@@ -55,10 +56,11 @@ export default function ProductStockClient({ initialMovements, initialSummary, l
     return () => clearTimeout(timer)
   }, [confirmDeleteId])
 
-  // Calcul du stock net par lot (pour le slide-over)
-  const stockByLot = new Map<string, number>()
+  // Calcul du stock net par source (lot ou conditionnement) pour le slide-over
+  const stockBySource = new Map<string, number>()
   for (const s of summary) {
-    stockByLot.set(s.production_lot_id, s.stock_net)
+    const key = s.conditionnement_id ?? s.production_lot_id
+    stockBySource.set(key, s.stock_net)
   }
 
   // Filtrage des mouvements
@@ -66,8 +68,9 @@ export default function ProductStockClient({ initialMovements, initialSummary, l
     if (typeFilter !== 'all' && m.type_mouvement !== typeFilter) return false
     if (!search.trim()) return true
     const q = normalize(search)
+    const numeroLot = m.conditionnements?.numero_lot ?? m.production_lots?.numero_lot
     return (
-      (m.production_lots?.numero_lot && normalize(m.production_lots.numero_lot).includes(q)) ||
+      (numeroLot && normalize(numeroLot).includes(q)) ||
       (m.production_lots?.recipes?.nom && normalize(m.production_lots.recipes.nom).includes(q)) ||
       (m.commentaire && normalize(m.commentaire).includes(q))
     )
@@ -107,7 +110,7 @@ export default function ProductStockClient({ initialMovements, initialSummary, l
 
         <div className="flex items-center gap-2">
           <ExportButton
-            data={displayed.map(m => ({ ...m, _recipe_nom: m.production_lots?.recipes?.nom ?? '' })) as unknown as Record<string, unknown>[]}
+            data={displayed.map(m => ({ ...m, _numero_lot: m.conditionnements?.numero_lot ?? m.production_lots?.numero_lot ?? '', _recipe_nom: m.production_lots?.recipes?.nom ?? '' })) as unknown as Record<string, unknown>[]}
             columns={PRODUCT_STOCK_EXPORT_COLUMNS}
             filename="stock_produits_finis"
             variant="compact"
@@ -284,7 +287,7 @@ export default function ProductStockClient({ initialMovements, initialSummary, l
 
                     {/* Lot */}
                     <td className="px-4 py-3 font-mono text-xs" style={{ color: '#2C3E2D' }}>
-                      {m.production_lots?.numero_lot ?? '—'}
+                      {m.conditionnements?.numero_lot ?? m.production_lots?.numero_lot ?? '—'}
                     </td>
 
                     {/* Recette */}
@@ -357,7 +360,7 @@ export default function ProductStockClient({ initialMovements, initialSummary, l
       <ProductStockSlideOver
         open={slideOverOpen}
         lots={lots}
-        stockByLot={stockByLot}
+        stockByLot={stockBySource}
         onClose={() => setSlideOverOpen(false)}
         onSuccess={handleSaveSuccess}
       />

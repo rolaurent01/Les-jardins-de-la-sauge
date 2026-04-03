@@ -194,18 +194,36 @@ export const mobileProductionLotSchema = z.object({
   }
 })
 
-// ---- Conditionnement ----
+// ---- Conditionnement (ancien — mode produit simple) ----
 
 export const conditionnerSchema = z.object({
   nb_unites: positiveInt,
 })
 
+// ---- Conditionnement (nouveau — mise en bouteille pour mode melange) ----
+
+export const conditionnementSchema = z.object({
+  production_lot_id: z.string().uuid('Lot invalide'),
+  date_conditionnement: dateNotInFuture,
+  nb_unites: positiveInt,
+  temps_min: positiveInt.optional().nullable(),
+  ddm: z.string().min(1, 'DDM requise'),
+  commentaire: z.string().max(1000).optional().nullable(),
+})
+
 // ---- Mouvement de stock produit fini ----
 
 export const productStockMovementSchema = z.object({
-  production_lot_id: z.string().uuid('Lot invalide'),
+  production_lot_id: z.string().uuid('Lot invalide').optional().nullable(),
+  conditionnement_id: z.string().uuid('Conditionnement invalide').optional().nullable(),
   date: dateNotInFuture,
   type_mouvement: z.enum(['entree', 'sortie']),
   quantite: positiveInt,
   commentaire: z.string().max(1000).optional().nullable(),
-})
+}).refine(
+  (data) => !!(data.production_lot_id || data.conditionnement_id),
+  { message: 'Un lot ou un conditionnement est requis', path: ['production_lot_id'] },
+).refine(
+  (data) => !(data.production_lot_id && data.conditionnement_id),
+  { message: 'Choisir lot OU conditionnement, pas les deux', path: ['production_lot_id'] },
+)

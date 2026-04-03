@@ -2,6 +2,31 @@
 
 ---
 
+## [2026-04-02] — feat(produits): table conditionnements pour mise en bouteille
+
+**Type :** `feature`
+**Fichiers concernés :** `supabase/migrations/041_conditionnements.sql`, `src/lib/types.ts`, `src/lib/validation/produits.ts`, `src/lib/utils/produits-parsers.ts`, `src/app/[orgSlug]/(dashboard)/produits/production/actions.ts`, `src/app/[orgSlug]/(dashboard)/produits/stock/actions.ts`, `src/app/[orgSlug]/(dashboard)/produits/stock/page.tsx`, `src/components/produits/ConditionnerModal.tsx`, `src/components/produits/ProductionLotDetail.tsx`, `src/components/produits/ProductionClient.tsx`, `src/components/produits/ProductStockClient.tsx`, `src/components/produits/ProductStockSlideOver.tsx`
+
+### Description
+Refonte du système de conditionnement pour les lots en mode mélange (vinaigre, sirop). Un lot en vrac peut désormais avoir 0..N conditionnements (mises en bouteille), chacun avec son propre numéro de lot, date, temps de travail et DDM.
+
+### Détails techniques
+- **Nouvelle table `conditionnements`** : id, farm_id, production_lot_id, numero_lot, date_conditionnement, nb_unites, temps_min, ddm, commentaire
+- **`production_lots.numero_lot`** : rendu nullable (NULL en mode mélange, le numéro est sur le conditionnement)
+- **`product_stock_movements.conditionnement_id`** : nouvelle colonne, exclusif avec production_lot_id
+- **2 RPCs** : `create_conditionnement`, `delete_conditionnement` (soft delete)
+- **ConditionnerModal** refondu : date, nombre bouteilles, temps de travail, DDM, commentaire
+- **ProductionLotDetail** : affiche la liste des conditionnements avec suppression pour les lots mélange
+- **ProductStockClient/SlideOver** : supporte les deux sources (lot produit OU conditionnement)
+- **Stock summary** : agrège séparément lots mode produit et conditionnements mode mélange
+- Le bouton conditionnement est disponible sur tous les lots mélange (pas seulement ceux sans nb_unites)
+- Le mode produit (tisanes) n'est pas impacté
+
+### Migration
+Exécuter `supabase/migrations/041_conditionnements.sql` dans le SQL Editor Supabase.
+
+---
+
 ## [2026-04-02] — UX : sélecteur "depuis le stock" pour les transformations
 
 **Type :** `feature`

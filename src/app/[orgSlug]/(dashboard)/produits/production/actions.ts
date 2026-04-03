@@ -4,12 +4,13 @@ import { createClient } from '@/lib/supabase/server'
 import { revalidatePath } from 'next/cache'
 import { getContext } from '@/lib/context'
 import { buildPath } from '@/lib/utils/path'
-import { parseProductionLotForm, parseConditionnerForm } from '@/lib/utils/produits-parsers'
+import { parseProductionLotForm, parseConditionnerForm, parseConditionnementForm } from '@/lib/utils/produits-parsers'
 import { generateProductionLotNumber, getRecipeCode } from '@/lib/utils/lots'
 import { mapSupabaseError } from '@/lib/utils/error-messages'
 import type {
   ActionResult,
   ProductionLotWithRelations,
+  Conditionnement,
 } from '@/lib/types'
 
 // ---- Types internes ----
@@ -98,30 +99,34 @@ export async function createProductionLot(
 
   if (recipeErr || !recipe) return { error: 'Recette introuvable' }
 
-  // Generer le numero de lot
-  const dateProd = new Date(parsed.data.date_production)
-  const code = getRecipeCode(recipe.nom)
-  let numeroLot = generateProductionLotNumber(code, dateProd)
+  // Generer le numero de lot (NULL pour mode melange — le numero sera sur le conditionnement)
+  let numeroLot: string | null = null
 
-  // Verifier l'unicite et suffixer si necessaire
-  const { data: existing } = await supabase
-    .from('production_lots')
-    .select('numero_lot')
-    .eq('farm_id', farmId)
-    .like('numero_lot', `${numeroLot}%`)
+  if (parsed.data.mode === 'produit') {
+    const dateProd = new Date(parsed.data.date_production)
+    const code = getRecipeCode(recipe.nom)
+    numeroLot = generateProductionLotNumber(code, dateProd)
 
-  if (existing && existing.length > 0) {
-    const usedNumbers = new Set(existing.map(e => e.numero_lot))
-    if (usedNumbers.has(numeroLot)) {
-      let suffix = 2
-      while (usedNumbers.has(`${numeroLot}-${suffix}`)) suffix++
-      numeroLot = `${numeroLot}-${suffix}`
+    // Verifier l'unicite et suffixer si necessaire
+    const { data: existing } = await supabase
+      .from('production_lots')
+      .select('numero_lot')
+      .eq('farm_id', farmId)
+      .like('numero_lot', `${numeroLot}%`)
+
+    if (existing && existing.length > 0) {
+      const usedNumbers = new Set(existing.map(e => e.numero_lot))
+      if (usedNumbers.has(numeroLot)) {
+        let suffix = 2
+        while (usedNumbers.has(`${numeroLot}-${suffix}`)) suffix++
+        numeroLot = `${numeroLot}-${suffix}`
+      }
     }
   }
 
   // DDM — fournie par le formulaire (editee par l'utilisateur a l'etape confirmation)
   const ddmStr = (formData.get('ddm') as string) || (() => {
-    const d = new Date(dateProd)
+    const d = new Date(parsed.data.date_production)
     d.setMonth(d.getMonth() + 24)
     return d.toISOString().split('T')[0]
   })()
@@ -157,7 +162,7 @@ export async function createProductionLot(
   if (error) return { error: mapSupabaseError(error) }
 
   revalidatePath(buildPath(orgSlug, '/produits/production'))
-  return { success: true, data: { id: lotId as string, numero_lot: numeroLot } }
+  return { success: true, data: { id: lotId as string, numero_lot: numeroLot ?? '' } }
 }
 
 /** Soft delete d'un lot de production via RPC (restaure le stock) */
@@ -194,7 +199,7 @@ export async function restoreProductionLot(id: string): Promise<ActionResult> {
   return { success: true }
 }
 
-/** Conditionne un lot melange (ajoute nb_unites) */
+/** Conditionne un lot melange (ancien — ajoute nb_unites directement sur le lot) */
 export async function conditionnerLot(
   id: string,
   formData: FormData,
@@ -215,5 +220,139 @@ export async function conditionnerLot(
   if (error) return { error: mapSupabaseError(error) }
 
   revalidatePath(buildPath(orgSlug, '/produits/production'))
+  return { success: true }
+}
+
+// ---- Conditionnements (mise en bouteille) ----
+
+/** Recupere les conditionnements d'un lot de production */
+export async function fetchConditionnements(productionLotId: string): Promise<Conditionnement[]> {
+  const supabase = await createClient()
+  const { farmId } = await getContext()
+
+  // Cast : table conditionnements pas encore dans les types Supabase generes
+  const { data, error } = await (supabase as any)
+    .from('conditionnements')
+    .select('*')
+    .eq('farm_id', farmId)
+    .eq('production_lot_id', productionLotId)
+    .is('deleted_at', null)
+    .order('date_conditionnement', { ascending: false })
+
+  if (error) throw new Error(`Erreur lors du chargement des conditionnements : ${error.message}`)
+
+  return (data ?? []) as Conditionnement[]
+}
+
+/** Recupere tous les conditionnements de la ferme (pour le stock) */
+export async function fetchAllConditionnements(): Promise<
+  { id: string; numero_lot: string; production_lot_id: string; nb_unites: number; recipe_nom: string }[]
+> {
+  const supabase = await createClient()
+  const { farmId } = await getContext()
+
+  const { data, error } = await (supabase as any)
+    .from('conditionnements')
+    .select('id, numero_lot, production_lot_id, nb_unites, production_lots(recipes(nom))')
+    .eq('farm_id', farmId)
+    .is('deleted_at', null)
+    .order('date_conditionnement', { ascending: false })
+
+  if (error) throw new Error(`Erreur conditionnements : ${error.message}`)
+
+  return (data ?? []).map((c: any) => ({
+    id: c.id,
+    numero_lot: c.numero_lot,
+    production_lot_id: c.production_lot_id,
+    nb_unites: c.nb_unites,
+    recipe_nom: c.production_lots?.recipes?.nom ?? '—',
+  }))
+}
+
+/** Cree un conditionnement (mise en bouteille) via RPC */
+export async function createConditionnement(
+  formData: FormData,
+): Promise<ActionResult<{ id: string; numero_lot: string }>> {
+  const parsed = parseConditionnementForm(formData)
+  if ('error' in parsed) return parsed
+
+  const supabase = await createClient()
+  const { userId, farmId, orgSlug } = await getContext()
+
+  // Recuperer le nom de la recette pour generer le numero de lot
+  const { data: lot, error: lotErr } = await supabase
+    .from('production_lots')
+    .select('id, recipe_id, recipes(nom)')
+    .eq('id', parsed.data.production_lot_id)
+    .eq('farm_id', farmId)
+    .is('deleted_at', null)
+    .single()
+
+  if (lotErr || !lot) return { error: 'Lot de production introuvable' }
+
+  const recipeName = (lot.recipes as unknown as { nom: string } | null)?.nom ?? ''
+  const code = getRecipeCode(recipeName)
+  const dateCond = new Date(parsed.data.date_conditionnement)
+  let numeroLot = generateProductionLotNumber(code, dateCond)
+
+  // Verifier l'unicite du numero de lot (sur conditionnements + production_lots)
+  const [{ data: existingConds }, { data: existingLots }] = await Promise.all([
+    (supabase as any)
+      .from('conditionnements')
+      .select('numero_lot')
+      .eq('farm_id', farmId)
+      .like('numero_lot', `${numeroLot}%`),
+    supabase
+      .from('production_lots')
+      .select('numero_lot')
+      .eq('farm_id', farmId)
+      .like('numero_lot', `${numeroLot}%`),
+  ])
+
+  const usedNumbers = new Set([
+    ...((existingConds ?? []) as { numero_lot: string }[]).map(e => e.numero_lot),
+    ...((existingLots ?? []) as { numero_lot: string | null }[]).map(e => e.numero_lot),
+  ])
+
+  if (usedNumbers.has(numeroLot)) {
+    let suffix = 2
+    while (usedNumbers.has(`${numeroLot}-${suffix}`)) suffix++
+    numeroLot = `${numeroLot}-${suffix}`
+  }
+
+  const { data: condId, error } = await (supabase as any).rpc('create_conditionnement', {
+    p_farm_id: farmId,
+    p_production_lot_id: parsed.data.production_lot_id,
+    p_numero_lot: numeroLot,
+    p_date_conditionnement: parsed.data.date_conditionnement,
+    p_nb_unites: parsed.data.nb_unites,
+    p_temps_min: parsed.data.temps_min ?? null,
+    p_ddm: parsed.data.ddm,
+    p_commentaire: parsed.data.commentaire ?? null,
+    p_created_by: userId,
+  })
+
+  if (error) return { error: mapSupabaseError(error) }
+
+  revalidatePath(buildPath(orgSlug, '/produits/production'))
+  revalidatePath(buildPath(orgSlug, '/produits/stock'))
+  return { success: true, data: { id: condId as string, numero_lot: numeroLot } }
+}
+
+/** Supprime un conditionnement (soft delete) */
+export async function deleteConditionnement(id: string): Promise<ActionResult> {
+  const supabase = await createClient()
+  const { userId, farmId, orgSlug } = await getContext()
+
+  const { error } = await (supabase as any).rpc('delete_conditionnement', {
+    p_cond_id: id,
+    p_farm_id: farmId,
+    p_updated_by: userId,
+  })
+
+  if (error) return { error: mapSupabaseError(error) }
+
+  revalidatePath(buildPath(orgSlug, '/produits/production'))
+  revalidatePath(buildPath(orgSlug, '/produits/stock'))
   return { success: true }
 }
