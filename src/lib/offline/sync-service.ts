@@ -120,9 +120,11 @@ export async function processSyncQueue(): Promise<SyncResult> {
 
 /**
  * Supprime les entrées 'synced' dont synced_at dépasse 7 jours.
- * Ne touche JAMAIS aux entrées pending, syncing ou error.
+ * Réconcilie aussi les entrées 'error' : vérifie côté serveur si elles
+ * ont été synchronisées, et les marque 'synced' ou les supprime.
  */
 export async function purgeOldArchives(): Promise<number> {
+  // 1. Purge classique des vieilles archives synced
   const cutoffDate = new Date(Date.now() - ARCHIVE_RETENTION_DAYS * MS_PER_DAY).toISOString()
 
   const oldEntries = await offlineDb.syncQueue
@@ -131,17 +133,72 @@ export async function purgeOldArchives(): Promise<number> {
     .filter((entry) => entry.synced_at !== null && entry.synced_at < cutoffDate)
     .toArray()
 
-  if (oldEntries.length === 0) return 0
+  let purgedCount = 0
 
-  const ids = oldEntries
-    .map((e) => e.id)
-    .filter((id): id is number => id !== undefined)
+  if (oldEntries.length > 0) {
+    const ids = oldEntries
+      .map((e) => e.id)
+      .filter((id): id is number => id !== undefined)
 
-  if (ids.length > 0) {
-    await offlineDb.syncQueue.bulkDelete(ids)
+    if (ids.length > 0) {
+      await offlineDb.syncQueue.bulkDelete(ids)
+      purgedCount = ids.length
+    }
   }
 
-  return ids.length
+  // 2. Réconciliation des entrées en erreur (erreurs fantômes)
+  const reconciledCount = await reconcileErrorEntries()
+
+  return purgedCount + reconciledCount
+}
+
+/**
+ * Vérifie les entrées 'error' côté serveur par lot.
+ * Celles confirmées présentes sont marquées 'synced' (erreurs fantômes).
+ * Celles absentes restent en 'error' (vraies erreurs).
+ */
+async function reconcileErrorEntries(): Promise<number> {
+  const errorEntries = await offlineDb.syncQueue
+    .where('status')
+    .equals('error')
+    .toArray()
+
+  if (errorEntries.length === 0) return 0
+
+  // Grouper par farm_id pour l'audit
+  const byFarm = new Map<string, SyncQueueEntry[]>()
+  for (const entry of errorEntries) {
+    const group = byFarm.get(entry.farm_id) ?? []
+    group.push(entry)
+    byFarm.set(entry.farm_id, group)
+  }
+
+  let reconciledCount = 0
+
+  for (const [farmId, entries] of byFarm) {
+    const uuids = entries.map((e) => e.uuid_client)
+
+    try {
+      const response = await sendAuditBatch(uuids, farmId)
+      const confirmedSet = new Set(response.confirmed)
+
+      for (const entry of entries) {
+        if (entry.id !== undefined && confirmedSet.has(entry.uuid_client)) {
+          // Erreur fantôme → marquer comme synced
+          await offlineDb.syncQueue.update(entry.id, {
+            status: 'synced',
+            synced_at: new Date().toISOString(),
+            derniere_erreur: null,
+          })
+          reconciledCount++
+        }
+      }
+    } catch {
+      // Erreur réseau — on réessaiera au prochain cycle
+    }
+  }
+
+  return reconciledCount
 }
 
 // --- Audit batch ---
@@ -239,10 +296,10 @@ interface ServerSyncResponse {
   error?: string
 }
 
-/** Envoie une entrée au serveur via POST /api/sync (timeout 10s pour cold start Vercel) */
+/** Envoie une entrée au serveur via POST /api/sync (timeout 30s pour cold start Vercel) */
 async function sendToServer(entry: SyncQueueEntry): Promise<ServerSyncResponse> {
   const controller = new AbortController()
-  const timeoutId = setTimeout(() => controller.abort(), 10_000)
+  const timeoutId = setTimeout(() => controller.abort(), 30_000)
 
   const response = await fetch('/api/sync', {
     method: 'POST',
@@ -292,11 +349,31 @@ async function sendAuditBatch(
   return response.json() as Promise<ServerAuditResponse>
 }
 
-/** Gère l'erreur d'une entrée : incrémente tentatives, passe en 'error' si >= MAX */
+/**
+ * Gère l'erreur d'une entrée : incrémente tentatives, passe en 'error' si >= MAX.
+ * Avant de marquer 'error', vérifie côté serveur si le uuid_client existe déjà
+ * (réconciliation : le serveur a pu committer avant le timeout client).
+ */
 async function handleSyncError(entry: SyncQueueEntry, errorMessage: string): Promise<void> {
   if (entry.id === undefined) return
 
   const newTentatives = entry.tentatives + 1
+
+  // Avant de marquer définitivement en erreur, vérifier si le serveur a déjà la donnée
+  if (newTentatives >= MAX_TENTATIVES) {
+    const existsOnServer = await checkExistsOnServer(entry.uuid_client, entry.farm_id)
+    if (existsOnServer) {
+      // Erreur fantôme : la donnée est bien sur le serveur
+      await offlineDb.syncQueue.update(entry.id, {
+        status: 'synced',
+        synced_at: new Date().toISOString(),
+        derniere_erreur: null,
+        tentatives: newTentatives,
+      })
+      return
+    }
+  }
+
   const newStatus = newTentatives >= MAX_TENTATIVES ? 'error' : 'pending'
 
   await offlineDb.syncQueue.update(entry.id, {
@@ -304,6 +381,36 @@ async function handleSyncError(entry: SyncQueueEntry, errorMessage: string): Pro
     tentatives: newTentatives,
     derniere_erreur: errorMessage,
   })
+}
+
+/**
+ * Vérifie côté serveur si un uuid_client existe déjà (via l'API audit).
+ * Utilisé pour la réconciliation avant de marquer une entrée en 'error'.
+ * En cas d'échec réseau, retourne false (on ne peut pas confirmer).
+ */
+async function checkExistsOnServer(uuidClient: string, farmId: string): Promise<boolean> {
+  try {
+    const controller = new AbortController()
+    const timeoutId = setTimeout(() => controller.abort(), 10_000)
+
+    const response = await fetch('/api/sync/audit', {
+      method: 'POST',
+      credentials: 'same-origin',
+      headers: { 'Content-Type': 'application/json' },
+      signal: controller.signal,
+      body: JSON.stringify({ uuid_clients: [uuidClient], farm_id: farmId }),
+    })
+
+    clearTimeout(timeoutId)
+
+    if (!response.ok) return false
+
+    const data = (await response.json()) as { confirmed: string[]; missing: string[] }
+    return data.confirmed.includes(uuidClient)
+  } catch {
+    // Erreur réseau — on ne peut pas confirmer, on laisse en erreur
+    return false
+  }
 }
 
 /**

@@ -2,6 +2,27 @@
 
 ---
 
+## [2026-04-06] — fix(sync): réconciliation erreurs fantômes + timeout 30s
+
+**Type :** `bugfix`
+**Fichiers concernés :** `src/lib/offline/sync-service.ts`
+
+### Description
+Correction d'un bug où une saisie synchronisée avec succès côté serveur restait affichée en erreur dans la file offline (erreur fantôme "Fetch is aborted"). Cas observé : cueillette du 21/03/2026, 5 tentatives échouées par timeout, mais donnée bien présente dans Supabase.
+
+### Cause racine
+Le timeout fetch (10s) était trop court pour les cold starts Vercel ou connexions 4G lentes. Le serveur committait l'INSERT avant que le client ne reçoive la réponse → le client marquait l'entrée en erreur alors que la donnée était déjà en base (idempotence via uuid_client).
+
+### Corrections
+- **Timeout 10s → 30s** : laisse le temps aux cold starts Vercel de répondre
+- **Réconciliation dans `handleSyncError`** : avant de marquer une entrée 'error' (5e tentative), appel à `/api/sync/audit` pour vérifier si le uuid_client existe déjà côté serveur → si oui, marquée 'synced' au lieu de 'error'
+- **Réconciliation batch dans `purgeOldArchives`** : nouvelle fonction `reconcileErrorEntries()` qui vérifie toutes les entrées 'error' existantes côté serveur à chaque cycle de purge → nettoie automatiquement les erreurs fantômes héritées
+
+### Impact
+Les erreurs fantômes existantes seront automatiquement réconciliées au prochain cycle de sync. Aucune migration SQL nécessaire.
+
+---
+
 ## [2026-04-02] — feat(produits): table conditionnements pour mise en bouteille
 
 **Type :** `feature`
