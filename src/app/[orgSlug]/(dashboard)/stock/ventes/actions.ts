@@ -44,10 +44,10 @@ export async function createDirectSale(formData: FormData): Promise<ActionResult
     p_date: parsed.data.date,
     p_etat_plante: parsed.data.etat_plante,
     p_poids_g: parsed.data.poids_g,
-    p_destinataire: parsed.data.destinataire ?? null,
-    p_commentaire: parsed.data.commentaire ?? null,
+    p_destinataire: parsed.data.destinataire ?? '',
+    p_commentaire: parsed.data.commentaire ?? '',
     p_created_by: userId,
-    p_uuid_client: null,
+    p_uuid_client: '',
   })
 
   if (error) return { error: mapSupabaseError(error) }
@@ -74,8 +74,8 @@ export async function updateDirectSale(
     p_date: parsed.data.date,
     p_etat_plante: parsed.data.etat_plante,
     p_poids_g: parsed.data.poids_g,
-    p_destinataire: parsed.data.destinataire ?? null,
-    p_commentaire: parsed.data.commentaire ?? null,
+    p_destinataire: parsed.data.destinataire ?? '',
+    p_commentaire: parsed.data.commentaire ?? '',
     p_updated_by: userId,
   })
 

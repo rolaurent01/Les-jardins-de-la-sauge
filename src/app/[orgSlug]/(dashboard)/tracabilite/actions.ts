@@ -155,11 +155,11 @@ export async function searchProductionLots(
     const recipe = lot.recipe_id ? recipeMap.get(lot.recipe_id) : null
     return {
       id: lot.id,
-      numero_lot: lot.numero_lot,
+      numero_lot: lot.numero_lot ?? '',
       date_production: lot.date_production,
       ddm: lot.ddm,
-      nb_unites: lot.nb_unites,
-      poids_total_g: lot.poids_total_g,
+      nb_unites: lot.nb_unites ?? 0,
+      poids_total_g: lot.poids_total_g ?? 0,
       recipe_nom: recipe?.nom ?? 'Recette inconnue',
       recipe_poids_sachet_g: recipe?.poids_sachet_g ?? null,
       category_nom: recipe?.category_nom ?? null,
@@ -171,7 +171,7 @@ export async function searchProductionLots(
   const search = query.trim().toLowerCase()
   return enriched
     .filter(lot => {
-      const matchLot = lot.numero_lot.toLowerCase().includes(search)
+      const matchLot = (lot.numero_lot ?? '').toLowerCase().includes(search)
       const matchRecipe = lot.recipe_nom.toLowerCase().includes(search)
       return matchLot || matchRecipe
     })
@@ -347,11 +347,11 @@ export async function fetchLotTraceability(
   return {
     lot: {
       id: lot.id,
-      numero_lot: lot.numero_lot,
+      numero_lot: lot.numero_lot ?? '',
       date_production: lot.date_production,
       ddm: lot.ddm,
-      nb_unites: lot.nb_unites,
-      poids_total_g: lot.poids_total_g,
+      nb_unites: lot.nb_unites ?? 0,
+      poids_total_g: lot.poids_total_g ?? 0,
       recipe_nom: recipe?.nom ?? 'Recette inconnue',
       recipe_poids_sachet_g: recipe?.poids_sachet_g ?? null,
       category_nom: recipe?.category_nom ?? null,

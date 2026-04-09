@@ -39,7 +39,12 @@ export async function fetchStock(): Promise<StockEntry[]> {
   if (error) throw new Error(`Erreur v_stock : ${error.message}`)
   if (!data || data.length === 0) return []
 
-  return enrichStockRows(supabase, data)
+  return enrichStockRows(supabase, data.map(d => ({
+    variety_id: d.variety_id ?? '',
+    partie_plante: d.partie_plante ?? '',
+    etat_plante: d.etat_plante ?? '',
+    stock_g: d.stock_g ?? 0,
+  })))
 }
 
 /**
@@ -148,7 +153,12 @@ export async function fetchStockForTransformation(etats: string[]): Promise<Stoc
   if (error) throw new Error(`Erreur v_stock transformation : ${error.message}`)
   if (!data || data.length === 0) return []
 
-  return enrichStockRows(supabase, data)
+  return enrichStockRows(supabase, data.map(d => ({
+    variety_id: d.variety_id ?? '',
+    partie_plante: d.partie_plante ?? '',
+    etat_plante: d.etat_plante ?? '',
+    stock_g: d.stock_g ?? 0,
+  })))
 }
 
 /**
@@ -180,8 +190,8 @@ export async function fetchStockAlerts(): Promise<StockAlert[]> {
   // Agréger stock par variété
   const stockByVariety = new Map<string, number>()
   for (const row of stockData ?? []) {
-    const current = stockByVariety.get(row.variety_id) ?? 0
-    stockByVariety.set(row.variety_id, current + Number(row.stock_g))
+    const current = stockByVariety.get(row.variety_id ?? '') ?? 0
+    stockByVariety.set(row.variety_id ?? '', current + Number(row.stock_g))
   }
 
   // Récupérer les noms des variétés avec seuil

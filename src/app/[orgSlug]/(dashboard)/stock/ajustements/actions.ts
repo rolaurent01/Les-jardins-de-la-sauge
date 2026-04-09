@@ -46,9 +46,9 @@ export async function createAdjustment(formData: FormData): Promise<ActionResult
     p_etat_plante: parsed.data.etat_plante,
     p_poids_g: parsed.data.poids_g,
     p_motif: parsed.data.motif,
-    p_commentaire: parsed.data.commentaire ?? null,
+    p_commentaire: parsed.data.commentaire ?? '',
     p_created_by: userId,
-    p_uuid_client: null,
+    p_uuid_client: '',
   })
 
   if (error) return { error: mapSupabaseError(error) }
@@ -77,7 +77,7 @@ export async function updateAdjustment(
     p_etat_plante: parsed.data.etat_plante,
     p_poids_g: parsed.data.poids_g,
     p_motif: parsed.data.motif,
-    p_commentaire: parsed.data.commentaire ?? null,
+    p_commentaire: parsed.data.commentaire ?? '',
     p_updated_by: userId,
   })
 

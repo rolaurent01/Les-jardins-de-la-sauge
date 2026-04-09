@@ -3,8 +3,8 @@
  * Ces types reflètent le schéma Supabase défini dans les migrations SQL.
  */
 
-import type { MethodeOccultation } from '@/lib/supabase/types'
-export type { MethodeOccultation }
+/** Méthodes d'occultation — anciennement un enum Supabase, désormais défini localement */
+export type MethodeOccultation = 'paille' | 'foin' | 'bache' | 'engrais_vert'
 
 export type TypeCycle = 'annuelle' | 'bisannuelle' | 'perenne' | 'vivace'
 
@@ -629,8 +629,8 @@ export type Farm = {
   certif_bio: boolean
   organisme_certificateur: string | null
   numero_certificat: string | null
-  created_at: string
-  updated_at: string
+  created_at: string | null
+  updated_at: string | null
 }
 
 /** Rôle d'un utilisateur dans une organisation */

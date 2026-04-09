@@ -45,14 +45,14 @@ export async function createPurchase(formData: FormData): Promise<ActionResult<S
     p_etat_plante: parsed.data.etat_plante,
     p_poids_g: parsed.data.poids_g,
     p_fournisseur: parsed.data.fournisseur,
-    p_numero_lot_fournisseur: parsed.data.numero_lot_fournisseur ?? null,
+    p_numero_lot_fournisseur: parsed.data.numero_lot_fournisseur ?? '',
     p_certif_ab: parsed.data.certif_ab,
-    p_prix: parsed.data.prix ?? null,
-    p_commentaire: parsed.data.commentaire ?? null,
+    p_prix: parsed.data.prix ?? 0,
+    p_commentaire: parsed.data.commentaire ?? '',
     p_created_by: userId,
-    p_uuid_client: null,
-    p_external_material_id: null,
-    p_numero_facture: null,
+    p_uuid_client: '',
+    p_external_material_id: undefined,
+    p_numero_facture: undefined,
   })
 
   if (error) return { error: mapSupabaseError(error) }
@@ -80,13 +80,13 @@ export async function updatePurchase(
     p_etat_plante: parsed.data.etat_plante,
     p_poids_g: parsed.data.poids_g,
     p_fournisseur: parsed.data.fournisseur,
-    p_numero_lot_fournisseur: parsed.data.numero_lot_fournisseur ?? null,
+    p_numero_lot_fournisseur: parsed.data.numero_lot_fournisseur ?? '',
     p_certif_ab: parsed.data.certif_ab,
-    p_prix: parsed.data.prix ?? null,
-    p_commentaire: parsed.data.commentaire ?? null,
+    p_prix: parsed.data.prix ?? 0,
+    p_commentaire: parsed.data.commentaire ?? '',
     p_updated_by: userId,
-    p_external_material_id: null,
-    p_numero_facture: null,
+    p_external_material_id: undefined,
+    p_numero_facture: undefined,
   })
 
   if (error) return { error: mapSupabaseError(error) }

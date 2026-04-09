@@ -45,16 +45,16 @@ export async function createDrying(formData: FormData): Promise<ActionResult<Dry
     p_etat_plante: parsed.data.etat_plante,
     p_date: parsed.data.date,
     p_poids_g: parsed.data.poids_g,
-    p_temps_min: parsed.data.temps_min ?? null,
-    p_commentaire: parsed.data.commentaire ?? null,
+    p_temps_min: parsed.data.temps_min ?? 0,
+    p_commentaire: parsed.data.commentaire ?? '',
     p_created_by: userId,
-    p_uuid_client: null,
+    p_uuid_client: undefined,
   })
 
   if (error) return { error: mapSupabaseError(error) }
 
   revalidatePath(buildPath(orgSlug, '/transformation/sechage'))
-  return { success: true, data: { id: data } as unknown as Drying }
+  return { success: true, data: { id: data ?? '' } as unknown as Drying }
 }
 
 /** Met a jour un sechage + son mouvement de stock via RPC transactionnelle */
@@ -75,8 +75,8 @@ export async function updateDrying(
     p_etat_plante: parsed.data.etat_plante,
     p_date: parsed.data.date,
     p_poids_g: parsed.data.poids_g,
-    p_temps_min: parsed.data.temps_min ?? null,
-    p_commentaire: parsed.data.commentaire ?? null,
+    p_temps_min: parsed.data.temps_min ?? 0,
+    p_commentaire: parsed.data.commentaire ?? '',
     p_updated_by: userId,
   })
 

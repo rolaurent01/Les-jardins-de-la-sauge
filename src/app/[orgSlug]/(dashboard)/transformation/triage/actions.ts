@@ -45,10 +45,10 @@ export async function createSorting(formData: FormData): Promise<ActionResult<So
     p_etat_plante: parsed.data.etat_plante,
     p_date: parsed.data.date,
     p_poids_g: parsed.data.poids_g,
-    p_temps_min: parsed.data.temps_min ?? null,
-    p_commentaire: parsed.data.commentaire ?? null,
+    p_temps_min: parsed.data.temps_min ?? 0,
+    p_commentaire: parsed.data.commentaire ?? '',
     p_created_by: userId,
-    p_uuid_client: null,
+    p_uuid_client: undefined,
   })
 
   if (error) return { error: mapSupabaseError(error) }
@@ -75,8 +75,8 @@ export async function updateSorting(
     p_etat_plante: parsed.data.etat_plante,
     p_date: parsed.data.date,
     p_poids_g: parsed.data.poids_g,
-    p_temps_min: parsed.data.temps_min ?? null,
-    p_commentaire: parsed.data.commentaire ?? null,
+    p_temps_min: parsed.data.temps_min ?? 0,
+    p_commentaire: parsed.data.commentaire ?? '',
     p_updated_by: userId,
   })
 
@@ -117,8 +117,8 @@ export async function createSortingCombined(formData: FormData): Promise<ActionR
     p_date: parsed.data.date,
     p_poids_entree_g: parsed.data.poids_entree_g,
     p_poids_sortie_g: parsed.data.poids_sortie_g,
-    p_temps_min: parsed.data.temps_min ?? null,
-    p_commentaire: parsed.data.commentaire ?? null,
+    p_temps_min: parsed.data.temps_min ?? 0,
+    p_commentaire: parsed.data.commentaire ?? '',
     p_created_by: userId,
   })
 
@@ -147,8 +147,8 @@ export async function updateSortingCombined(
     p_date: parsed.data.date,
     p_poids_entree_g: parsed.data.poids_entree_g,
     p_poids_sortie_g: parsed.data.poids_sortie_g,
-    p_temps_min: parsed.data.temps_min ?? null,
-    p_commentaire: parsed.data.commentaire ?? null,
+    p_temps_min: parsed.data.temps_min ?? 0,
+    p_commentaire: parsed.data.commentaire ?? '',
     p_updated_by: userId,
   })
 

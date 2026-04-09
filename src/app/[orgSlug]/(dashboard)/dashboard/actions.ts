@@ -85,14 +85,16 @@ export async function fetchDashboardStock(_farmId?: string): Promise<TopStockRow
 
   const map = new Map<string, { total: number; etats: Map<string, number> }>()
   for (const row of data) {
-    let entry = map.get(row.variety_id)
+    const vid = row.variety_id ?? ''
+    const etat = row.etat_plante ?? ''
+    let entry = map.get(vid)
     if (!entry) {
       entry = { total: 0, etats: new Map() }
-      map.set(row.variety_id, entry)
+      map.set(vid, entry)
     }
     const g = Number(row.stock_g)
     entry.total += g
-    entry.etats.set(row.etat_plante, (entry.etats.get(row.etat_plante) ?? 0) + g)
+    entry.etats.set(etat, (entry.etats.get(etat) ?? 0) + g)
   }
 
   const ids = Array.from(map.keys())
@@ -550,7 +552,7 @@ export async function fetchDashboardActiviteRecente(_farmId?: string): Promise<D
       variete: varietyMap.get(h.variety_id) ?? 'Inconnue',
       date: h.date,
       poids_g: Number(h.poids_g),
-      _sortDate: h.created_at,
+      _sortDate: h.created_at ?? '',
     })
   }
 
@@ -560,7 +562,7 @@ export async function fetchDashboardActiviteRecente(_farmId?: string): Promise<D
       variete: varietyMap.get(c.variety_id) ?? 'Inconnue',
       date: c.date,
       poids_g: Number(c.poids_g),
-      _sortDate: c.created_at,
+      _sortDate: c.created_at ?? '',
     })
   }
 
@@ -570,7 +572,7 @@ export async function fetchDashboardActiviteRecente(_farmId?: string): Promise<D
       variete: varietyMap.get(d.variety_id) ?? 'Inconnue',
       date: d.date,
       poids_g: Number(d.poids_g),
-      _sortDate: d.created_at,
+      _sortDate: d.created_at ?? '',
     })
   }
 
@@ -580,7 +582,7 @@ export async function fetchDashboardActiviteRecente(_farmId?: string): Promise<D
       variete: varietyMap.get(s.variety_id) ?? 'Inconnue',
       date: s.date,
       poids_g: Number(s.poids_g),
-      _sortDate: s.created_at,
+      _sortDate: s.created_at ?? '',
     })
   }
 
@@ -603,7 +605,7 @@ export async function fetchDashboardActiviteRecente(_farmId?: string): Promise<D
       date: p.date_production,
       nb_unites: p.nb_unites ?? undefined,
       poids_g: p.poids_total_g != null ? Number(p.poids_total_g) : undefined,
-      _sortDate: p.created_at,
+      _sortDate: p.created_at ?? '',
     })
   }
 

@@ -72,9 +72,9 @@ export async function createSeedAdjustment(formData: FormData): Promise<ActionRe
     p_seed_lot_id: parsed.data.seed_lot_id,
     p_date: parsed.data.date,
     p_poids_constate_g: parsed.data.poids_constate_g,
-    p_commentaire: parsed.data.commentaire ?? null,
+    p_commentaire: parsed.data.commentaire ?? '',
     p_created_by: userId,
-    p_uuid_client: null,
+    p_uuid_client: '',
   })
 
   if (error) return { error: mapSupabaseError(error) }
@@ -96,7 +96,7 @@ export async function updateSeedAdjustment(id: string, formData: FormData): Prom
     p_adjustment_id: id,
     p_date: parsed.data.date,
     p_poids_constate_g: parsed.data.poids_constate_g,
-    p_commentaire: parsed.data.commentaire ?? null,
+    p_commentaire: parsed.data.commentaire ?? '',
     p_updated_by: userId,
   })
 

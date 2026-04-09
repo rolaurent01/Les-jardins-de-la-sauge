@@ -348,8 +348,8 @@ export async function fetchSuperData(): Promise<SuperDataResult> {
 
   const stockByEtat = new Map<string, number>()
   for (const row of stockData ?? []) {
-    const current = stockByEtat.get(row.etat_plante) ?? 0
-    stockByEtat.set(row.etat_plante, current + (row.stock_g ?? 0))
+    const current = stockByEtat.get(row.etat_plante ?? '') ?? 0
+    stockByEtat.set(row.etat_plante ?? '', current + (row.stock_g ?? 0))
   }
   const stockParEtat = Array.from(stockByEtat.entries()).map(([etat, g]) => ({
     etat,

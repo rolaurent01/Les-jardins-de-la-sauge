@@ -1,4 +1,5 @@
 import { createAdminClient } from '@/lib/supabase/server'
+import type { Json } from '@/lib/supabase/types'
 import { NextResponse } from 'next/server'
 
 /** Tables métier scopées par farm_id */
@@ -116,7 +117,7 @@ async function logToAppLogs(
   supabase: ReturnType<typeof createAdminClient>,
   level: 'info' | 'error',
   message: string,
-  metadata?: Record<string, unknown>
+  metadata?: Record<string, Json>
 ): Promise<void> {
   try {
     await supabase.from('app_logs').insert({

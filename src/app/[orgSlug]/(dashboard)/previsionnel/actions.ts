@@ -101,7 +101,9 @@ export async function fetchVarietiesForForecast(): Promise<
 
   const hiddenIds = new Set((settings ?? []).map(s => s.variety_id))
 
-  return (data ?? []).filter(v => !hiddenIds.has(v.id))
+  return (data ?? [])
+    .filter(v => !hiddenIds.has(v.id))
+    .map(v => ({ ...v, parties_utilisees: v.parties_utilisees as PartiePlante[] }))
 }
 
 /**

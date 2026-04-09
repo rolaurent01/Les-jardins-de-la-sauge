@@ -275,7 +275,7 @@ async function dispatchProductionLot({ farm_id, user_id, uuid_client, payload }:
     .like('numero_lot', `${numeroLot}%`)
 
   if (existing && existing.length > 0) {
-    const usedNumbers = new Set(existing.map((e: { numero_lot: string }) => e.numero_lot))
+    const usedNumbers = new Set(existing.map((e: { numero_lot: string | null }) => e.numero_lot ?? ''))
     if (usedNumbers.has(numeroLot)) {
       let suffix = 2
       while (usedNumbers.has(`${numeroLot}-${suffix}`)) suffix++

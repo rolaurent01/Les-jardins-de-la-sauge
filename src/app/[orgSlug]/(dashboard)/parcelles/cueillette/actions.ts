@@ -63,16 +63,16 @@ export async function createHarvest(formData: FormData): Promise<ActionResult<Ha
 
   const { data, error } = await supabase.rpc('create_harvest_with_stock', {
     p_farm_id: farmId,
-    p_uuid_client: null,
+    p_uuid_client: '',
     p_type_cueillette: parsed.data.type_cueillette,
-    p_row_id: parsed.data.row_id ?? null,
-    p_lieu_sauvage: parsed.data.lieu_sauvage ?? null,
+    p_row_id: parsed.data.row_id ?? '',
+    p_lieu_sauvage: parsed.data.lieu_sauvage ?? '',
     p_variety_id: parsed.data.variety_id,
     p_partie_plante: parsed.data.partie_plante,
     p_date: parsed.data.date,
     p_poids_g: parsed.data.poids_g,
-    p_temps_min: parsed.data.temps_min ?? null,
-    p_commentaire: parsed.data.commentaire ?? null,
+    p_temps_min: parsed.data.temps_min ?? 0,
+    p_commentaire: parsed.data.commentaire ?? '',
     p_created_by: userId,
   })
 
@@ -100,14 +100,14 @@ export async function updateHarvest(
   const { error } = await supabase.rpc('update_harvest_with_stock', {
     p_harvest_id: id,
     p_type_cueillette: parsed.data.type_cueillette,
-    p_row_id: parsed.data.row_id ?? null,
-    p_lieu_sauvage: parsed.data.lieu_sauvage ?? null,
+    p_row_id: parsed.data.row_id ?? '',
+    p_lieu_sauvage: parsed.data.lieu_sauvage ?? '',
     p_variety_id: parsed.data.variety_id,
     p_partie_plante: parsed.data.partie_plante,
     p_date: parsed.data.date,
     p_poids_g: parsed.data.poids_g,
-    p_temps_min: parsed.data.temps_min ?? null,
-    p_commentaire: parsed.data.commentaire ?? null,
+    p_temps_min: parsed.data.temps_min ?? 0,
+    p_commentaire: parsed.data.commentaire ?? '',
     p_updated_by: userId,
   })
 
