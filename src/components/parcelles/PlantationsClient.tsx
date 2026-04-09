@@ -3,7 +3,7 @@
 import { useState, useEffect, useTransition, useMemo } from 'react'
 import { useRouter } from 'next/navigation'
 import type { PlantingWithRelations, RowWithParcel, Variety } from '@/lib/types'
-import type { SeedlingForSelect } from '@/app/[orgSlug]/(dashboard)/parcelles/plantations/actions'
+import type { SeedlingForSelect, SeedLotForSelect } from '@/app/[orgSlug]/(dashboard)/parcelles/plantations/actions'
 import {
   createPlanting,
   updatePlanting,
@@ -61,6 +61,7 @@ type Props = {
   rows: RowWithParcel[]
   varieties: Pick<Variety, 'id' | 'nom_vernaculaire'>[]
   seedlings: SeedlingForSelect[]
+  seedLots: SeedLotForSelect[]
   certifBio?: boolean
 }
 
@@ -77,7 +78,7 @@ const PLANTATIONS_EXPORT_COLUMNS: ExportColumn[] = [
   { key: 'commentaire', label: 'Commentaire' },
 ]
 
-export default function PlantationsClient({ initialPlantings, rows, varieties, seedlings, certifBio = false }: Props) {
+export default function PlantationsClient({ initialPlantings, rows, varieties, seedlings, seedLots, certifBio = false }: Props) {
   const router = useRouter()
   const [, startTransition] = useTransition()
 
@@ -441,6 +442,7 @@ export default function PlantationsClient({ initialPlantings, rows, varieties, s
         rows={editingPlanting ? rows : unplantedRows}
         varieties={varieties}
         seedlings={seedlings}
+        seedLots={seedLots}
         certifBio={certifBio}
         onClose={() => setSlideOverOpen(false)}
         onSubmit={handleSave}

@@ -4,7 +4,7 @@ import { useState, useTransition, useEffect, useRef, useCallback } from 'react'
 import { Field } from '@/components/ui/Field'
 import type { PlantingWithRelations, RowWithParcel, Variety, ActionResult, SeedlingStatut } from '@/lib/types'
 import { SEEDLING_STATUT_LABELS } from '@/lib/types'
-import type { SeedlingForSelect, RowWarnings } from '@/app/[orgSlug]/(dashboard)/parcelles/plantations/actions'
+import type { SeedlingForSelect, SeedLotForSelect, RowWarnings } from '@/app/[orgSlug]/(dashboard)/parcelles/plantations/actions'
 import { fetchRowWarnings } from '@/app/[orgSlug]/(dashboard)/parcelles/plantations/actions'
 import QuickAddVariety from '@/components/varieties/QuickAddVariety'
 import { formatDate } from '@/lib/utils/format'
@@ -19,6 +19,7 @@ type Props = {
   rows: RowWithParcel[]
   varieties: Pick<Variety, 'id' | 'nom_vernaculaire'>[]
   seedlings: SeedlingForSelect[]
+  seedLots: SeedLotForSelect[]
   certifBio?: boolean
   onClose: () => void
   onSubmit: (fd: FormData) => Promise<ActionResult>
@@ -44,6 +45,7 @@ export default function PlantationSlideOver({
   rows,
   varieties: initialVarieties,
   seedlings,
+  seedLots,
   certifBio = false,
   onClose,
   onSubmit,
@@ -60,8 +62,9 @@ export default function PlantationSlideOver({
   const [selectedRowId, setSelectedRowId] = useState(planting?.row_id ?? '')
   const [selectedVarietyId, setSelectedVarietyId] = useState(planting?.variety_id ?? '')
   const [selectedSeedlingId, setSelectedSeedlingId] = useState(planting?.seedling_id ?? '')
-  const [originMode, setOriginMode] = useState<'semis' | 'fournisseur'>(
-    planting?.seedling_id ? 'semis' : 'fournisseur',
+  const [selectedSeedLotId, setSelectedSeedLotId] = useState(planting?.seed_lot_id ?? '')
+  const [originMode, setOriginMode] = useState<'semis' | 'semis_direct' | 'fournisseur'>(
+    planting?.seedling_id ? 'semis' : planting?.seed_lot_id ? 'semis_direct' : 'fournisseur',
   )
   const [nbPlants, setNbPlants] = useState<string>(planting?.nb_plants?.toString() ?? '')
   const [espacementCm, setEspacementCm] = useState<string>(planting?.espacement_cm?.toString() ?? '')
@@ -107,7 +110,8 @@ export default function PlantationSlideOver({
     setSelectedRowId(planting?.row_id ?? '')
     setSelectedVarietyId(planting?.variety_id ?? '')
     setSelectedSeedlingId(planting?.seedling_id ?? '')
-    setOriginMode(planting?.seedling_id ? 'semis' : 'fournisseur')
+    setSelectedSeedLotId(planting?.seed_lot_id ?? '')
+    setOriginMode(planting?.seedling_id ? 'semis' : planting?.seed_lot_id ? 'semis_direct' : 'fournisseur')
     setNbPlants(planting?.nb_plants?.toString() ?? '')
     setEspacementCm(planting?.espacement_cm?.toString() ?? '')
     setLongueurM(planting?.longueur_m?.toString() ?? '')
@@ -180,11 +184,18 @@ export default function PlantationSlideOver({
     fd.set('largeur_m', largeurM)
 
     // Nettoyer les champs de l'origine non sélectionnée
+    const fournisseurVal = (fd.get('fournisseur') as string) ?? ''
+    fd.delete('seedling_id')
+    fd.delete('seed_lot_id')
+    fd.delete('fournisseur')
+
     if (originMode === 'semis') {
-      fd.delete('fournisseur')
       fd.set('seedling_id', selectedSeedlingId)
+    } else if (originMode === 'semis_direct') {
+      fd.set('seed_lot_id', selectedSeedLotId)
+      fd.set('type_plant', 'semis_direct')
     } else {
-      fd.delete('seedling_id')
+      fd.set('fournisseur', fournisseurVal)
     }
 
     startTransition(async () => {
@@ -358,13 +369,20 @@ export default function PlantationSlideOver({
 
             {/* Origine */}
             <Field label="Origine">
-              <div className="flex gap-2 mb-2">
+              <div className="flex gap-2 mb-2 flex-wrap">
                 <ToggleBtn
                   active={originMode === 'semis'}
                   onClick={() => setOriginMode('semis')}
                   disabled={isPending}
                 >
                   Issu de mes semis
+                </ToggleBtn>
+                <ToggleBtn
+                  active={originMode === 'semis_direct'}
+                  onClick={() => setOriginMode('semis_direct')}
+                  disabled={isPending}
+                >
+                  Semis direct
                 </ToggleBtn>
                 <ToggleBtn
                   active={originMode === 'fournisseur'}
@@ -375,7 +393,7 @@ export default function PlantationSlideOver({
                 </ToggleBtn>
               </div>
 
-              {originMode === 'semis' ? (
+              {originMode === 'semis' && (
                 <>
                   <select
                     name="seedling_id"
@@ -418,7 +436,46 @@ export default function PlantationSlideOver({
                     seedling={seedlings.find(s => s.id === selectedSeedlingId) ?? null}
                   />
                 </>
-              ) : (
+              )}
+
+              {originMode === 'semis_direct' && (
+                <>
+                  <select
+                    value={selectedSeedLotId}
+                    onChange={e => setSelectedSeedLotId(e.target.value)}
+                    disabled={isPending}
+                    style={inputStyle}
+                    onFocus={focusStyle}
+                    onBlur={blurStyle}
+                  >
+                    <option value="">— Sachet de graines (optionnel)</option>
+                    {seedLots
+                      .filter(sl => !selectedVarietyId || sl.variety_id === selectedVarietyId)
+                      .map(sl => {
+                        const stockLabel = sl.stock_g != null
+                          ? `${sl.stock_g}g restants`
+                          : sl.poids_sachet_g != null
+                            ? `${sl.poids_sachet_g}g initial`
+                            : ''
+                        return (
+                          <option key={sl.id} value={sl.id}>
+                            {sl.lot_interne}
+                            {sl.fournisseur ? ` — ${sl.fournisseur}` : ''}
+                            {stockLabel ? ` — ${stockLabel}` : ''}
+                          </option>
+                        )
+                      })
+                    }
+                  </select>
+
+                  {/* Fiche récap du sachet sélectionné */}
+                  <SeedLotInfoCard
+                    seedLot={seedLots.find(sl => sl.id === selectedSeedLotId) ?? null}
+                  />
+                </>
+              )}
+
+              {originMode === 'fournisseur' && (
                 <input
                   name="fournisseur"
                   type="text"
@@ -818,6 +875,63 @@ function SeedlingInfoCard({ seedling }: { seedling: SeedlingForSelect | null }) 
               }}
             />
           </div>
+        </div>
+      )}
+    </div>
+  )
+}
+
+/** Fiche récapitulative du sachet de graines sélectionné */
+function SeedLotInfoCard({ seedLot }: { seedLot: SeedLotForSelect | null }) {
+  if (!seedLot) return null
+
+  return (
+    <div
+      className="mt-2 rounded-lg px-3 py-2.5 text-xs space-y-1"
+      style={{ backgroundColor: '#F5F2ED', border: '1px solid #E8E3DB' }}
+    >
+      <div className="flex items-center justify-between">
+        <span style={{ color: '#6B7B6C' }}>
+          {seedLot.lot_interne}
+          {seedLot.fournisseur ? ` — ${seedLot.fournisseur}` : ''}
+        </span>
+        {seedLot.certif_ab && (
+          <span
+            className="px-1.5 py-0.5 rounded-full text-[10px] font-semibold"
+            style={{ backgroundColor: '#D1FAE5', color: '#065F46' }}
+          >
+            AB
+          </span>
+        )}
+      </div>
+
+      {/* Jauge de stock */}
+      {seedLot.poids_sachet_g != null && (
+        <div className="pt-1">
+          <div className="flex items-center justify-between mb-0.5">
+            <span style={{ color: '#6B7B6C' }}>
+              <strong>{seedLot.stock_g != null ? `${seedLot.stock_g}g` : '?'}</strong> restants
+            </span>
+            <span style={{ color: '#9CA89D' }}>
+              / {seedLot.poids_sachet_g}g
+            </span>
+          </div>
+          {seedLot.stock_g != null && (
+            <div
+              className="w-full rounded-full overflow-hidden"
+              style={{ height: 4, backgroundColor: '#D8E0D9' }}
+            >
+              <div
+                className="rounded-full"
+                style={{
+                  height: '100%',
+                  width: `${Math.min(100, Math.max(0, (seedLot.stock_g / seedLot.poids_sachet_g) * 100))}%`,
+                  backgroundColor: seedLot.stock_g <= 0 ? '#9CA89D' : 'var(--color-primary)',
+                  transition: 'width 0.3s ease',
+                }}
+              />
+            </div>
+          )}
         </div>
       )}
     </div>

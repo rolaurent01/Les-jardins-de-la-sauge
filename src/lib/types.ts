@@ -364,6 +364,7 @@ export type Planting = {
   variety_id: string | null
   seedling_id: string | null
   bouture_id: string | null
+  seed_lot_id: string | null
   fournisseur: string | null
   annee: number
   date_plantation: string
@@ -395,6 +396,7 @@ export type PlantingWithRelations = Planting & {
     | null
   seedlings: Pick<Seedling, 'id' | 'processus' | 'statut' | 'numero_caisse'> | null
   boutures: Pick<Bouture, 'id' | 'type_multiplication' | 'statut'> | null
+  seed_lots: { id: string; lot_interne: string; fournisseur: string | null } | null
 }
 
 // ---- Suivi de rang ----

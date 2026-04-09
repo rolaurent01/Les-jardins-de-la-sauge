@@ -1,4 +1,4 @@
-import { fetchPlantings, fetchSeedlingsForSelect } from './actions'
+import { fetchPlantings, fetchSeedlingsForSelect, fetchSeedLotsForSelect } from './actions'
 import { fetchRowsForSelect, fetchVarietiesForSelect } from '@/app/[orgSlug]/(dashboard)/parcelles/shared-actions'
 import { getContext } from '@/lib/context'
 import PlantationsClient from '@/components/parcelles/PlantationsClient'
@@ -7,11 +7,12 @@ export const metadata = { title: 'Plantations — Carnet Culture' }
 
 export default async function PlantationsPage() {
   try {
-    const [plantings, rows, varieties, seedlings, ctx] = await Promise.all([
+    const [plantings, rows, varieties, seedlings, seedLots, ctx] = await Promise.all([
       fetchPlantings(),
       fetchRowsForSelect(),
       fetchVarietiesForSelect(),
       fetchSeedlingsForSelect(),
+      fetchSeedLotsForSelect(),
       getContext(),
     ])
 
@@ -21,6 +22,7 @@ export default async function PlantationsPage() {
         rows={rows}
         varieties={varieties}
         seedlings={seedlings}
+        seedLots={seedLots}
         certifBio={ctx.certifBio}
       />
     )

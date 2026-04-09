@@ -42,11 +42,15 @@ const LUNE_OPTIONS = [
   { value: 'descendante', label: 'Descendante' },
 ]
 
+type OriginMode = 'semis' | 'semis_direct' | 'fournisseur'
+
 function initialState() {
   return {
     row_id: '',
     variety_id: '',
+    origin_mode: 'semis' as OriginMode,
     seedling_id: '',
+    seed_lot_id: '',
     annee: new Date().getFullYear().toString(),
     date_plantation: todayISO(),
     lune: '',
@@ -122,15 +126,18 @@ export default function PlantationForm({ orgSlug }: PlantationFormProps) {
   const handleSubmit = async () => {
     setGlobalError(null)
 
+    const typePlant = form.origin_mode === 'semis_direct' ? 'semis_direct' : form.type_plant
+
     const payload = {
       row_id: form.row_id,
       variety_id: form.variety_id,
-      seedling_id: form.seedling_id || null,
+      seedling_id: form.origin_mode === 'semis' ? (form.seedling_id || null) : null,
+      seed_lot_id: form.origin_mode === 'semis_direct' ? (form.seed_lot_id || null) : null,
       annee: form.annee ? parseInt(form.annee, 10) : undefined,
       date_plantation: form.date_plantation,
       lune: form.lune || null,
       nb_plants: form.nb_plants ? parseInt(form.nb_plants, 10) : null,
-      type_plant: form.type_plant,
+      type_plant: typePlant,
       espacement_cm: form.espacement_cm ? parseInt(form.espacement_cm, 10) : null,
       longueur_m: form.longueur_m ? parseFloat(form.longueur_m) : null,
       largeur_m: form.largeur_m ? parseFloat(form.largeur_m) : null,
@@ -226,11 +233,25 @@ export default function PlantationForm({ orgSlug }: PlantationFormProps) {
     label: `${s.processus === 'mini_motte' ? 'MM' : 'CG'} — ${fmtDate(s.date_semis)}${s.numero_caisse ? ` — Caisse ${s.numero_caisse}` : ''}${s.nb_plants_obtenus ? ` — ${s.nb_plants_obtenus} plants` : ''}`,
   }))
 
+  // Sachets de graines filtrés par variété pour le mode semis direct
+  const filteredSeedLots = useMemo(() => {
+    if (!form.variety_id) return seedLots
+    return seedLots.filter(sl => sl.variety_id === form.variety_id)
+  }, [seedLots, form.variety_id])
+
+  const seedLotOptions = filteredSeedLots.map((sl) => ({
+    value: sl.id,
+    label: `${sl.lot_interne}${sl.fournisseur ? ` — ${sl.fournisseur}` : ''}${sl.stock_g != null ? ` — ${sl.stock_g}g` : sl.poids_sachet_g != null ? ` — ${sl.poids_sachet_g}g` : ''}`,
+  }))
+
   // Semis sélectionné + sachet lié pour la chaîne de traçabilité
   const selectedSeedling = seedlings.find(s => s.id === form.seedling_id) ?? null
   const linkedSeedLot = selectedSeedling?.seed_lot_id
     ? seedLots.find(sl => sl.id === selectedSeedling.seed_lot_id) ?? null
     : null
+
+  // Sachet sélectionné pour le mode semis direct
+  const selectedDirectSeedLot = seedLots.find(sl => sl.id === form.seed_lot_id) ?? null
 
   return (
     <MobileFormLayout
@@ -256,6 +277,7 @@ export default function PlantationForm({ orgSlug }: PlantationFormProps) {
         onChange={(v) => {
           set('variety_id', v)
           set('seedling_id', '')
+          set('seed_lot_id', '')
         }}
         options={varietyOptions}
         placeholder={varietiesLoading ? 'Chargement…' : 'Sélectionner une variété'}
@@ -263,37 +285,113 @@ export default function PlantationForm({ orgSlug }: PlantationFormProps) {
         error={errors.variety_id}
       />
 
-      <MobileSelect
-        label="Semis source (optionnel)"
-        value={form.seedling_id}
-        onChange={(v) => set('seedling_id', v)}
-        options={[{ value: '', label: 'Aucun (plant acheté ou autre)' }, ...seedlingOptions]}
-        placeholder={seedlingsLoading ? 'Chargement…' : 'Aucun (plant acheté ou autre)'}
-        error={errors.seedling_id}
-      />
-
-      {/* Chaîne de traçabilité */}
-      {selectedSeedling && (
-        <div
-          className="rounded-xl px-3 py-2.5 text-xs"
-          style={{ backgroundColor: '#F5F2ED', border: '1px solid #E8E3DB', color: '#6B7B6C' }}
-        >
-          <p>
-            Semis du {fmtDate(selectedSeedling.date_semis)}
-            {' ('}
-            {selectedSeedling.processus === 'mini_motte' ? 'mini-mottes' : 'caissette/godet'}
-            {selectedSeedling.numero_caisse ? `, Caisse ${selectedSeedling.numero_caisse}` : ''}
-            {')'}
-          </p>
-          {linkedSeedLot && (
-            <p style={{ marginTop: 2 }}>
-              {'← Sachet '}
-              {linkedSeedLot.lot_interne}
-              {linkedSeedLot.fournisseur ? ` — ${linkedSeedLot.fournisseur}` : ''}
-              {linkedSeedLot.certif_ab ? ' — AB' : ''}
-            </p>
-          )}
+      {/* Origine — 3 toggles */}
+      <div>
+        <label className="block text-sm font-medium mb-1.5" style={{ color: '#2C3E2D' }}>
+          Origine
+        </label>
+        <div className="flex gap-2 flex-wrap">
+          {([
+            { value: 'semis' as OriginMode, label: 'Mes semis' },
+            { value: 'semis_direct' as OriginMode, label: 'Semis direct' },
+            { value: 'fournisseur' as OriginMode, label: 'Plant acheté' },
+          ]).map(opt => (
+            <button
+              key={opt.value}
+              type="button"
+              onClick={() => set('origin_mode', opt.value)}
+              className="px-3 py-1.5 rounded-lg text-xs font-medium transition-colors"
+              style={{
+                backgroundColor: form.origin_mode === opt.value ? 'var(--color-primary)' : 'transparent',
+                color: form.origin_mode === opt.value ? '#F9F8F6' : '#6B7B6C',
+                border: form.origin_mode === opt.value ? '1px solid var(--color-primary)' : '1px solid #D8E0D9',
+              }}
+            >
+              {opt.label}
+            </button>
+          ))}
         </div>
+      </div>
+
+      {/* Contenu conditionnel selon l'origine */}
+      {form.origin_mode === 'semis' && (
+        <>
+          <MobileSelect
+            label="Semis source (optionnel)"
+            value={form.seedling_id}
+            onChange={(v) => set('seedling_id', v)}
+            options={[{ value: '', label: 'Aucun' }, ...seedlingOptions]}
+            placeholder={seedlingsLoading ? 'Chargement…' : 'Aucun'}
+            error={errors.seedling_id}
+          />
+
+          {/* Chaîne de traçabilité */}
+          {selectedSeedling && (
+            <div
+              className="rounded-xl px-3 py-2.5 text-xs"
+              style={{ backgroundColor: '#F5F2ED', border: '1px solid #E8E3DB', color: '#6B7B6C' }}
+            >
+              <p>
+                Semis du {fmtDate(selectedSeedling.date_semis)}
+                {' ('}
+                {selectedSeedling.processus === 'mini_motte' ? 'mini-mottes' : 'caissette/godet'}
+                {selectedSeedling.numero_caisse ? `, Caisse ${selectedSeedling.numero_caisse}` : ''}
+                {')'}
+              </p>
+              {linkedSeedLot && (
+                <p style={{ marginTop: 2 }}>
+                  {'← Sachet '}
+                  {linkedSeedLot.lot_interne}
+                  {linkedSeedLot.fournisseur ? ` — ${linkedSeedLot.fournisseur}` : ''}
+                  {linkedSeedLot.certif_ab ? ' — AB' : ''}
+                </p>
+              )}
+            </div>
+          )}
+        </>
+      )}
+
+      {form.origin_mode === 'semis_direct' && (
+        <>
+          <MobileSelect
+            label="Sachet de graines (optionnel)"
+            value={form.seed_lot_id}
+            onChange={(v) => set('seed_lot_id', v)}
+            options={[{ value: '', label: 'Aucun' }, ...seedLotOptions]}
+            placeholder="Aucun"
+            error={errors.seed_lot_id}
+          />
+
+          {/* Fiche récap du sachet */}
+          {selectedDirectSeedLot && (
+            <div
+              className="rounded-xl px-3 py-2.5 text-xs"
+              style={{ backgroundColor: '#F5F2ED', border: '1px solid #E8E3DB', color: '#6B7B6C' }}
+            >
+              <div className="flex items-center justify-between">
+                <span>
+                  {selectedDirectSeedLot.lot_interne}
+                  {selectedDirectSeedLot.fournisseur ? ` — ${selectedDirectSeedLot.fournisseur}` : ''}
+                </span>
+                {selectedDirectSeedLot.certif_ab && (
+                  <span
+                    className="px-1.5 py-0.5 rounded-full text-[10px] font-semibold"
+                    style={{ backgroundColor: '#D1FAE5', color: '#065F46' }}
+                  >
+                    AB
+                  </span>
+                )}
+              </div>
+              {selectedDirectSeedLot.poids_sachet_g != null && (
+                <p style={{ marginTop: 2 }}>
+                  Stock : {selectedDirectSeedLot.stock_g != null ? `${selectedDirectSeedLot.stock_g}g` : '?'}
+                  {' / '}
+                  {selectedDirectSeedLot.poids_sachet_g}g
+                </p>
+              )}
+            </div>
+          )}
+        </>
       )}
 
       <MobileInput

@@ -2,6 +2,25 @@
 
 ---
 
+## [2026-04-09 14:00] — feat(plantations): ajout origine "Semis direct" avec lien sachet de graines
+
+**Type :** `feature`
+**Fichiers concernés :** `supabase/migrations/042_planting_direct_sowing.sql`, `src/lib/types.ts`, `src/lib/validation/parcelles.ts`, `src/lib/utils/parcelles-parsers.ts`, `src/lib/offline/db.ts`, `src/app/api/offline/reference-data/route.ts`, `src/app/[orgSlug]/(dashboard)/parcelles/plantations/actions.ts`, `src/app/[orgSlug]/(dashboard)/parcelles/plantations/page.tsx`, `src/components/parcelles/PlantationsClient.tsx`, `src/components/parcelles/PlantationSlideOver.tsx`, `src/components/mobile/forms/PlantationForm.tsx`
+
+### Description
+Ajout d'une 3e option d'origine "Semis direct" dans le formulaire de plantation (desktop + mobile). Permet de lier une plantation en semis direct à un sachet de graines (seed_lot) du stock existant, pour la traçabilité. Pas de déduction automatique du stock (géré par inventaire manuel).
+
+### Détails techniques
+- Migration SQL : colonne `seed_lot_id` sur `plantings` + contrainte d'exclusivité 4 sources (seedling_id, bouture_id, seed_lot_id, fournisseur)
+- Desktop : 3 toggles dans PlantationSlideOver avec dropdown sachets filtrés par variété + fiche récap (stock, fournisseur, certif AB)
+- Mobile : 3 toggles dans PlantationForm avec dropdown sachets + fiche récap, `type_plant` auto-forcé à `semis_direct`
+- Offline : `CachedSeedLot` enrichi avec `stock_g` via `v_seed_stock`, `loadSeedLots` fait un join supplémentaire
+- Validation Zod : `seed_lot_id` ajouté aux schémas `plantingSchema` et `mobilePlantingSchema`
+- Sync dispatch : `seed_lot_id` passé via le spread `...payload` existant
+- Multi-tenant : RLS + farm_id sur seed_lots déjà en place
+
+---
+
 ## [2026-04-06] — fix(sync): réconciliation erreurs fantômes + timeout 30s
 
 **Type :** `bugfix`

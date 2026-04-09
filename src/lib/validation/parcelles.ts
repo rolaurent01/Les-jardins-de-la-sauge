@@ -87,6 +87,7 @@ export const plantingSchema = z
     ]),
     seedling_id: z.string().uuid('Semis invalide').optional().nullable(),
     bouture_id: z.string().uuid('Bouture invalide').optional().nullable(),
+    seed_lot_id: z.string().uuid('Sachet invalide').optional().nullable(),
     fournisseur: z.string().max(200).optional().nullable(),
     lune: z.enum(['montante', 'descendante']).optional().nullable(),
     espacement_cm: positiveInt.optional().nullable(),
@@ -97,13 +98,13 @@ export const plantingSchema = z
     commentaire: z.string().max(1000).optional().nullable(),
   })
   .superRefine((data, ctx) => {
-    // Validation conditionnelle : seedling_id, bouture_id et fournisseur sont mutuellement exclusifs
-    const sources = [data.seedling_id, data.bouture_id, data.fournisseur].filter(Boolean)
+    // Validation conditionnelle : seedling_id, bouture_id, seed_lot_id et fournisseur sont mutuellement exclusifs
+    const sources = [data.seedling_id, data.bouture_id, data.seed_lot_id, data.fournisseur].filter(Boolean)
     if (sources.length > 1) {
       ctx.addIssue({
         code: z.ZodIssueCode.custom,
         path: ['seedling_id'],
-        message: 'Une seule source possible : semis, bouture ou fournisseur',
+        message: 'Une seule source possible : semis, bouture, sachet ou fournisseur',
       })
     }
   })
@@ -115,6 +116,8 @@ export type PlantingFormData = z.infer<typeof plantingSchema>
 export const mobilePlantingSchema = z.object({
   row_id: z.string().uuid('Rang invalide'),
   variety_id: z.string().uuid('Variété invalide'),
+  seedling_id: z.string().uuid('Semis invalide').optional().nullable(),
+  seed_lot_id: z.string().uuid('Sachet invalide').optional().nullable(),
   annee: z.number().int('Doit être un entier').min(2000).max(2100),
   date_plantation: dateNotInFuture,
   lune: z.enum(['montante', 'descendante']).optional().nullable(),

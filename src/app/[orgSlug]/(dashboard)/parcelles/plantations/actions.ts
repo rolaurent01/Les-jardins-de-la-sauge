@@ -48,6 +48,17 @@ export type RowWarnings = {
   activeOccultation: { date_debut: string; methode: string } | null
 }
 
+/** Sachet de graines enrichi avec stock pour le sélecteur du formulaire plantation */
+export type SeedLotForSelect = {
+  id: string
+  lot_interne: string
+  variety_id: string | null
+  fournisseur: string | null
+  poids_sachet_g: number | null
+  certif_ab: boolean
+  stock_g: number | null
+}
+
 // ---- Requêtes ----
 
 /** Récupère toutes les plantations actives de la ferme courante avec variété, rang et semis joints */
@@ -58,7 +69,7 @@ export async function fetchPlantings(): Promise<PlantingWithRelations[]> {
   const { data, error } = await supabase
     .from('plantings')
     .select(
-      '*, varieties(id, nom_vernaculaire), rows(id, numero, longueur_m, largeur_m, parcels(id, nom, code, sites(id, nom))), seedlings(id, processus, statut, numero_caisse), boutures(id, type_multiplication, statut)',
+      '*, varieties(id, nom_vernaculaire), rows(id, numero, longueur_m, largeur_m, parcels(id, nom, code, sites(id, nom))), seedlings(id, processus, statut, numero_caisse), boutures(id, type_multiplication, statut), seed_lots(id, lot_interne, fournisseur)',
     )
     .eq('farm_id', farmId)
     .is('deleted_at', null)
@@ -163,6 +174,41 @@ export async function fetchCuttingsForSelect(): Promise<CuttingForSelect[]> {
       : null
     return { ...c, plants_plantes: plantsPlantes, plants_restants: plantsRestants }
   })
+}
+
+/** Récupère les sachets de graines avec stock pour le sélecteur du formulaire plantation */
+export async function fetchSeedLotsForSelect(): Promise<SeedLotForSelect[]> {
+  const admin = createAdminClient()
+  const { farmId } = await getContext()
+
+  const { data, error } = await admin
+    .from('seed_lots')
+    .select('id, lot_interne, variety_id, fournisseur, poids_sachet_g, certif_ab')
+    .eq('farm_id', farmId)
+    .is('deleted_at', null)
+    .order('lot_interne', { ascending: false })
+
+  if (error) throw new Error(`Erreur lors du chargement des sachets : ${error.message}`)
+
+  // Enrichir avec le stock restant
+  const { data: stockData } = await admin
+    .from('v_seed_stock')
+    .select('seed_lot_id, stock_g')
+    .eq('farm_id', farmId)
+
+  const stockMap = new Map<string, number>()
+  for (const s of (stockData ?? []) as { seed_lot_id: string; stock_g: number }[]) {
+    stockMap.set(s.seed_lot_id, s.stock_g)
+  }
+
+  return (data ?? []).map(sl => ({
+    ...sl,
+    variety_id: (sl.variety_id as string | null) ?? null,
+    fournisseur: (sl.fournisseur as string | null) ?? null,
+    poids_sachet_g: (sl.poids_sachet_g as number | null) ?? null,
+    certif_ab: (sl.certif_ab as boolean) ?? false,
+    stock_g: stockMap.get(sl.id as string) ?? null,
+  })) as SeedLotForSelect[]
 }
 
 /**

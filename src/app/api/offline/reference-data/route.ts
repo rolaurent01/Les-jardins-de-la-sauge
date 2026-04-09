@@ -207,7 +207,22 @@ async function loadSeedLots(admin: any, farmId: string) {
     .order('date_achat', { ascending: false })
 
   if (error) throw new Error(`Erreur chargement sachets de graines : ${error.message}`)
-  return data ?? []
+
+  // Enrichir avec le stock restant depuis v_seed_stock
+  const { data: stockData } = await admin
+    .from('v_seed_stock')
+    .select('seed_lot_id, stock_g')
+    .eq('farm_id', farmId)
+
+  const stockMap = new Map<string, number>()
+  for (const s of (stockData ?? []) as { seed_lot_id: string; stock_g: number }[]) {
+    stockMap.set(s.seed_lot_id, s.stock_g)
+  }
+
+  return (data ?? []).map((sl: { id: string }) => ({
+    ...sl,
+    stock_g: stockMap.get(sl.id) ?? null,
+  }))
 }
 
 /**

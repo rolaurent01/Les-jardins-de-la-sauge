@@ -66,6 +66,8 @@ export interface CachedSeedLot {
   date_achat: string
   poids_sachet_g: number | null
   certif_ab: boolean
+  /** Stock restant en grammes (depuis v_seed_stock, null si aucun mouvement) */
+  stock_g: number | null
 }
 
 /** Cache matériaux externes */

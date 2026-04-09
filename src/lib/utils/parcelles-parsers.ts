@@ -72,6 +72,7 @@ export function parsePlantingForm(
     variety_id:    (formData.get('variety_id') as string) || '',
     seedling_id:   (formData.get('seedling_id') as string)?.trim() || null,
     bouture_id:    (formData.get('bouture_id') as string)?.trim() || null,
+    seed_lot_id:   (formData.get('seed_lot_id') as string)?.trim() || null,
     fournisseur:   (formData.get('fournisseur') as string)?.trim() || null,
     annee:         parseOptionalInt(formData, 'annee') ?? 0,
     date_plantation: (formData.get('date_plantation') as string) || '',
