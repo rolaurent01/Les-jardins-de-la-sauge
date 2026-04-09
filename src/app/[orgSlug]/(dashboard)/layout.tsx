@@ -1,6 +1,7 @@
 import { cookies } from 'next/headers'
 import { createClient, createAdminClient } from '@/lib/supabase/server'
 import { isPlatformAdmin } from '@/lib/admin/is-platform-admin'
+import { getUnreadChangelogCount } from './assistance/actions'
 import Sidebar from '@/components/Sidebar'
 import MobileHeader from '@/components/MobileHeader'
 import ImpersonationBanner from '@/components/admin/ImpersonationBanner'
@@ -75,6 +76,9 @@ export default async function DashboardLayout({
     allOrganizations = orgs ?? []
   }
 
+  // Compter les entrées changelog non lues (pour le badge sidebar)
+  const unreadChangelog = user ? await getUnreadChangelogCount() : 0
+
   // Vérifier le mode impersonation
   const impersonateFarmId = cookieStore.get('impersonate_farm_id')?.value
   let impersonationFarmName: string | null = null
@@ -99,6 +103,7 @@ export default async function DashboardLayout({
           orgSlug={orgSlug}
           isPlatformAdmin={isAdmin}
           allOrganizations={allOrganizations}
+          unreadChangelog={unreadChangelog}
         />
       </div>
 

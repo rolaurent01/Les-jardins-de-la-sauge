@@ -8,6 +8,8 @@ const TABS = [
   { label: 'Fermes',         href: '/admin/fermes' },
   { label: 'Utilisateurs',   href: '/admin/utilisateurs' },
   { label: 'Merge variétés', href: '/admin/merge-varietes' },
+  { label: 'Changelog',      href: '/admin/changelog' },
+  { label: 'Feedbacks',      href: '/admin/feedbacks' },
   { label: 'Logs',           href: '/admin/logs' },
   { label: 'Outils',         href: '/admin/outils' },
 ]

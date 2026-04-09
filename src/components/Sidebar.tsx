@@ -210,9 +210,11 @@ type SidebarProps = {
   isPlatformAdmin?: boolean
   /** Liste de toutes les organisations — passée uniquement pour les platform_admins */
   allOrganizations?: { slug: string; nom: string }[]
+  /** Nombre d'entrées changelog non lues (badge sidebar) */
+  unreadChangelog?: number
 }
 
-export default function Sidebar({ userEmail, organization, farms, activeFarmId, orgSlug, isPlatformAdmin = false, allOrganizations }: SidebarProps) {
+export default function Sidebar({ userEmail, organization, farms, activeFarmId, orgSlug, isPlatformAdmin = false, allOrganizations, unreadChangelog = 0 }: SidebarProps) {
   const pathname = usePathname()
 
   /** Construit le chemin absolu avec le préfixe orgSlug */
@@ -406,6 +408,49 @@ export default function Sidebar({ userEmail, organization, farms, activeFarmId, 
           )
         })}
       </nav>
+
+      {/* ── Lien Assistance ── */}
+      <div className="px-3 pb-1 flex-shrink-0">
+        <Link
+          href={h('/assistance')}
+          className="flex items-center gap-2.5 rounded-md text-[12.5px]"
+          style={{
+            padding: '7px 10px',
+            color: pathname.includes('/assistance') ? C.activeText : C.normalText,
+            backgroundColor: pathname.includes('/assistance') ? C.activeBg : 'transparent',
+            transition: 'all 150ms ease-out',
+          }}
+          onMouseEnter={e => {
+            if (!pathname.includes('/assistance')) {
+              e.currentTarget.style.backgroundColor = C.hoverBg
+              e.currentTarget.style.color = C.hoverText
+            }
+          }}
+          onMouseLeave={e => {
+            if (!pathname.includes('/assistance')) {
+              e.currentTarget.style.backgroundColor = 'transparent'
+              e.currentTarget.style.color = C.normalText
+            }
+          }}
+        >
+          <span style={{ opacity: pathname.includes('/assistance') ? 0.9 : 0.55, fontSize: '13px', lineHeight: 1 }}>&#x2753;</span>
+          <span>Assistance</span>
+          {unreadChangelog > 0 && (
+            <span
+              className="ml-auto inline-flex items-center justify-center rounded-full text-[10px] font-semibold"
+              style={{
+                backgroundColor: '#F59E0B',
+                color: '#fff',
+                minWidth: '16px',
+                height: '16px',
+                padding: '0 4px',
+              }}
+            >
+              {unreadChangelog}
+            </span>
+          )}
+        </Link>
+      </div>
 
       {/* ── Lien Admin (visible uniquement pour les super admins) ── */}
       {isPlatformAdmin && (

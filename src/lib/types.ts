@@ -986,3 +986,112 @@ export type ForecastWithVariety = Forecast & {
     famille: string | null
   }
 }
+
+// ---- Module Assistance ----
+
+export type ChangelogEntryType = 'feature' | 'improvement' | 'fix'
+
+export const CHANGELOG_TYPE_LABELS: Record<ChangelogEntryType, string> = {
+  feature:     'Nouveauté',
+  improvement: 'Amélioration',
+  fix:         'Correction',
+}
+
+export const CHANGELOG_TYPE_COLORS: Record<ChangelogEntryType, { bg: string; text: string }> = {
+  feature:     { bg: '#DBEAFE', text: '#1E40AF' },
+  improvement: { bg: '#FEF3C7', text: '#92400E' },
+  fix:         { bg: '#FEE2E2', text: '#991B1B' },
+}
+
+export type ChangelogEntry = {
+  id: string
+  title: string
+  description: string
+  type: ChangelogEntryType
+  published: boolean
+  created_at: string
+  updated_at: string
+}
+
+/** Entrée changelog avec statut de lecture pour l'utilisateur courant */
+export type ChangelogEntryWithRead = ChangelogEntry & {
+  is_read: boolean
+}
+
+export type SupportTicketType = 'bug' | 'suggestion' | 'question'
+export type SupportTicketPriority = 'low' | 'normal' | 'urgent'
+export type SupportTicketStatus = 'new' | 'in_progress' | 'resolved' | 'closed'
+
+export const TICKET_TYPE_LABELS: Record<SupportTicketType, string> = {
+  bug:        'Bug',
+  suggestion: 'Suggestion',
+  question:   'Question',
+}
+
+export const TICKET_PRIORITY_LABELS: Record<SupportTicketPriority, string> = {
+  low:    'Basse',
+  normal: 'Normale',
+  urgent: 'Urgente',
+}
+
+export const TICKET_PRIORITY_COLORS: Record<SupportTicketPriority, { bg: string; text: string }> = {
+  low:    { bg: '#F3F4F6', text: '#374151' },
+  normal: { bg: '#DBEAFE', text: '#1E40AF' },
+  urgent: { bg: '#FEE2E2', text: '#991B1B' },
+}
+
+export const TICKET_STATUS_LABELS: Record<SupportTicketStatus, string> = {
+  new:         'Nouveau',
+  in_progress: 'En cours',
+  resolved:    'Résolu',
+  closed:      'Fermé',
+}
+
+export const TICKET_STATUS_COLORS: Record<SupportTicketStatus, { bg: string; text: string }> = {
+  new:         { bg: '#DBEAFE', text: '#1E40AF' },
+  in_progress: { bg: '#FEF3C7', text: '#92400E' },
+  resolved:    { bg: '#D1FAE5', text: '#065F46' },
+  closed:      { bg: '#F3F4F6', text: '#6B7280' },
+}
+
+export type SupportTicket = {
+  id: string
+  subject: string
+  description: string
+  type: SupportTicketType
+  priority: SupportTicketPriority
+  status: SupportTicketStatus
+  page_url: string | null
+  screenshot_url: string | null
+  organization_id: string
+  created_by: string
+  assigned_to: string | null
+  created_at: string
+  updated_at: string
+}
+
+/** Ticket avec le nombre de messages (pour les listes) */
+export type SupportTicketWithCount = SupportTicket & {
+  message_count: number
+}
+
+/** Ticket avec infos organisation et auteur (pour l'admin) */
+export type SupportTicketAdmin = SupportTicket & {
+  message_count: number
+  author_email: string | null
+  organization_name: string | null
+}
+
+export type SupportTicketMessage = {
+  id: string
+  ticket_id: string
+  author_id: string
+  content: string
+  is_admin_reply: boolean
+  created_at: string
+}
+
+/** Message avec l'email de l'auteur */
+export type SupportTicketMessageWithAuthor = SupportTicketMessage & {
+  author_email: string | null
+}

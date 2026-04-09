@@ -2,6 +2,26 @@
 
 ---
 
+## [2026-04-09 16:00] — feat(assistance): module complet changelog + tickets de support
+
+**Type :** `feature`
+**Fichiers concernés :** `supabase/migrations/043_assistance_module.sql`, `src/lib/types.ts`, `src/lib/supabase/types.ts`, `src/app/[orgSlug]/(dashboard)/assistance/actions.ts`, `src/app/[orgSlug]/(dashboard)/assistance/page.tsx`, `src/components/assistance/AssistanceClient.tsx`, `src/app/[orgSlug]/(dashboard)/admin/changelog/actions.ts`, `src/app/[orgSlug]/(dashboard)/admin/changelog/page.tsx`, `src/components/admin/ChangelogAdminClient.tsx`, `src/app/[orgSlug]/(dashboard)/admin/feedbacks/actions.ts`, `src/app/[orgSlug]/(dashboard)/admin/feedbacks/page.tsx`, `src/components/admin/FeedbacksAdminClient.tsx`, `src/app/[orgSlug]/(dashboard)/admin/feedbacks/[id]/page.tsx`, `src/components/admin/TicketDetailAdminClient.tsx`, `src/components/Sidebar.tsx`, `src/components/admin/AdminNav.tsx`, `src/app/[orgSlug]/(dashboard)/layout.tsx`
+
+### Description
+Implémentation du module Assistance complet avec deux fonctionnalités : système de changelog (mises à jour) et système de tickets de support. Adapté au contexte multi-tenant de l'application.
+
+### Détails techniques
+- **Migration SQL (043)** : 4 tables (changelog_entries, changelog_reads, support_tickets, support_ticket_messages) + bucket storage support-screenshots + RLS complètes (platform_admin voit tout, utilisateur voit ses propres tickets, changelog publié visible par tous)
+- **Types ENUM** : changelog_entry_type, support_ticket_type, support_ticket_priority, support_ticket_status
+- **Côté utilisateur** : page `/{orgSlug}/assistance` avec 2 onglets (Mises à jour / Support), création de ticket avec upload screenshot, fil de messages
+- **Côté admin** : `/admin/changelog` (CRUD entrées, toggle publié/brouillon), `/admin/feedbacks` (tableau paginé cross-org avec filtres et recherche, stats par statut), `/admin/feedbacks/[id]` (détail ticket, changement statut, réponse admin)
+- **Sidebar** : lien Assistance avec badge compteur d'entrées changelog non lues
+- **AdminNav** : ajouts des onglets Changelog et Feedbacks
+- **Types Supabase régénérés** via MCP pour intégrer les nouvelles tables
+- Notifications email différées (à brancher ultérieurement avec Resend ou Brevo)
+
+---
+
 ## [2026-04-09 14:00] — feat(plantations): ajout origine "Semis direct" avec lien sachet de graines
 
 **Type :** `feature`
