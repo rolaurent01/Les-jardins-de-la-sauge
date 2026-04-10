@@ -2728,6 +2728,7 @@ export type Database = {
           subject: string
           type: Database["public"]["Enums"]["support_ticket_type"]
           updated_at: string
+          user_last_seen_at: string | null
         }
         Insert: {
           assigned_to?: string | null
@@ -2743,6 +2744,7 @@ export type Database = {
           subject: string
           type?: Database["public"]["Enums"]["support_ticket_type"]
           updated_at?: string
+          user_last_seen_at?: string | null
         }
         Update: {
           assigned_to?: string | null
@@ -2758,6 +2760,7 @@ export type Database = {
           subject?: string
           type?: Database["public"]["Enums"]["support_ticket_type"]
           updated_at?: string
+          user_last_seen_at?: string | null
         }
         Relationships: [
           {

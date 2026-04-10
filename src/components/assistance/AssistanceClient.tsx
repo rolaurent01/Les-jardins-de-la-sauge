@@ -365,6 +365,14 @@ export default function AssistanceClient({
                         — {ticket.message_count} message{ticket.message_count > 1 ? 's' : ''}
                       </span>
                     )}
+                    {ticket.has_unread_reply && (
+                      <span
+                        className="inline-flex items-center gap-1 text-xs px-1.5 py-0.5 rounded-full font-medium"
+                        style={{ backgroundColor: '#FEE2E2', color: '#DC2626' }}
+                      >
+                        Nouvelle réponse
+                      </span>
+                    )}
                   </div>
                   <h3 className="text-sm font-medium" style={{ color: '#2C3E2D' }}>
                     {ticket.subject}

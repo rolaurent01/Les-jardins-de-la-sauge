@@ -212,9 +212,13 @@ type SidebarProps = {
   allOrganizations?: { slug: string; nom: string }[]
   /** Nombre d'entrées changelog non lues (badge sidebar) */
   unreadChangelog?: number
+  /** Nombre de tickets avec réponses admin non lues (badge sidebar utilisateur) */
+  unreadTicketReplies?: number
+  /** Nombre de tickets "new" non traités (badge sidebar admin) */
+  newTicketCount?: number
 }
 
-export default function Sidebar({ userEmail, organization, farms, activeFarmId, orgSlug, isPlatformAdmin = false, allOrganizations, unreadChangelog = 0 }: SidebarProps) {
+export default function Sidebar({ userEmail, organization, farms, activeFarmId, orgSlug, isPlatformAdmin = false, allOrganizations, unreadChangelog = 0, unreadTicketReplies = 0, newTicketCount = 0 }: SidebarProps) {
   const pathname = usePathname()
 
   /** Construit le chemin absolu avec le préfixe orgSlug */
@@ -435,18 +439,18 @@ export default function Sidebar({ userEmail, organization, farms, activeFarmId, 
         >
           <span style={{ opacity: pathname.includes('/assistance') ? 0.9 : 0.55, fontSize: '13px', lineHeight: 1 }}>&#x2753;</span>
           <span>Assistance</span>
-          {unreadChangelog > 0 && (
+          {(unreadChangelog + unreadTicketReplies) > 0 && (
             <span
               className="ml-auto inline-flex items-center justify-center rounded-full text-[10px] font-semibold"
               style={{
-                backgroundColor: '#F59E0B',
+                backgroundColor: unreadTicketReplies > 0 ? '#EF4444' : '#F59E0B',
                 color: '#fff',
                 minWidth: '16px',
                 height: '16px',
                 padding: '0 4px',
               }}
             >
-              {unreadChangelog}
+              {unreadChangelog + unreadTicketReplies}
             </span>
           )}
         </Link>
@@ -479,6 +483,20 @@ export default function Sidebar({ userEmail, organization, farms, activeFarmId, 
           >
             <span style={{ opacity: pathname.includes('/admin/') ? 0.9 : 0.55, fontSize: '13px', lineHeight: 1 }}>&#x1F527;</span>
             <span>Admin</span>
+            {newTicketCount > 0 && (
+              <span
+                className="ml-auto inline-flex items-center justify-center rounded-full text-[10px] font-semibold"
+                style={{
+                  backgroundColor: '#EF4444',
+                  color: '#fff',
+                  minWidth: '16px',
+                  height: '16px',
+                  padding: '0 4px',
+                }}
+              >
+                {newTicketCount}
+              </span>
+            )}
           </Link>
         </div>
       )}

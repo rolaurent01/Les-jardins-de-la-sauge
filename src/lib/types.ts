@@ -1073,6 +1073,7 @@ export type SupportTicket = {
 /** Ticket avec le nombre de messages (pour les listes) */
 export type SupportTicketWithCount = SupportTicket & {
   message_count: number
+  has_unread_reply?: boolean
 }
 
 /** Ticket avec infos organisation et auteur (pour l'admin) */

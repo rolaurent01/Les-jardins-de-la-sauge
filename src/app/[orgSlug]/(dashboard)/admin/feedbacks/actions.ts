@@ -22,6 +22,20 @@ async function requireAdmin(): Promise<string> {
   return user.id
 }
 
+/** Compte les tickets "new" (pour le badge sidebar admin) */
+export async function getNewTicketCount(): Promise<number> {
+  await requireAdmin()
+  const admin = createAdminClient()
+
+  const { count, error } = await admin
+    .from('support_tickets')
+    .select('id', { count: 'exact', head: true })
+    .eq('status', 'new')
+
+  if (error) return 0
+  return count ?? 0
+}
+
 /** Stats des tickets par statut */
 export async function getTicketStats(): Promise<Record<SupportTicketStatus, number>> {
   await requireAdmin()

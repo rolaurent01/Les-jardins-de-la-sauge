@@ -205,7 +205,7 @@ export async function createTicket(formData: FormData): Promise<ActionResult> {
   return { success: true }
 }
 
-/** Récupère les tickets de l'utilisateur connecté */
+/** Récupère les tickets de l'utilisateur connecté (avec indicateur réponses non lues) */
 export async function getMyTickets(): Promise<SupportTicketWithCount[]> {
   const { userId } = await getContext()
   const admin = createAdminClient()
@@ -218,27 +218,78 @@ export async function getMyTickets(): Promise<SupportTicketWithCount[]> {
 
   if (error) throw new Error(`Erreur tickets : ${error.message}`)
 
-  // Compter les messages par ticket
   const ticketIds = (tickets ?? []).map(t => t.id)
   if (ticketIds.length === 0) return []
 
+  // Récupérer tous les messages
   const { data: messages } = await admin
     .from('support_ticket_messages')
-    .select('ticket_id')
+    .select('ticket_id, is_admin_reply, created_at')
     .in('ticket_id', ticketIds)
 
   const countMap = new Map<string, number>()
+  const hasUnreadMap = new Map<string, boolean>()
+
   for (const msg of messages ?? []) {
     countMap.set(msg.ticket_id, (countMap.get(msg.ticket_id) ?? 0) + 1)
+
+    // Vérifier si un message admin est plus récent que user_last_seen_at
+    if (msg.is_admin_reply) {
+      const ticket = (tickets ?? []).find(t => t.id === msg.ticket_id)
+      const lastSeen = ticket?.user_last_seen_at
+      if (!lastSeen || new Date(msg.created_at) > new Date(lastSeen)) {
+        hasUnreadMap.set(msg.ticket_id, true)
+      }
+    }
   }
 
   return (tickets ?? []).map(t => ({
     ...t,
     message_count: countMap.get(t.id) ?? 0,
+    has_unread_reply: hasUnreadMap.get(t.id) ?? false,
   })) as SupportTicketWithCount[]
 }
 
-/** Récupère le détail d'un ticket (vérifie que l'utilisateur en est l'auteur) */
+/** Compte les tickets avec des réponses admin non lues (pour le badge sidebar utilisateur) */
+export async function getUnreadTicketReplyCount(): Promise<number> {
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) return 0
+
+  const admin = createAdminClient()
+
+  // Tickets de l'utilisateur
+  const { data: tickets } = await admin
+    .from('support_tickets')
+    .select('id, user_last_seen_at')
+    .eq('created_by', user.id)
+
+  if (!tickets || tickets.length === 0) return 0
+
+  // Messages admin sur ces tickets
+  const { data: adminMessages } = await admin
+    .from('support_ticket_messages')
+    .select('ticket_id, created_at')
+    .in('ticket_id', tickets.map(t => t.id))
+    .eq('is_admin_reply', true)
+
+  if (!adminMessages || adminMessages.length === 0) return 0
+
+  // Compter les tickets qui ont au moins 1 message admin après user_last_seen_at
+  const ticketMap = new Map(tickets.map(t => [t.id, t.user_last_seen_at]))
+  const ticketsWithUnread = new Set<string>()
+
+  for (const msg of adminMessages) {
+    const lastSeen = ticketMap.get(msg.ticket_id)
+    if (!lastSeen || new Date(msg.created_at) > new Date(lastSeen)) {
+      ticketsWithUnread.add(msg.ticket_id)
+    }
+  }
+
+  return ticketsWithUnread.size
+}
+
+/** Récupère le détail d'un ticket et marque comme vu */
 export async function getTicketDetail(ticketId: string): Promise<{
   ticket: SupportTicket
   messages: SupportTicketMessage[]
@@ -254,6 +305,13 @@ export async function getTicketDetail(ticketId: string): Promise<{
     .single()
 
   if (!ticket) return null
+
+  // Marquer comme vu (met à jour user_last_seen_at)
+  await admin
+    .from('support_tickets')
+    .update({ user_last_seen_at: new Date().toISOString() })
+    .eq('id', ticketId)
+    .eq('created_by', userId)
 
   const { data: messages } = await admin
     .from('support_ticket_messages')
