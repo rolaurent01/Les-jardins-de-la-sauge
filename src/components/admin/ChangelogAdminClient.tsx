@@ -9,7 +9,10 @@ import {
   updateChangelogEntry,
   deleteChangelogEntry,
   toggleChangelogPublished,
+  fetchCommitSuggestions,
+  importCommitSuggestions,
 } from '@/app/[orgSlug]/(dashboard)/admin/changelog/actions'
+import type { CommitSuggestion } from '@/app/[orgSlug]/(dashboard)/admin/changelog/actions'
 
 export default function ChangelogAdminClient({
   initialEntries,
@@ -25,7 +28,15 @@ export default function ChangelogAdminClient({
   const [editing, setEditing] = useState<ChangelogEntry | null>(null)
   const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null)
 
+  // Import depuis GitHub
+  const [showImport, setShowImport] = useState(false)
+  const [suggestions, setSuggestions] = useState<CommitSuggestion[]>([])
+  const [selected, setSelected] = useState<Set<string>>(new Set())
+  const [loadingSuggestions, setLoadingSuggestions] = useState(false)
+
   useEffect(() => { setEntries(initialEntries) }, [initialEntries])
+
+  // ── CRUD handlers ──
 
   async function handleSubmit(formData: FormData) {
     setError(null)
@@ -65,11 +76,67 @@ export default function ChangelogAdminClient({
   function openEdit(entry: ChangelogEntry) {
     setEditing(entry)
     setShowForm(true)
+    setShowImport(false)
   }
 
   function openCreate() {
     setEditing(null)
     setShowForm(true)
+    setShowImport(false)
+  }
+
+  // ── Import handlers ──
+
+  async function handleLoadSuggestions() {
+    setError(null)
+    setShowImport(true)
+    setShowForm(false)
+    setLoadingSuggestions(true)
+    try {
+      const data = await fetchCommitSuggestions()
+      setSuggestions(data)
+      setSelected(new Set())
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Erreur lors du chargement des commits.')
+    } finally {
+      setLoadingSuggestions(false)
+    }
+  }
+
+  function toggleSelection(sha: string) {
+    setSelected(prev => {
+      const next = new Set(prev)
+      if (next.has(sha)) next.delete(sha)
+      else next.add(sha)
+      return next
+    })
+  }
+
+  function toggleSelectAll() {
+    if (selected.size === suggestions.length) {
+      setSelected(new Set())
+    } else {
+      setSelected(new Set(suggestions.map(s => s.sha)))
+    }
+  }
+
+  async function handleImportSelected() {
+    setError(null)
+    const toImport = suggestions
+      .filter(s => selected.has(s.sha))
+      .map(s => ({ title: s.title, description: s.description, type: s.type }))
+
+    startTransition(async () => {
+      const res = await importCommitSuggestions(toImport)
+      if ('error' in res) {
+        setError(res.error ?? null)
+      } else {
+        setShowImport(false)
+        setSuggestions([])
+        setSelected(new Set())
+        router.refresh()
+      }
+    })
   }
 
   return (
@@ -78,16 +145,30 @@ export default function ChangelogAdminClient({
         <h1 className="text-lg font-semibold" style={{ color: '#2C3E2D' }}>
           Gestion du changelog
         </h1>
-        <button
-          onClick={showForm ? () => { setShowForm(false); setEditing(null) } : openCreate}
-          className="text-sm px-3 py-1.5 rounded-md"
-          style={{
-            backgroundColor: showForm ? '#E5E7EB' : 'var(--color-primary, #3A5A40)',
-            color: showForm ? '#374151' : '#fff',
-          }}
-        >
-          {showForm ? 'Annuler' : '+ Nouvelle entrée'}
-        </button>
+        <div className="flex gap-2">
+          <button
+            onClick={handleLoadSuggestions}
+            disabled={loadingSuggestions}
+            className="text-sm px-3 py-1.5 rounded-md"
+            style={{
+              backgroundColor: showImport ? '#E5E7EB' : '#EFF6FF',
+              color: showImport ? '#374151' : '#1E40AF',
+              opacity: loadingSuggestions ? 0.6 : 1,
+            }}
+          >
+            {loadingSuggestions ? 'Chargement...' : 'Importer depuis les commits'}
+          </button>
+          <button
+            onClick={showForm ? () => { setShowForm(false); setEditing(null) } : openCreate}
+            className="text-sm px-3 py-1.5 rounded-md"
+            style={{
+              backgroundColor: showForm ? '#E5E7EB' : 'var(--color-primary, #3A5A40)',
+              color: showForm ? '#374151' : '#fff',
+            }}
+          >
+            {showForm ? 'Annuler' : '+ Nouvelle entrée'}
+          </button>
+        </div>
       </div>
 
       {error && (
@@ -96,7 +177,100 @@ export default function ChangelogAdminClient({
         </div>
       )}
 
-      {/* Formulaire */}
+      {/* ─── Panel d'import depuis GitHub ─── */}
+      {showImport && !loadingSuggestions && (
+        <div
+          className="mb-6 p-4 rounded-xl"
+          style={{ backgroundColor: '#F0F9FF', border: '1px solid #BAE6FD' }}
+        >
+          <div className="flex items-center justify-between mb-3">
+            <h2 className="text-sm font-semibold" style={{ color: '#0C4A6E' }}>
+              Commits récents (feat / fix)
+            </h2>
+            <div className="flex gap-2 items-center">
+              {suggestions.length > 0 && (
+                <>
+                  <button
+                    onClick={toggleSelectAll}
+                    className="text-xs px-2 py-1 rounded-md"
+                    style={{ color: '#0C4A6E', backgroundColor: '#E0F2FE' }}
+                  >
+                    {selected.size === suggestions.length ? 'Tout désélectionner' : 'Tout sélectionner'}
+                  </button>
+                  <button
+                    onClick={handleImportSelected}
+                    disabled={selected.size === 0 || isPending}
+                    className="text-xs px-3 py-1 rounded-md"
+                    style={{
+                      backgroundColor: selected.size > 0 ? 'var(--color-primary, #3A5A40)' : '#D1D5DB',
+                      color: selected.size > 0 ? '#fff' : '#9CA3AF',
+                      opacity: isPending ? 0.6 : 1,
+                    }}
+                  >
+                    {isPending ? 'Import...' : `Importer ${selected.size} entrée${selected.size > 1 ? 's' : ''}`}
+                  </button>
+                </>
+              )}
+              <button
+                onClick={() => { setShowImport(false); setSuggestions([]); setSelected(new Set()) }}
+                className="text-xs px-2 py-1 rounded-md"
+                style={{ color: '#6B7280', backgroundColor: '#F3F4F6' }}
+              >
+                Fermer
+              </button>
+            </div>
+          </div>
+
+          {suggestions.length === 0 ? (
+            <p className="text-sm" style={{ color: '#6B7280' }}>
+              Aucun commit feat/fix depuis le dernier changelog.
+            </p>
+          ) : (
+            <div className="space-y-1.5">
+              {suggestions.map(s => (
+                <label
+                  key={s.sha}
+                  className="flex items-start gap-3 rounded-lg p-2.5 cursor-pointer"
+                  style={{
+                    backgroundColor: selected.has(s.sha) ? '#DBEAFE' : '#fff',
+                    border: `1px solid ${selected.has(s.sha) ? '#93C5FD' : '#E5E7EB'}`,
+                    transition: 'all 100ms ease-out',
+                  }}
+                >
+                  <input
+                    type="checkbox"
+                    checked={selected.has(s.sha)}
+                    onChange={() => toggleSelection(s.sha)}
+                    className="mt-0.5 rounded"
+                  />
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-2 mb-0.5">
+                      <span
+                        className="text-[10px] px-1.5 py-0.5 rounded-full font-medium"
+                        style={{
+                          backgroundColor: CHANGELOG_TYPE_COLORS[s.type].bg,
+                          color: CHANGELOG_TYPE_COLORS[s.type].text,
+                        }}
+                      >
+                        {CHANGELOG_TYPE_LABELS[s.type]}
+                      </span>
+                      <code className="text-[10px]" style={{ color: '#9CA3AF' }}>{s.sha}</code>
+                      <span className="text-[10px]" style={{ color: '#9CA3AF' }}>
+                        {new Date(s.date).toLocaleDateString('fr-FR')}
+                      </span>
+                    </div>
+                    <p className="text-sm font-medium" style={{ color: '#1E293B' }}>
+                      {s.title}
+                    </p>
+                  </div>
+                </label>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* ─── Formulaire création/édition ─── */}
       {showForm && (
         <form
           action={handleSubmit}
@@ -168,7 +342,7 @@ export default function ChangelogAdminClient({
         </form>
       )}
 
-      {/* Liste */}
+      {/* ─── Liste des entrées existantes ─── */}
       {entries.length === 0 ? (
         <p className="text-sm" style={{ color: '#6B7280' }}>Aucune entrée changelog.</p>
       ) : (
