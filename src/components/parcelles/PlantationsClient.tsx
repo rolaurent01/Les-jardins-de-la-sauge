@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useTransition, useMemo } from 'react'
+import { useState, useEffect, useTransition } from 'react'
 import { useRouter } from 'next/navigation'
 import type { PlantingWithRelations, RowWithParcel, Variety } from '@/lib/types'
 import type { SeedlingForSelect, SeedLotForSelect } from '@/app/[orgSlug]/(dashboard)/parcelles/plantations/actions'
@@ -93,14 +93,6 @@ export default function PlantationsClient({ initialPlantings, rows, varieties, s
   useEffect(() => {
     setPlantings(initialPlantings)
   }, [initialPlantings])
-
-  // Rangs non plantés : exclure ceux qui ont au moins une plantation active
-  const unplantedRows = useMemo(() => {
-    const plantedRowIds = new Set(
-      plantings.filter(p => p.actif).map(p => p.row_id)
-    )
-    return rows.filter(r => !plantedRowIds.has(r.id))
-  }, [rows, plantings])
 
   useEffect(() => {
     if (!confirmArchiveId) return
@@ -439,7 +431,7 @@ export default function PlantationsClient({ initialPlantings, rows, varieties, s
         key={editingPlanting?.id ?? 'new'}
         open={slideOverOpen}
         planting={editingPlanting}
-        rows={editingPlanting ? rows : unplantedRows}
+        rows={rows}
         varieties={varieties}
         seedlings={seedlings}
         seedLots={seedLots}

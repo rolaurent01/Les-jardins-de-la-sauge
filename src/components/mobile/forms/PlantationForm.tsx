@@ -267,7 +267,6 @@ export default function PlantationForm({ orgSlug }: PlantationFormProps) {
         value={form.row_id}
         onChange={handleRowChange}
         error={errors.row_id}
-        filter="unplanted"
       />
 
       <MobileSearchSelect
