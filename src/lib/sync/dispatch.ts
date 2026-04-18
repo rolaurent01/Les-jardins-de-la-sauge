@@ -579,16 +579,33 @@ async function dispatchPlanting({ farm_id, user_id, uuid_client, payload }: Disp
   let longueur_m = (payload.longueur_m as number | null) ?? null
   let largeur_m = (payload.largeur_m as number | null) ?? null
 
-  if (longueur_m === null || largeur_m === null) {
-    const { data: rowData } = await admin
-      .from('rows')
-      .select('longueur_m, largeur_m')
-      .eq('id', payload.row_id as string)
-      .single()
+  const { data: rowData } = await admin
+    .from('rows')
+    .select('longueur_m, largeur_m')
+    .eq('id', payload.row_id as string)
+    .single()
 
-    if (rowData) {
-      if (longueur_m === null) longueur_m = (rowData.longueur_m as number | null) ?? null
-      if (largeur_m === null) largeur_m = (rowData.largeur_m as number | null) ?? null
+  if (rowData) {
+    if (longueur_m === null) longueur_m = (rowData.longueur_m as number | null) ?? null
+    if (largeur_m === null) largeur_m = (rowData.largeur_m as number | null) ?? null
+  }
+
+  // Validation dépassement longueur cumulée du rang
+  const rowLongueur = (rowData?.longueur_m as number | null) ?? null
+  if (longueur_m != null && rowLongueur != null) {
+    const { data: existingOnRow } = await admin
+      .from('plantings')
+      .select('longueur_m')
+      .eq('row_id', payload.row_id as string)
+      .eq('actif', true)
+      .is('deleted_at', null)
+
+    const totalUsed = (existingOnRow ?? []).reduce(
+      (sum, p) => sum + ((p.longueur_m as number) ?? 0), 0,
+    )
+    if (totalUsed + longueur_m > rowLongueur) {
+      const remaining = Math.max(0, rowLongueur - totalUsed)
+      throw new Error(`Ce rang fait ${rowLongueur}m, ${totalUsed}m sont déjà occupés. Il reste ${remaining.toFixed(1)}m (vous demandez ${longueur_m}m).`)
     }
   }
 

@@ -155,6 +155,9 @@ export default function PlantationSlideOver({
   }, [selectedRowId])
 
   // Pré-remplir les dimensions depuis le rang sélectionné (création uniquement)
+  // La longueur est ajustée au restant disponible une fois les warnings chargés
+  const [rowJustChanged, setRowJustChanged] = useState(false)
+
   function handleRowChange(rowId: string) {
     setSelectedRowId(rowId)
 
@@ -163,8 +166,8 @@ export default function PlantationSlideOver({
       if (row) {
         if (row.longueur_m != null) {
           setLongueurM(row.longueur_m.toString())
-          // Considérer comme valeur manuelle pour le calcul d'espacement
           markManual('longueur_m')
+          setRowJustChanged(true)
         }
         if ((row as RowWithParcel & { largeur_m?: number | null }).largeur_m != null) {
           setLargeurM(((row as RowWithParcel & { largeur_m?: number | null }).largeur_m as number).toString())
@@ -172,6 +175,16 @@ export default function PlantationSlideOver({
       }
     }
   }
+
+  // Ajuster la longueur pré-remplie au restant disponible une fois les warnings chargés
+  useEffect(() => {
+    if (!rowJustChanged || !warnings || isEdit) return
+    setRowJustChanged(false)
+    if (warnings.rowLongueur != null && warnings.totalLongueurUsed > 0) {
+      const remaining = Math.max(0, warnings.rowLongueur - warnings.totalLongueurUsed)
+      setLongueurM(remaining > 0 ? remaining.toString() : warnings.rowLongueur.toString())
+    }
+  }, [warnings, rowJustChanged, isEdit])
 
   function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault()

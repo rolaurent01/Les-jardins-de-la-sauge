@@ -167,19 +167,20 @@ async function loadRows(admin: any, farmId: string) {
 async function loadPlantings(admin: any, farmId: string) {
   const { data, error } = await admin
     .from('plantings')
-    .select('id, row_id, variety_id, actif, varieties(nom_vernaculaire)')
+    .select('id, row_id, variety_id, actif, longueur_m, varieties(nom_vernaculaire)')
     .eq('farm_id', farmId)
     .eq('actif', true)
     .is('deleted_at', null)
 
   if (error) throw new Error(`Erreur chargement plantations : ${error.message}`)
 
-  return (data ?? []).map((p: { id: string; row_id: string; variety_id: string; actif: boolean; varieties: { nom_vernaculaire: string } | null }) => ({
+  return (data ?? []).map((p: { id: string; row_id: string; variety_id: string; actif: boolean; longueur_m: number | null; varieties: { nom_vernaculaire: string } | null }) => ({
     id: p.id,
     row_id: p.row_id,
     variety_id: p.variety_id,
     variety_name: p.varieties?.nom_vernaculaire ?? '',
     actif: p.actif,
+    longueur_m: (p.longueur_m as number | null) ?? null,
   }))
 }
 

@@ -2,6 +2,40 @@
 
 ---
 
+## [2026-04-18 16:40] — feat(plantations): validation longueur cumulée par rang (blocage serveur + warnings)
+
+**Type :** `feature`
+**Fichiers concernés :** `src/lib/offline/db.ts`, `src/app/api/offline/reference-data/route.ts`, `src/app/[orgSlug]/(dashboard)/parcelles/plantations/actions.ts`, `src/lib/sync/dispatch.ts`, `src/components/mobile/forms/PlantationForm.tsx`, `src/components/parcelles/PlantationSlideOver.tsx`, `src/tests/offline/cached-plantings.test.ts`
+
+### Description
+Empêche qu'une plantation ne fasse déborder la longueur totale du rang quand plusieurs plantations coexistent. Blocage strict côté serveur (create + update + sync offline), warnings visuels côté client (mobile + desktop) et pré-remplissage intelligent de la longueur restante.
+
+### Détails techniques
+- **Cache offline (`CachedPlanting`)** : ajout du champ `longueur_m: number | null` pour permettre le calcul du restant hors connexion
+- **API `/api/offline/reference-data`** : inclut désormais `longueur_m` dans la réponse des plantations
+- **`createPlanting()` et `updatePlanting()`** : validation stricte — retourne une erreur si `totalUsed + longueur_m > rowLongueur` (en excluant la plantation en cours d'édition). Message explicite indiquant ce qui reste disponible
+- **`dispatchPlanting()` (sync offline)** : même validation côté serveur pour empêcher l'insertion via la file de synchronisation
+- **Formulaire mobile (`PlantationForm.tsx`)** : branchement sur `useCachedPlantings`, calcul du restant dans `handleRowChange`, pré-remplissage `longueur_m` avec le restant disponible, bandeau d'avertissement (`⚠️` jaune si dépassement, info grise sinon)
+- **Formulaire desktop (`PlantationSlideOver.tsx`)** : pré-remplissage ajusté au restant une fois `fetchRowWarnings` reçu (via `useEffect` + drapeau `rowJustChanged`). Les bandeaux de warning existaient déjà
+- **Tests** : `cached-plantings.test.ts` mis à jour avec le nouveau champ `longueur_m`
+- Stratégie "warning client + blocage serveur" : l'utilisateur est prévenu avant soumission, mais si le warning est ignoré le serveur refuse quand même l'insertion
+
+---
+
+## [2026-04-18 15:30] — fix(plantations): autoriser plusieurs plantations sur un même rang
+
+**Type :** `fix`
+**Fichiers concernés :** `src/components/mobile/forms/PlantationForm.tsx`, `src/components/parcelles/PlantationsClient.tsx`
+
+### Description
+Le filtre `filter="unplanted"` masquait les rangs ayant au moins une plantation active, empêchant l'ajout de plusieurs lots de graines sur un même rang. Suppression du filtre sur le formulaire de création (mobile + desktop).
+
+### Détails techniques
+- Mobile : retrait du prop `filter="unplanted"` → affiche tous les rangs (filtre `all` par défaut), avec indication visuelle des variétés déjà plantées
+- Desktop : `rows={rows}` au lieu de `unplantedRows` dans `PlantationSlideOver`, suppression du `useMemo` `unplantedRows` devenu inutile et de l'import `useMemo` associé
+
+---
+
 ## [2026-04-09 16:00] — feat(assistance): module complet changelog + tickets de support
 
 **Type :** `feature`

@@ -10,7 +10,7 @@ import MobileInput from '@/components/mobile/fields/MobileInput'
 import MobileTimerInput from '@/components/mobile/fields/MobileTimerInput'
 import MobileTextarea from '@/components/mobile/fields/MobileTextarea'
 import MobileCheckbox from '@/components/mobile/fields/MobileCheckbox'
-import { useCachedVarieties, useCachedSeedlings, useCachedSeedLots, useCachedRows } from '@/hooks/useCachedData'
+import { useCachedVarieties, useCachedSeedlings, useCachedSeedLots, useCachedRows, useCachedPlantings } from '@/hooks/useCachedData'
 import { offlineDb } from '@/lib/offline/db'
 import { generateUUID } from '@/lib/utils/uuid'
 import { mobilePlantingSchema } from '@/lib/validation/parcelles'
@@ -75,6 +75,7 @@ export default function PlantationForm({ orgSlug }: PlantationFormProps) {
   const { varieties, isLoading: varietiesLoading } = useCachedVarieties()
   const { seedlings, isLoading: seedlingsLoading } = useCachedSeedlings()
   const { seedLots } = useCachedSeedLots()
+  const { plantings: cachedPlantings } = useCachedPlantings()
 
   const [form, setForm] = useState(() => ({ ...initialState(), certif_ab: certifBio }))
   const [errors, setErrors] = useState<Record<string, string>>({})
@@ -174,6 +175,7 @@ export default function PlantationForm({ orgSlug }: PlantationFormProps) {
           variety_id: form.variety_id,
           variety_name: variety.nom_vernaculaire,
           actif: true,
+          longueur_m: form.longueur_m ? parseFloat(form.longueur_m) : null,
         })
       }
 
@@ -193,7 +195,7 @@ export default function PlantationForm({ orgSlug }: PlantationFormProps) {
     resetSpacing()
   }
 
-  /** Pré-remplir longueur/largeur depuis le rang sélectionné */
+  /** Pré-remplir longueur/largeur depuis le rang sélectionné (longueur = restant disponible) */
   const handleRowChange = useCallback(
     (rowId: string) => {
       set('row_id', rowId)
@@ -201,7 +203,11 @@ export default function PlantationForm({ orgSlug }: PlantationFormProps) {
         const row = cachedRows.find(r => r.id === rowId)
         if (row) {
           if (row.longueur_m != null) {
-            set('longueur_m', row.longueur_m.toString())
+            const usedOnRow = cachedPlantings
+              .filter(p => p.row_id === rowId && p.actif)
+              .reduce((sum, p) => sum + (p.longueur_m ?? 0), 0)
+            const remaining = Math.max(0, row.longueur_m - usedOnRow)
+            set('longueur_m', remaining > 0 ? remaining.toString() : row.longueur_m.toString())
             markManual('longueur_m')
           }
           if (row.largeur_m != null) {
@@ -210,7 +216,7 @@ export default function PlantationForm({ orgSlug }: PlantationFormProps) {
         }
       }
     },
-    [set, cachedRows, markManual],
+    [set, cachedRows, cachedPlantings, markManual],
   )
 
   const backHref = `/${orgSlug}/m/saisie/parcelle`
@@ -253,6 +259,22 @@ export default function PlantationForm({ orgSlug }: PlantationFormProps) {
   // Sachet sélectionné pour le mode semis direct
   const selectedDirectSeedLot = seedLots.find(sl => sl.id === form.seed_lot_id) ?? null
 
+  // Avertissement dépassement longueur cumulée du rang
+  const rowWarning = useMemo(() => {
+    if (!form.row_id) return null
+    const row = cachedRows.find(r => r.id === form.row_id)
+    if (!row?.longueur_m) return null
+    const usedOnRow = cachedPlantings
+      .filter(p => p.row_id === form.row_id && p.actif)
+      .reduce((sum, p) => sum + (p.longueur_m ?? 0), 0)
+    const longueurInput = parseFloat(form.longueur_m) || 0
+    const remaining = row.longueur_m - usedOnRow
+    if (usedOnRow > 0 || (longueurInput > 0 && longueurInput > remaining)) {
+      return { rowLongueur: row.longueur_m, usedOnRow, remaining, isOverflow: longueurInput > 0 && (usedOnRow + longueurInput) > row.longueur_m }
+    }
+    return null
+  }, [form.row_id, form.longueur_m, cachedRows, cachedPlantings])
+
   return (
     <MobileFormLayout
       title="Plantation"
@@ -268,6 +290,26 @@ export default function PlantationForm({ orgSlug }: PlantationFormProps) {
         onChange={handleRowChange}
         error={errors.row_id}
       />
+
+      {rowWarning && (
+        <div
+          className="rounded-xl px-3 py-2.5 text-xs"
+          style={{
+            backgroundColor: rowWarning.isOverflow ? '#FEF3C7' : '#F0F4F0',
+            border: `1px solid ${rowWarning.isOverflow ? '#F59E0B' : '#E0E6E0'}`,
+            color: rowWarning.isOverflow ? '#92400E' : '#6B7B6C',
+          }}
+        >
+          {rowWarning.usedOnRow > 0 && (
+            <p>Ce rang fait {rowWarning.rowLongueur}m — {rowWarning.usedOnRow}m déjà occupés, {Math.max(0, rowWarning.remaining).toFixed(1)}m disponibles.</p>
+          )}
+          {rowWarning.isOverflow && (
+            <p style={{ fontWeight: 600, marginTop: rowWarning.usedOnRow > 0 ? 2 : 0 }}>
+              ⚠️ La longueur saisie dépasse l'espace disponible.
+            </p>
+          )}
+        </div>
+      )}
 
       <MobileSearchSelect
         label="Variété"

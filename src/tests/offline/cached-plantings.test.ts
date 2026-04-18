@@ -14,6 +14,7 @@ const PLANTING_1: CachedPlanting = {
   variety_id: VAR_LAVANDE,
   variety_name: 'Lavande vraie',
   actif: true,
+  longueur_m: 6,
 }
 
 const PLANTING_2: CachedPlanting = {
@@ -22,6 +23,7 @@ const PLANTING_2: CachedPlanting = {
   variety_id: VAR_THYM,
   variety_name: 'Thym commun',
   actif: true,
+  longueur_m: 8,
 }
 
 const PLANTING_3: CachedPlanting = {
@@ -30,6 +32,7 @@ const PLANTING_3: CachedPlanting = {
   variety_id: VAR_LAVANDE,
   variety_name: 'Lavande vraie',
   actif: true,
+  longueur_m: 10,
 }
 
 describe('CachedPlanting — IndexedDB CRUD', () => {
@@ -106,6 +109,7 @@ describe('CachedPlanting — IndexedDB CRUD', () => {
       variety_id: VAR_THYM,
       variety_name: 'Thym commun',
       actif: true,
+      longueur_m: 5,
     }
     await offlineDb.plantings.add(newPlanting)
 

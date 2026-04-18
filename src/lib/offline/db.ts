@@ -84,6 +84,8 @@ export interface CachedPlanting {
   variety_id: string
   variety_name: string
   actif: boolean
+  /** Longueur occupée par cette plantation (mètres) — sert au calcul du restant */
+  longueur_m: number | null
 }
 
 /** Cache semis enrichis pour le sélecteur plantation mobile */

@@ -352,16 +352,33 @@ export async function createPlanting(formData: FormData): Promise<ActionResult<P
 
   // Pré-remplissage des dimensions depuis le rang si l'utilisateur n'a pas saisi
   let { longueur_m, largeur_m } = parsed.data
-  if (longueur_m === null || largeur_m === null) {
-    const { data: rowData } = await supabase
-      .from('rows')
-      .select('longueur_m, largeur_m')
-      .eq('id', parsed.data.row_id)
-      .single()
+  const { data: rowData } = await supabase
+    .from('rows')
+    .select('longueur_m, largeur_m')
+    .eq('id', parsed.data.row_id)
+    .single()
 
-    if (rowData) {
-      if (longueur_m === null) longueur_m = (rowData.longueur_m as number | null) ?? null
-      if (largeur_m === null) largeur_m = (rowData.largeur_m as number | null) ?? null
+  if (rowData) {
+    if (longueur_m === null) longueur_m = (rowData.longueur_m as number | null) ?? null
+    if (largeur_m === null) largeur_m = (rowData.largeur_m as number | null) ?? null
+  }
+
+  // Validation dépassement longueur cumulée du rang
+  const rowLongueur = (rowData?.longueur_m as number | null) ?? null
+  if (longueur_m != null && rowLongueur != null) {
+    const { data: existingOnRow } = await admin
+      .from('plantings')
+      .select('longueur_m')
+      .eq('row_id', parsed.data.row_id)
+      .eq('actif', true)
+      .is('deleted_at', null)
+
+    const totalUsed = (existingOnRow ?? []).reduce(
+      (sum, p) => sum + ((p.longueur_m as number) ?? 0), 0,
+    )
+    if (totalUsed + longueur_m > rowLongueur) {
+      const remaining = Math.max(0, rowLongueur - totalUsed)
+      return { error: `Ce rang fait ${rowLongueur}m, ${totalUsed}m sont déjà occupés. Il reste ${remaining.toFixed(1)}m disponibles (vous demandez ${longueur_m}m).` }
     }
   }
 
@@ -459,6 +476,35 @@ export async function updatePlanting(
 
       if (parsed.data.nb_plants > plantsRestants) {
         return { error: `Cette bouture n'a que ${plantsRestants} plant${plantsRestants > 1 ? 's' : ''} disponible${plantsRestants > 1 ? 's' : ''}.` }
+      }
+    }
+  }
+
+  // Validation dépassement longueur cumulée du rang (exclure la plantation en cours d'édition)
+  const newLongueur = parsed.data.longueur_m as number | null
+  if (newLongueur != null) {
+    const { data: rowData } = await admin
+      .from('rows')
+      .select('longueur_m')
+      .eq('id', parsed.data.row_id)
+      .single()
+
+    const rowLongueur = (rowData?.longueur_m as number | null) ?? null
+    if (rowLongueur != null) {
+      const { data: existingOnRow } = await admin
+        .from('plantings')
+        .select('id, longueur_m')
+        .eq('row_id', parsed.data.row_id)
+        .eq('actif', true)
+        .is('deleted_at', null)
+
+      const totalUsed = (existingOnRow ?? [])
+        .filter(p => (p.id as string) !== id)
+        .reduce((sum, p) => sum + ((p.longueur_m as number) ?? 0), 0)
+
+      if (totalUsed + newLongueur > rowLongueur) {
+        const remaining = Math.max(0, rowLongueur - totalUsed)
+        return { error: `Ce rang fait ${rowLongueur}m, ${totalUsed}m sont déjà occupés. Il reste ${remaining.toFixed(1)}m disponibles (vous demandez ${newLongueur}m).` }
       }
     }
   }
