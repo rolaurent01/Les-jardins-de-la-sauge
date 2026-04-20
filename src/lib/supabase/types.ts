@@ -3170,18 +3170,18 @@ export type Database = {
       }
       create_harvest_with_stock: {
         Args: {
-          p_commentaire: string
           p_created_by: string
           p_date: string
           p_farm_id: string
-          p_lieu_sauvage: string
           p_partie_plante: string
           p_poids_g: number
-          p_row_id: string
-          p_temps_min: number
           p_type_cueillette: string
-          p_uuid_client: string
           p_variety_id: string
+          p_commentaire?: string
+          p_lieu_sauvage?: string
+          p_row_id?: string
+          p_temps_min?: number
+          p_uuid_client?: string
         }
         Returns: string
       }
@@ -3428,17 +3428,17 @@ export type Database = {
       }
       update_harvest_with_stock: {
         Args: {
-          p_commentaire: string
           p_date: string
           p_harvest_id: string
-          p_lieu_sauvage: string
           p_partie_plante: string
           p_poids_g: number
-          p_row_id: string
-          p_temps_min: number
           p_type_cueillette: string
           p_updated_by: string
           p_variety_id: string
+          p_commentaire?: string
+          p_lieu_sauvage?: string
+          p_row_id?: string
+          p_temps_min?: number
         }
         Returns: undefined
       }

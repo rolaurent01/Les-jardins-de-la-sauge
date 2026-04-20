@@ -79,15 +79,15 @@ async function dispatchHarvest({ farm_id, user_id, uuid_client, payload }: Dispa
     p_farm_id: farm_id,
     p_uuid_client: uuid_client,
     p_type_cueillette: payload.type_cueillette as string,
-    p_row_id: (payload.row_id as string) ?? null,
-    p_lieu_sauvage: (payload.lieu_sauvage as string) ?? null,
     p_variety_id: payload.variety_id as string,
     p_partie_plante: payload.partie_plante as string,
     p_date: payload.date as string,
     p_poids_g: payload.poids_g as number,
-    p_temps_min: (payload.temps_min as number) ?? null,
-    p_commentaire: (payload.commentaire as string) ?? null,
     p_created_by: user_id,
+    p_row_id: (payload.row_id as string) ?? undefined,
+    p_lieu_sauvage: (payload.lieu_sauvage as string) ?? undefined,
+    p_temps_min: (payload.temps_min as number) ?? undefined,
+    p_commentaire: (payload.commentaire as string) ?? undefined,
   })
   if (error) throw new Error(error.message)
   return { server_id: String(data) }

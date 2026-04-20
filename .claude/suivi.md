@@ -2,6 +2,23 @@
 
 ---
 
+## [2026-04-20 21:12] — fix(cueillette): RPCs harvest — params nullables (UUID '' → NULL)
+
+**Type :** `fix`
+**Fichiers concernés :** `supabase/migrations/045_fix_harvest_rpcs_nullable.sql`, `src/lib/supabase/types.ts`, `src/app/[orgSlug]/(dashboard)/parcelles/cueillette/actions.ts`, `src/lib/sync/dispatch.ts`
+
+### Description
+Correction de l'erreur runtime `invalid input syntax for type uuid: ""` à la création/modification d'une cueillette. Après régénération des types Supabase (commit `ad7dc76`), les paramètres UUID des RPCs `create_harvest_with_stock` et `update_harvest_with_stock` étaient typés `string` non-nullable côté TS ; pour satisfaire le compilateur on passait `''` au lieu de `null`, ce qui faisait systématiquement échouer l'insertion côté Postgres.
+
+### Détails techniques
+- **Migration 045** : redéfinit `create_harvest_with_stock` et `update_harvest_with_stock` avec `DEFAULT NULL` sur tous les paramètres réellement optionnels (`p_uuid_client`, `p_row_id`, `p_lieu_sauvage`, `p_temps_min`, `p_commentaire`). Ajout de la logique d'idempotence `ON CONFLICT (uuid_client) DO NOTHING` pour s'aligner sur les autres RPCs transformation/stock (cf. migration 017) — utile pour la déduplication sync offline PWA
+- **`types.ts`** : paramètres optionnels marqués `?: string` / `?: number` pour refléter la nouvelle signature SQL (en attendant la prochaine régénération automatique depuis Supabase)
+- **`actions.ts` + `dispatch.ts`** : remplacement de `?? ''` / `?? null` par `?? undefined` (TypeScript autorise désormais l'omission des params optionnels), ordre des paramètres réorganisé pour cohérence avec la signature SQL (obligatoires d'abord, optionnels ensuite)
+- **À exécuter manuellement** : la migration 045 dans Supabase SQL Editor (le `NOTIFY pgrst, 'reload schema'` en fin de script recharge le cache PostgREST automatiquement)
+- TypeScript typecheck ✅ / tests `dispatch.test.ts` (8 passants) ✅
+
+---
+
 ## [2026-04-18 16:40] — feat(plantations): validation longueur cumulée par rang (blocage serveur + warnings)
 
 **Type :** `feature`
